@@ -1,0 +1,49 @@
+{
+  "_comment": "Neutral-objective spawn and respawn constants for DA-004. Config-driven per Hard Rule #4 — ObjectiveTimer hardcodes NO spawn times, respawn intervals, or objective identifiers inline. Bump 'patch' whenever Riot changes objective spawn schedules (e.g. 14.10 Void Grub addition, future Atakhan changes). All times are in seconds from game start. An objective appears in this list exactly once; adding a new objective (e.g. Atakhan, Void Grubs) is a config edit, not a code change.",
+  "patch": "14.12",
+  "schemaVersion": 1,
+
+  "objectives": [
+    {
+      "id": "dragon",
+      "_comment": "Elemental Dragon / Infernal / Mountain / Ocean / Cloud / Hextech / Chemtech. First spawns at 5:00 (300s). After being slain it respawns 5:00 (300s) later. Elder Dragon replaces normal dragon once a team reaches soul; same respawn interval. Spawn time and respawn interval are patch-dependent.",
+      "displayName": "Dragon",
+      "firstSpawnSeconds": 300.0,
+      "respawnSeconds": 300.0
+    },
+    {
+      "id": "rift_herald",
+      "_comment": "Rift Herald spawns at 8:00 (480s) and despawns permanently at 19:45 (1185s) regardless of whether it was slain. It does NOT respawn after 19:45; the timer is only meaningful while gameTime < heraldDespawnSeconds. Respawn interval is 6:00 (360s) — only one respawn opportunity exists in most games. See heraldDespawnSeconds in the top-level config.",
+      "displayName": "Rift Herald",
+      "firstSpawnSeconds": 480.0,
+      "respawnSeconds": 360.0
+    },
+    {
+      "id": "baron",
+      "_comment": "Baron Nashor spawns at 20:00 (1200s), replacing Rift Herald. Respawns 6:00 (360s) after being slain. Baron is available for the rest of the game once it spawns.",
+      "displayName": "Baron Nashor",
+      "firstSpawnSeconds": 1200.0,
+      "respawnSeconds": 360.0
+    },
+    {
+      "id": "void_grubs",
+      "_comment": "Void Grubs (added patch 14.1) spawn at 5:00 (300s) on the Baron side. They spawn in groups; all 6 grubs across two camps. First camp: 5:00, second camp: appears shortly after first is cleared (modeled here as a single first-spawn gate). Void Grubs do NOT respawn after being killed — this entry is therefore used only to track 'not yet spawned' vs 'spawned/gone'. Set respawnSeconds to a very large value to indicate no meaningful respawn.",
+      "displayName": "Void Grubs",
+      "firstSpawnSeconds": 300.0,
+      "respawnSeconds": 999999.0
+    },
+    {
+      "id": "atakhan",
+      "_comment": "Atakhan (added patch 25.S1.1) spawns conditionally based on which side of the map had more kills in the first ~14 min. First possible spawn time is approximately 20:00 (1200s); exact spawn depends on runtime kill distribution which the Live Client Data API does not expose per-team. Model as a static first-spawn floor only. Atakhan does NOT respawn once killed. Set respawnSeconds large to indicate no meaningful respawn.",
+      "displayName": "Atakhan",
+      "firstSpawnSeconds": 1200.0,
+      "respawnSeconds": 999999.0
+    }
+  ],
+
+  "heraldDespawnSeconds": 1185.0,
+  "_comment_heraldDespawn": "Game time (seconds) at which Rift Herald permanently despawns even if never killed (19:45). After this threshold the herald timer is suppressed regardless of state.",
+
+  "earlyGameThresholdSeconds": 10.0,
+  "_comment_earlyGame": "Game times below this value are treated as 'game not yet started / loading screen' — GetTimers returns all objectives as NotYetSpawned without computing any countdown. Guards against bogus zero-time or near-zero ticks during the loading phase."
+}

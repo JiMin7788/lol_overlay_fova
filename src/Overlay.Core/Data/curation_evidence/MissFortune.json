@@ -1,0 +1,68 @@
+{
+ "champion": "MissFortune",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Miss_Fortune"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Double Up",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      20,
+      45,
+      70,
+      95,
+      120
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "20 / 45 / 70 / 95 / 120 (+ 100% AD) (+ 35% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Make It Rain",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "totaling 70 / 100 / 130 / 160 / 190 (+ 120% AP) over duration"
+    }
+   ]
+  },
+  "R": {
+   "name": "Bullet Time",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "flat",
+     "values": [
+      280,
+      500,
+      720
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "maximum 280 / 500 / 720 (+ 840 / 960 / 1080% AD) (+ 350 / 400 / 450% AP)"
+    }
+   ]
+  }
+ }
+}

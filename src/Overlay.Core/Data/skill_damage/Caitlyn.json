@@ -1,0 +1,43 @@
+{
+  "_note": "Curated (T2c). Types verified: W trap headshot (physical), E 90 Caliber Net (magic), R Ace in the Hole (physical). Q (Piltover Peacemaker, physical) base damage lives in EffectValueCalculationPart (not evaluable yet), so it is left off.",
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "HeadShotBonusDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "NetDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "RTotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "InitialDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQ": "CORRECTED this pass: prior note claimed Q's base damage 'lives in an EffectValueCalculationPart, not evaluable yet' and left it uncurated. Verified against the actual BIN (CaitlynQAbility/CaitlynQ): there is NO EffectValueCalculationPart on this spell at all -- InitialDamage = NamedDataValueCalculationPart(BaseDamage) + StatBySubPartCalculationPart(mStat=2 AD, subpart=NamedDataValueCalculationPart(tADRatio)), i.e. AD x per-rank ratio tADRatio. StatBySubPartCalculationPart IS supported by FormulaInterpreter.cs (statResolver(stat) x nested subpart value, confirmed by direct source read, same mechanism already used for Riven passive/Hecarim passive elsewhere in this file set) -- the prior 'not evaluable' claim was simply wrong, likely confused with a different champion's genuinely-blocked EffectValueCalculationPart case. BaseDamage=[10,50,90,130,170] + tADRatio=[1.05,1.25,1.45,1.65,1.85]x AD matches wiki 'Physical Damage: 10/50/90/130/170 (+105/125/145/165/185% AD)' exactly. Curated as the single guaranteed hit (first target in the piercing line). SecondaryDamage (GameCalculationModified, InitialDamage x0.6 SecondaryMult) is the reduced damage to ADDITIONAL targets the same line pierces through -- an AoE-extra-target bonus, not a guaranteed part of hitting one target, so it is intentionally not added as a second hit (consistent with this project's convention of not modeling multi-target AoE bonuses as guaranteed, e.g. Ambessa/Qiyana precedent)."
+}

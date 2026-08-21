@@ -1,0 +1,161 @@
+{
+  "_note": "M06 extension (T-rune-damage): manual (non-API-trackable) rune damage-formula map for the 8 ids RuneApiTrackability.NonTrackableRuneIds lists, PLUS (added in the auto-rune-trigger-engine batch) 6 AUTO-TRACKABLE runes (8224/8214/8112/9923/8128/8010) that are NOT part of that 8-id manual set. HAND-AUTHORED from LIVE wiki.leagueoflegends.com / bundled Data Dragon fetches this session (2026-07-09 for the original 8; the 6 auto-trackable additions were verified against this project's own bundled ddragon/16.13.1/runesReforged.json longDesc text the same session) -- same sourcing method as item_effects.json's Wit's End/Blade of the Ruined King/Titanic Hydra entries (raw.communitydragon.org has no rune-effect BIN equivalent for these keystone/minor runes, so there is no generator path; this file is entirely hand-authored and needs a manual wiki re-check whenever a future patch touches these 14 runes). Ids/names cross-checked against the bundled Data Dragon runesReforged.json (16.13.1) this session -- all ids/tree names matched exactly (note: DDragon's internal 'key' for id 8224 is the legacy 'NullifyingOrb', not 'AxiomArcanist' -- the id and current display name/effect text match the live wiki's 'Axiom Arcanist' exactly, this is just a DDragon internal-key naming artifact, not a data mismatch). Level scaling: every 'based on level' rune value in the live wiki tooltip is a LINEAR interpolation from its level-1 value to its level-18 value (baseAtLevel1 + (baseAtLevel18-baseAtLevel1)/17*(level-1)) -- this is Data Dragon/Riot's own documented rune-tooltip scaling convention, not a guess. 'damageType: null' means ADAPTIVE damage (physical or magic, resolved live from the caster's own AD/AP per the 'adaptive' field's rule -- see RuneEffectDb.ResolveAdaptive) exactly as each rune's own wiki text specifies. Every entry's own _note states precisely which parts of the wiki formula ARE modeled and which are DELIBERATELY OMITTED (values this system has no live source for, e.g. a proc'd shield's own magnitude, or an ability's live travel distance) -- omissions make the modeled number a documented UNDER-estimate, never a fabricated one. First Strike (8369) is INTENTIONALLY ABSENT from this file: its wiki-documented effect is a 7% multiplier on the caster's OTHER post-mitigation damage over a 3s window (a % amplifier), not an additive flat/ratio hit -- it does not fit this file's single-DamageBonus-number shape at all, so RuneEngine.BuildManualEffect correctly leaves its DamageBonus null rather than forcing a wrong number. CONSUMPTION SPLIT (auto-rune-trigger-engine batch): the original 8 manual ids are still consumed by RuneEffectDb via RuneEngine.BuildManualEffect and applied once per combo per active manual rune by ComboEngine.Execute's pre-existing runeBonusNodes block (same 'apply once, not per-proc-timing' conservative approximation already used for the spellblade item passives in item_effects.json) -- that block and its 'equipped + manual checkbox on -> always one extra hit' approximation are UNCHANGED by this batch. The 6 NEW auto-trackable ids (8224/8214/8112/9923/8128/8010), by contrast, are read DIRECTLY from RuneEffectDb by ComboEngine.Execute's NEW auto-trigger pre-processing step (ApplyAxiomArcanistUltimateMultiplier / ApplyRemainingAutoTriggeredRunes) -- NEVER via RuneEngine.BuildManualEffect (they stay classified auto/ApiTrackable:true throughout; RuneEngine's own auto/manual classification and BuildAutoEffect/BuildManualEffect logic are untouched) -- and each one's bonus is genuinely conditioned on the executed combo's real node sequence satisfying that rune's actual trigger (3 separate hits for Electrocute, target crossing below 50% HP for Dark Harvest, etc.), not a blanket 'equipped -> always apply'. See each of the 6 entries' own _note for its exact trigger condition and this file being reused purely for its level/AD/AP-ratio/adaptive-resolution math (RuneEffectDb.Evaluate), not for a second parallel formula format.",
+  "runes": {
+    "8126": {
+      "_note": "Cheap Shot (Domination). Quote from https://wiki.leagueoflegends.com/en-us/Cheap_Shot infobox, fetched live this session: 'Non-proc damage sources deal 10 - 49.12 (based on level) bonus true damage to enemy champions affected by certain crowd control effects.' Cooldown 4s (not modeled -- applied once per combo, see top-level _note). The infobox's live value (49.12 at level 18) is used per instructions (current tooltip, not old patch-history text); the wiki's own dedicated Patch History section's last explicit numeric bullet is V9.9 ('Damage increased to 10-45 (based on level) from 8-40'), which is stale relative to the current 10-49.12 infobox -- an undocumented scaling adjustment happened since V9.9 that the Patch History prose never got a matching bullet for. No AD/AP ratio. Trigger condition (target must already be CC'd) is NOT modeled -- RuneEngine has no CC-state signal, so this is applied whenever the manual checkbox is active, same simplification as every other manual rune here.",
+      "name": "Cheap Shot",
+      "damageType": "True",
+      "adaptive": "None",
+      "baseAtLevel1": 10,
+      "baseAtLevel18": 49.12,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8143": {
+      "_note": "Sudden Impact (Domination). Data Dragon 16.13.1 (this project's own bundled, current-patch cache -- ddragon/16.13.1/runesReforged.json) runeId 8143 'SuddenImpact' longDesc, cross-checked live this session: 'Damaging basic attacks and abilities deal a bonus 20 - 80 True Damage based on level to enemy champions after using a dash, leap, blink, teleport, or when leaving stealth for 4s. Cooldown: 10s.' This rune was reworked in patch V14.10 (May 2024, replacing its old Lethality/Magic Pen effect) and is unchanged through the current 16.13.1 client data -- wiki.leagueoflegends.com/en-us/Sudden_Impact corroborates the same rework structure. No AD/AP ratio. Trigger condition (must follow a dash/leap/blink/teleport/stealth-exit) is NOT modeled -- applied whenever the manual checkbox is active, same simplification as every manual rune here.",
+      "name": "Sudden Impact",
+      "damageType": "True",
+      "adaptive": "None",
+      "baseAtLevel1": 20,
+      "baseAtLevel18": 80,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8992": {
+      "_note": "Deathfire Touch (Sorcery keystone -- re-added to the game for the '2026 Annual Cycle', confirmed live/current via https://wiki.leagueoflegends.com/en-us/Template:Rune_data_Deathfire_Touch fetched this session, NOT the stale old-mastery prose still shown on the main /en-us/Deathfire_Touch article body). Quote: 'Dealing ability damage or pet damage to enemy champions inflicts a burn that deals 1.5 - 6.53 (based on level) (+3.5% bonus AD) (+1.25% AP) magic damage every 0.5 seconds over the duration. After the burn has lingered on a target for 3 seconds, its damage to them is increased by 75% to 2.63 - 11.43 (based on level) (+6.125% bonus AD) (+2.188% AP) per tick.' DELIBERATE PARTIAL MODEL: only the FIRST-TIER (pre-3-second-ramp) SINGLE-TICK value is modeled here (base1=1.5, base18=6.53, +3.5% bonus AD, +1.25% AP) as one representative hit -- the full multi-tick DoT total (multiple 0.5s ticks over up to 4s) and the +75% late-duration ramp are NOT modeled (this system has no per-tick DoT/timer simulation), so this is a documented UNDER-estimate of the burn's true total value, same 'onHit approximated as one representative instance' simplification the project already uses for champion on-hit passives.",
+      "name": "Deathfire Touch",
+      "damageType": "Magic",
+      "adaptive": "None",
+      "baseAtLevel1": 1.5,
+      "baseAtLevel18": 6.53,
+      "bonusAdRatio": 0.035,
+      "apRatio": 0.0125,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8237": {
+      "_note": "Scorch (Sorcery). Quote from https://wiki.leagueoflegends.com/en-us/Scorch infobox, fetched live this session: 'Dealing ability damage to an enemy champion sets them on fire, dealing them 20 - 42.35 (based on level) bonus magic damage after 1 second.' Cooldown 10s (not modeled). Last explicit Patch History numeric bullet: V12.14 ('Damage increased to 20-40 (based on level) from 15-35 (based on level)'); a later V25.S1.2 entry is a bug-fix only ('no longer deals unintended extra damage'), not a base-number change. Current infobox value (42.35 at level 18) used per instructions. No AD/AP ratio.",
+      "name": "Scorch",
+      "damageType": "Magic",
+      "adaptive": "None",
+      "baseAtLevel1": 20,
+      "baseAtLevel18": 42.35,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8401": {
+      "_note": "Shield Bash (Resolve). Quote from https://wiki.leagueoflegends.com/en-us/Shield_Bash infobox, fetched live this session: 'Whenever you gain a shield, your next basic attack against an enemy champion is empowered to deal 5 - 32.94 (based on level) (+2.5% bonus health) (+15% shield amount) bonus adaptive damage.' Adaptive damage type resolved via the wiki's own rule ('deals either physical or magic damage depending on whether you have more bonus attack damage or ability power') -- adaptive=ByBonusAdVsAp. DELIBERATE PARTIAL MODEL, two omissions, both documented UNDER-estimates: (1) the '+15% shield amount' term is NOT modeled -- this system has no live source for the magnitude of whatever ability/item shield triggered the proc (shields are dynamically generated by arbitrary abilities this project doesn't simulate), so that term is dropped entirely rather than guessed; (2) '+2.5% bonus health' is approximated as +2.5% of the caster's TOTAL max health (RuneCasterStats has no base-vs-bonus health split available), a small deliberate over-count of the bonus-health term specifically (the same kind of pragmatic approximation already accepted elsewhere in this codebase, e.g. Conqueror's kill-based stack heuristic). Trigger condition (must have just gained a shield) is NOT modeled -- applied whenever the manual checkbox is active. Most recent value change: V14.19 (bonus-health ratio raised to 2.5% from 1.5%, shield-amount ratio raised to 15% from 8.5%).",
+      "name": "Shield Bash",
+      "damageType": null,
+      "adaptive": "ByBonusAdVsAp",
+      "baseAtLevel1": 5,
+      "baseAtLevel18": 32.94,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0.025,
+      "rangedMaxHealthPercent": 0.025
+    },
+    "8229": {
+      "_note": "Arcane Comet (Sorcery keystone). Quote from https://wiki.leagueoflegends.com/en-us/Arcane_Comet infobox, fetched live this session: 'Dealing ability damage or pet damage to an enemy champion hurls an Arcane Comet at their current location that lands after 0.825 seconds, dealing 15 - 110 (based on level) (+10% bonus AD) (+5% AP) of either physical or magic damage to enemies within a 140 radius upon impact. This damage is increased by 0% - 100% (based on distance the comet travelled), up to a maximum of 30 - 220 (based on level) (+20% bonus AD) (+10% AP) at maximum range.' Adaptive rule per wiki's own text ('depending on the damage contribution from your attack damage and ability power') -- adaptive=ByRatioContribution. DELIBERATE PARTIAL MODEL: only the BASELINE (0% travel-distance bonus, i.e. minimum-range) values are modeled (base1=15, base18=110, +10% bonus AD, +5% AP) -- the 0%-100% distance-scaling bonus (which can DOUBLE the hit at max travel range) is NOT modeled, since this system has no live projectile-travel-distance signal. This is a documented, deliberately conservative UNDER-estimate (consistent with the project's other 'apply once, conservative approximation' rune/passive rules), never the inflated max-range number. Most recent change: V26.09 (base reduced to 15-110 from 30-130; the distance-scaling mechanic itself was added in V26.09, replacing the old cooldown-refund-on-hit mechanic).",
+      "name": "Arcane Comet",
+      "damageType": null,
+      "adaptive": "ByRatioContribution",
+      "baseAtLevel1": 15,
+      "baseAtLevel18": 110,
+      "bonusAdRatio": 0.10,
+      "apRatio": 0.05,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8437": {
+      "_note": "Grasp of the Undying (Resolve keystone). Quote from https://wiki.leagueoflegends.com/en-us/Grasp_of_the_Undying infobox, fetched live this session: '...consumes all stacks to deal bonus magic damage equal to (Melee 3.5% / Ranged 1.4%) of your maximum health, heal you for (+ (Melee 1.3% / Ranged 0.52%) of your maximum health), and permanently grant you (Melee 5 / Ranged 2) bonus health.' Only the DAMAGE component (3.5%/1.4% max health, melee/ranged) is modeled here, per this task's scope -- the heal and the permanent-bonus-health grant are non-damage side effects, out of scope for RuneEffect.DamageBonus. No flat base value, no AD/AP ratio -- pure %-max-health, magic damage. Melee/ranged split resolved the same way ComboRunner.IsMelee already resolves it for item procs (Blade of the Ruined King/Titanic Hydra) -- reused here as RuneCasterStats.IsMelee. Trigger is a stack-and-consume mechanic (1 stack/sec for 3s in combat, consumed on next on-hit within 5s of reaching max stacks), NOT a fixed 'every Nth attack' -- approximated as applied once per combo when the manual checkbox is active (consistent with every other manual rune here). Most recent value change: V25.12 (ranged ratio reduced to 1.4% from 2.1%; melee ratio 3.5% unchanged).",
+      "name": "Grasp of the Undying",
+      "damageType": "Magic",
+      "adaptive": "None",
+      "baseAtLevel1": 0,
+      "baseAtLevel18": 0,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0.035,
+      "rangedMaxHealthPercent": 0.014
+    },
+    "8224": {
+      "_note": "Axiom Arcanist (Sorcery minor rune; auto-trackable, NOT one of the 8 manual ids -- see this file's top-level _note for the consumption split). Quote (this project's bundled Data Dragon 16.13.1 runesReforged.json, id 8224, longDesc, cross-checked live this session): 'Your Ultimate has 12% increased damage, healing, and shielding. (AoE damage is reduced to a 8% increase). Scoring a takedown on an enemy champion reduces your Ultimate's current cooldown by 7%.' THIS ENTRY IS DOCUMENTATION-ONLY: unlike every other rune in this file, Axiom Arcanist's real effect is a pure MULTIPLIER on the Ultimate node's own damage/healing/shielding, not an additive flat/AD/AP-ratio bonus -- it does not fit this file's single-DamageBonus-number shape at all, so RuneEffectDb.Evaluate is never called for id '8224'. ComboEngine.Execute applies the multiplier directly in code (AxiomArcanistSingleTargetMultiplier=1.12 / AxiomArcanistAoeMultiplier=1.08 constants, cited to this same quote) to every executed node identified as the champion's own Ultimate (Id.StartsWith(\"R_\")), bypassing this file's evaluator entirely. The fields below (baseAtLevel1 etc.) are inert zero placeholders kept only so this entry still parses without error for introspection tools (RuneEffectDb.All()) -- they carry no meaning and are never read by the auto-trigger logic. AoE-vs-single-target is resolved per-champion (loop 46) via the M21 'AoeUltimate' tag on that champion's curated R slot (SkillDamageDb.GetSlotTags) -- see docs/modules/M21_SKILL_TAG_TAXONOMY.md section 3's AoeUltimate row and its own changelog entry for the full curation citation trail across all 173 champions. An uncurated/untagged champion's R defaults to the single-target 1.12x (never guessed as AoE). The takedown-based 7% cooldown refund is OUT OF SCOPE entirely (no kill/assist detection exists in this app).",
+      "name": "Axiom Arcanist",
+      "damageType": "Magic",
+      "adaptive": "None",
+      "baseAtLevel1": 0,
+      "baseAtLevel18": 0,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8214": {
+      "_note": "Summon Aery (Sorcery keystone; auto-trackable). Quote (bundled Data Dragon 16.13.1 runesReforged.json, id 8214, longDesc, cross-checked live this session): 'Damaging enemy champions with basic attacks or abilities sends Aery to them, dealing 10 - 50 based on level (+0.05 AP) (+0.1 bonus AD)... Aery cannot be sent out again until she returns to you.' Consumed by ComboEngine.Execute's NEW auto-trigger logic (ApplyRemainingAutoTriggeredRunes), not RuneEngine.BuildManualEffect -- see this file's top-level _note for the consumption split. The 'cannot be sent out again until she returns' travel-cooldown makes 'fires exactly once per rapid-burst combo' the correct approximation: modeled as firing ONCE, triggered when the executed sequence contains at least 1 damaging node (Damage>0 or a nonzero AD/AP ratio). Adaptive rule = ByRatioContribution, matching this file's existing Arcane Comet (8229) precedent -- identical ratio shape (+0.1 bonus AD / +0.05 AP), identical wiki-documented 'physical or magic, whichever contributes more' resolution. Aery's separate ally-shielding proc (non-damage) is out of scope. Return-travel timing beyond 'once per combo' is not modeled.",
+      "name": "Summon Aery",
+      "damageType": null,
+      "adaptive": "ByRatioContribution",
+      "baseAtLevel1": 10,
+      "baseAtLevel18": 50,
+      "bonusAdRatio": 0.1,
+      "apRatio": 0.05,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8112": {
+      "_note": "Electrocute (Domination keystone; auto-trackable). Quote (bundled Data Dragon 16.13.1 runesReforged.json, id 8112, longDesc, cross-checked live this session): 'Hitting a champion with 3 separate attacks or abilities within 3s deals bonus adaptive damage. Damage: 70 - 240 (+0.1 bonus AD, +0.05 AP) damage. Cooldown: 20s.' Consumed by ComboEngine.Execute's NEW auto-trigger logic, not RuneEngine.BuildManualEffect -- see this file's top-level _note. Trigger is genuinely checked against the executed node sequence: fires only when the combo executes >= 3 damaging nodes (AA or ability -- any node with Damage>0 or a nonzero AD/AP ratio counts, matching the wiki's own 'attacks or abilities' wording), modeled as landing on the 3rd such hit (matching the real 3-hits-within-3s timing). Adaptive rule = ByRatioContribution (same shape/precedent as Arcane Comet/Summon Aery). Applied as a separate trailing synthetic bonus node rather than folded into the 3rd hit's own Damage field -- ADAPTIVE resolves to ONE specific damage type (physical or magic) independently of whatever type that 3rd node happens to be, so merging would risk applying the wrong mitigation channel to Electrocute's own damage; see ComboEngine.Execute's ApplyRemainingAutoTriggeredRunes doc comment for the full reasoning (a documented, reasoned choice among the spec's offered alternatives). 20s cooldown NOT modeled -- single-application-per-combo assumption, consistent with this file's existing manual-rune cooldown-not-modeled precedent (Cheap Shot/Sudden Impact/Scorch all note the same).",
+      "name": "Electrocute",
+      "damageType": null,
+      "adaptive": "ByRatioContribution",
+      "baseAtLevel1": 70,
+      "baseAtLevel18": 240,
+      "bonusAdRatio": 0.1,
+      "apRatio": 0.05,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "9923": {
+      "_note": "Hail of Blades (Domination keystone; auto-trackable). Quote (bundled Data Dragon 16.13.1 runesReforged.json, id 9923, longDesc, cross-checked live this session): 'Gain 120% (60% for ranged champions) Attack Speed and bonus true damage when you attack an enemy champion for up to 3 attacks... Cooldown: 10s. On-Hit Damage: 4 - 20 (+0.08 bonus AD, +0.06 AP) damage.' Consumed by ComboEngine.Execute's NEW auto-trigger logic, not RuneEngine.BuildManualEffect -- see this file's top-level _note. Trigger: executed sequence has >= 1 NodeType.Aa node (auto-attack) -- applied as TRUE damage (per the wiki text explicitly -- damageType fixed below, never adaptive) as one separate trailing synthetic bonus node PER each of the first 3 executed Aa nodes found (or fewer, 1-2, if the combo has fewer AAs) -- kept as separate per-hit nodes rather than one combined node so the combo card's breakdown stays traceable to 'per attack', matching the wiki's own per-attack framing. The Attack Speed steroid itself is out of scope (this app has no real-time attack-speed/cast-count simulation) -- only the flat on-hit damage is modeled. 10s cooldown / 3s between-attacks reset window not modeled.",
+      "name": "Hail of Blades",
+      "damageType": "True",
+      "adaptive": "None",
+      "baseAtLevel1": 4,
+      "baseAtLevel18": 20,
+      "bonusAdRatio": 0.08,
+      "apRatio": 0.06,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8128": {
+      "_note": "Dark Harvest (Domination keystone; auto-trackable). Quote (bundled Data Dragon 16.13.1 runesReforged.json, id 8128, longDesc, cross-checked live this session): 'Damaging a Champion below 50% health deals adaptive damage and harvests their soul, permanently increasing Dark Harvest's damage by 11. Dark Harvest damage: 30 (+11 damage per soul) (+0.1 bonus AD) (+0.05 AP). Cooldown: 35s (resets to 1.0s on takedown).' Consumed by ComboEngine.Execute's NEW auto-trigger logic, not RuneEngine.BuildManualEffect -- see this file's top-level _note. Trigger is genuinely checked: a preliminary DamageEngine.Calculate pass (before any auto-rune bonuses are added) walks the executed sequence's per-node damage, tracking the target's remaining HP; Dark Harvest fires only if that running HP genuinely crosses <= 50% of max HP at some node in the combo -- if the target never crosses 50%, NO bonus is added at all (no default-always-apply fallback), per this feature's 'combo must genuinely satisfy the real trigger' requirement. SOULS-HARVESTED FLOOR (documented UNDER-estimate, not a fabricated guess): this app has no cross-game persistent soul-count signal, so this is modeled at exactly 0 souls harvested this game (base 30 flat, both baseAtLevel1 and baseAtLevel18 below -- Dark Harvest's base damage is NOT level-scaled, only soul-count-scaled) -- the real in-game value only grows (+11 per soul) as the game goes on, so this is always an under-count late-game, never an over-count. Adaptive rule = ByRatioContribution (same precedent as Arcane Comet/Summon Aery/Electrocute). Applied as a separate trailing synthetic bonus node for the same independently-resolved-adaptive-type reasoning as Electrocute (see that entry's _note). 35s cooldown / takedown-reset not modeled (single-application-per-combo assumption).",
+      "name": "Dark Harvest",
+      "damageType": null,
+      "adaptive": "ByRatioContribution",
+      "baseAtLevel1": 30,
+      "baseAtLevel18": 30,
+      "bonusAdRatio": 0.1,
+      "apRatio": 0.05,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    },
+    "8010": {
+      "_note": "Conqueror (Precision keystone; auto-trackable). Quote (bundled Data Dragon 16.13.1 runesReforged.json, id 8010, longDesc, cross-checked live this session): 'Basic attacks or spells that deal damage to an enemy champion grant 2 stacks of Conqueror for 5s, gaining 1.8-4 Adaptive Force per stack. Stacks up to 12 times. Ranged champions gain only 1 stack per basic attack.' 'When fully stacked, heal for 8% of the damage you deal to champions (5% for ranged champions).' Consumed by ComboEngine.Execute's NEW auto-trigger logic, not RuneEngine.BuildManualEffect -- see this file's top-level _note. THIS ENTRY MODELS ONLY THE LEVEL-LINEAR ADAPTIVE-FORCE-PER-STACK VALUE (baseAtLevel1=1.8, baseAtLevel18=4) plus the AD-vs-AP affinity resolution (adaptive=ByBonusAdVsAp, Shield Bash's precedent, resolved ONCE per combo against the caster's raw bonus AD/AP via RuneEffectDb.Evaluate) -- bonusAdRatio/apRatio/health-percent fields below are inert 0 placeholders (they are irrelevant to a per-stack force value, kept 0 only so the entry parses). Conqueror's real damage is NOT a flat+ratio formula like every other entry in this file: it is a PER-NODE RAMPING bonus computed by ComboEngine.Execute's ApplyRemainingAutoTriggeredRunes -- walks the executed damaging-node sequence in order, accumulates stacks (melee 2/hit, ranged 1/hit, capped at 12; the accumulated-BEFORE-this-hit count only, i.e. a hit does not buff itself), converts accumulated stacks into Adaptive Force via this entry's level-linear value, then scales EACH node's OWN RatioAD+RatioBonusAD (if AD-affinity) or RatioAP (if AP-affinity) by that force -- folded directly into that node's own Damage field (not a separate synthetic node), because this bonus is genuinely 'more of that node's own stat', not an independently-typed proc, so it correctly inherits that node's own damage type/mitigation. DOCUMENTED SIMPLIFICATIONS: (1) no 5s stack-decay modeled (combo bursts assumed well under 5s); (2) AD-vs-AP affinity resolved ONCE for the whole combo (a caster does not switch affinity mid-combo); (3) the full-stack heal (8% melee / 5% ranged of total champion damage dealt this combo) is a separate hardcoded constant in ComboEngine.Execute (ConquerorMeleeHealPercent/ConquerorRangedHealPercent, citing this same quote), applied ONLY when the combo's executed damaging-hit count genuinely reaches the full-stack threshold (6 hits melee / 12 hits ranged) -- surfaced via the new ComboResult.RuneHeal field (see that field's doc comment for why DamageCalcResult.LifestealHeal itself was not reused/overwritten).",
+      "name": "Conqueror",
+      "damageType": null,
+      "adaptive": "ByBonusAdVsAp",
+      "baseAtLevel1": 1.8,
+      "baseAtLevel18": 4,
+      "bonusAdRatio": 0,
+      "apRatio": 0,
+      "meleeMaxHealthPercent": 0,
+      "rangedMaxHealthPercent": 0
+    }
+  }
+}

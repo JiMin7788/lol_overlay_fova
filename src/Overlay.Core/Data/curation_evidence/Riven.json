@@ -1,0 +1,84 @@
+{
+ "champion": "Riven",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Riven"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Runic Blade",
+   "facts": [
+    {
+     "field": "BonusProcDamage",
+     "kind": "ratio",
+     "values": [
+      0.3,
+      0.4676
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "deal bonus physical damage equal to 30% - 46.76% (based on level) AD"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Broken Wings",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "ratio",
+     "values": [
+      135,
+      225,
+      315,
+      405,
+      495
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "135 / 225 / 315 / 405 / 495 (+ 180 / 195 / 210 / 225 / 240% bonus AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Ki Burst",
+   "facts": [
+    {
+     "field": "BurstDamage",
+     "kind": "ratio",
+     "values": [
+      65,
+      95,
+      125,
+      155,
+      185
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "65 / 95 / 125 / 155 / 185 (+ 100% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Wind Slash",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "ratio",
+     "values": [
+      300,
+      450,
+      600
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "300 / 450 / 600 (+ 180% bonus AD)"
+    }
+   ]
+  }
+ }
+}

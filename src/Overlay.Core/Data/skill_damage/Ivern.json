@@ -1,0 +1,50 @@
+{
+  "_note": "Curated (T3.x-ext pass, loop 39). Ivern's kit is support/utility-heavy; only Q and W(brush proc)/E(Triggerseed) deal player-attributable damage. P and R remain unresolved/no-damage-on-cast — see per-slot notes.",
+  "_noteP": "P (Friend of the Forest): ivern.bin.json IvernPAbility calcs are HarvestDuration/HealthCostPercent/HealthTooltip/ManaTooltip — all about camp-taming HP/mana costs and move-speed-while-untamed timers, no player-target damage calc exists. Confirmed no-damage utility passive (wiki.leagueoflegends.com/en-us/Ivern, Friend of the Forest). Slot omitted.",
+  "_noteW": "W internal bin key IvernW is actually Brushmaker (icon-order swap vs UI slot letter guess in the original hint — verified against wiki: P/Q(Rootcaller)/W(Brushmaker)/E(Triggerseed)/R(Daisy!)). Brushmaker's own cast (grow a brush patch) deals zero damage; the real damage is a PASSIVE on-hit proc while Ivern (or allies within 1000u) stand in brush: TotalDamage = NamedDataValue(BaseDamage 12.5→... array) + StatByCoefficient(0.20, no mStat = AP per this engine's default) — DataValues confirm BaseDamage 20/27.5/35/42.5/50 (+20%AP) matching the wiki tooltip exactly. Modeled as a W bonusEffect (trigger onHit) rather than a direct 'hits' cast, since casting W itself does no damage. TotalAllyDamage (10%AP variant when an ally stands in the brush) is a different unit's damage, out of scope for Ivern's own combo tracking — not modeled.",
+  "_noteE": "E internal bin key IvernE is actually Triggerseed (see _noteW for the W/E identity correction). Triggerseed places a shield that explodes after 2s for real AoE magic damage to nearby enemies: TotalDamage = NamedDataValue(BaseDamage) + StatByNamedDataValue(DamageAPRatio=0.8) — DataValues confirm BaseDamage 70/90/110/130/150 (+80%AP), matching wiki exactly. This is a genuine direct-cast hit (delayed detonation), curated as a standard E hit.",
+  "_noteR": "R (Daisy!) summons a pet (Daisy) that fights autonomously; the cast itself deals zero direct damage (only the initial summon counts as an ability activation). The bin's TotalShockwaveDamage calc (ShockwaveBaseDamage + 0.5 coefficient) represents Daisy's own 'Daisy Smash!' proc (confirmed Physical damage type on wiki) which triggers automatically after Daisy's 3rd consecutive basic attack on a target — it is DAISY's damage using DAISY's own total AD (itself scaled off Ivern's AP via TotalDaisyAD, a separate pet-stat calc), not a stat this engine's caster-bound resolver (bound to Ivern, the tracked champion) can access. Forcing it would silently apply Ivern's own AP/AD instead of the pet's, producing a fabricated number. Left unresolved — R slot omitted.",
+  "auto": true,
+  "Q": {
+    "tags": ["BurstCeiling"],
+    "_tagNote": "BurstCeiling: Rootcaller (80→260 base +70% AP, wiki-confirmed Magic damage) is the single largest direct-cast number in Ivern's modeled kit.",
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      { "type": "Physical", "perAttackCalc": "TotalDaisyAD", "count": 1 }
+    ]
+  },
+  "_noteRDaisy": "R (Daisy!) summon cast deals ZERO direct damage; the modeled damage is Daisy's basic attacks as a per-attack SUMMON hit (M22 Phase 3): perAttackCalc='TotalDaisyAD' (IvernR.mSpellCalculations, Daisy's attack value, resolves live from the BIN) x the node's user-entered UserAttackCount ('몇 대'). Unset/0 -> 0, honest default (Daisy's total is autonomous/uptime-dependent). TYPE CAVEAT: modeled Physical because TotalDaisyAD is an AD-based value and Daisy's every-3rd 'Smash' proc (TotalShockwaveDamage) is wiki-confirmed Physical (see _noteR); Daisy's plain basic-attack type was not independently wiki-verified this pass -- flag for recheck. NOT added: the Smash proc itself (every-3rd-attack, would need attack-count modulo logic) -- TotalShockwaveDamage available for a future hit.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W AllyBaseDamage/TotalAllyDamage is the ALLY-attack brush bonus - an ally-actor term outside the single-attacker model (Ivern's own rider is curated and golden-locked #16). Documented."
+}

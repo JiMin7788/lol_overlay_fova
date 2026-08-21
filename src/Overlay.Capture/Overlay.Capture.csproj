@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- M31 P1 native capture backends (WGC + DXGI Desktop Duplication). Isolated in its own
+       project so the heavy Windows-SDK TFM + the Vortice dependency stay OUT of Overlay.Core
+       (pure net8.0) and off Overlay.Client's TFM. Client references THIS project.
+
+       TFM net8.0-windows10.0.19041.0: required to get the CsWinRT projections for
+       Windows.Graphics.Capture (WGC is a WinRT API). Vortice.Direct3D11 supplies D3D11 + DXGI
+       (Desktop Duplication) bindings. -->
+  <PropertyGroup>
+    <!-- TargetFramework's platform version is the COMPILE-TIME WinRT projection surface;
+         TargetPlatformMinVersion is the actual runtime floor. GraphicsCaptureSession.IsBorderRequired
+         only exists in the projection from 22621+ (Win11), but every call to it is already wrapped in
+         WgcFrameProvider.TrySet (try/catch) since it may not exist at runtime below that OS — so we
+         compile against 22621 while still running down to 19041 (Win10 2004, the WGC baseline). -->
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pulls in Vortice.DXGI (>= 3.8.3) transitively. Latest stable as of 2026-03. Verify/bump
+         on local `dotnet restore`; Vortice's API surface can shift minor versions. -->
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Overlay.Core\Overlay.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,13 @@
+{
+  "_note": "Curated. Source: communitydragon/tristana.bin.json mSpellCalculations, damage TYPES verified against wiki.leagueoflegends.com/en-us/Tristana infobox 'damagetype' fields (the BIN never exposes type, and the auto-picker had W/R wrongly tagged Physical -- both are Magic per the wiki).",
+  "_noteQ": "Rapid Fire: pure attack-speed steroid, no mSpellCalculations at all -- correctly no damage.",
+  "_noteW": "Rocket Jump: LandingDamage = BaseDamage + bonusAD*ADRatio + AP*APRatio. Wiki confirms MAGIC damage ('deals magic damage to nearby enemies' on landing). Single AoE hit on landing.",
+  "_noteE": "Explosive Charge has two distinct damage components confirmed by wiki: the ACTIVE detonation (ActiveDamage = ActiveBaseDamage + 0.8*bonusAD + 0.5*AP) is PHYSICAL ('the charge then detonates, dealing physical damage') -- curated as the main E hit, count 1, at the conservative un-stacked/no-crit-bonus reading (ActiveMaxDamage's +25%-per-stack-up-to-4 and the separate 40%-crit-chance amp are both conditional on stack count / crit chance, omitted per P2 conservative-undercount convention). The PASSIVE mine-kill explosion (PassiveDamage = PassiveBaseDamage + 0.25*AP) is MAGIC and only triggers if a marked target is killed by the attack that detonates it -- curated as an onHit bonusEffect (approximation of a kill-conditional proc, same style as Twitch P / Mordekaiser P in this codebase) rather than a guaranteed main-slot hit.",
+  "_noteR": "Buster Shot: DamageCalc = BaseDamage + 0.7*bonusAD + AP*APRatio. Wiki confirms MAGIC damage (corrects the auto-picker's wrong Physical tag). Single hit + knockback.",
+  "W": { "hits": [ { "type": "Magic", "calc": "LandingDamage", "count": 1 } ] },
+  "E": {
+    "hits": [ { "type": "Physical", "calc": "ActiveDamage", "count": 1 } ],
+    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] } ]
+  },
+  "R": { "tags": ["BurstCeiling"], "hits": [ { "type": "Magic", "calc": "DamageCalc", "count": 1 } ] }
+}

@@ -1,0 +1,87 @@
+{
+ "champion": "Volibear",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Volibear"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Thundering Smash",
+   "facts": [
+    {
+     "field": "SmashDamage",
+     "kind": "ratio",
+     "values": [
+      10,
+      20,
+      30,
+      40,
+      50
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "10 / 20 / 30 / 40 / 50 (+ 160% bonus AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Frenzied Maul",
+   "facts": [
+    {
+     "field": "MaulDamage",
+     "kind": "ratio",
+     "values": [
+      5,
+      30,
+      55,
+      80,
+      105
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "5 / 30 / 55 / 80 / 105 (+ 110% AD) (+ 6% of his bonus health)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Sky Splitter",
+   "facts": [
+    {
+     "field": "MaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.11,
+      0.12,
+      0.13,
+      0.14,
+      0.15
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 110 / 140 / 170 / 200 (+ 70% AP) (+ 11 / 12 / 13 / 14 / 15% of target's maximum health)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Stormbringer",
+   "facts": [
+    {
+     "field": "LandingDamage",
+     "kind": "ratio",
+     "values": [
+      300,
+      500,
+      700
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "300 / 500 / 700 (+ 250% bonus AD) (+ 125% AP)"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,47 @@
+{
+  "_note": "Curated (loop39). P (Martial Cadence): basic attacks deal bonus PHYSICAL damage = 8% of target's CURRENT health (wiki-confirmed physical, not true), min 20, capped at 400 vs non-champions only (cap irrelevant for PvP combo modeling, omitted). BIN has no GameCalculation for it (JarvanIVMartialCadence has only a TooltipCooldown calc) so curated via hpPercentDataValue=TooltipCurrentHealthDamage/hpBasis Current as a P bonusEffect (trigger onHit), same pattern as Warwick P. Q (Dragon Strike) and R (Cataclysm) kept as the auto first-pass physical picks, both verified against wiki+BIN (BaseDamage + 145%/180% bonus AD respectively). E (Demacian Standard) added: BIN TotalDamage = EffectValue(idx2, 80/120/160/200/240 per wiki) + 0.8x AP, verified magic AoE on the initial flag-plant cast. W (Golden Aegis) intentionally omitted: wiki explicitly states 'Golden Aegis deals no damage' (pure slow+shield utility) — genuinely damage-less, not an unresolved slot.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Physical",
+            "hpPercentDataValue": "TooltipCurrentHealthDamage",
+            "hpBasis": "Current",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1,
+        "tags": ["ArmorShred"]
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageCalc",
+        "count": 1
+      }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

@@ -1,0 +1,87 @@
+{
+ "champion": "Ziggs",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Ziggs"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Bouncing Bomb",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      80,
+      130,
+      180,
+      230,
+      280
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 130 / 180 / 230 / 280 (+ 60 / 65 / 70 / 75 / 80% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Satchel Charge",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 50% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Hexplosive Minefield",
+   "facts": [
+    {
+     "field": "PerMineDamage",
+     "kind": "flat",
+     "values": [
+      30,
+      70,
+      110,
+      150,
+      190
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "30 / 70 / 110 / 150 / 190 (+ 25 / 30 / 35 / 40 / 45% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Mega Inferno Bomb",
+   "facts": [
+    {
+     "field": "EpicenterDamage",
+     "kind": "flat",
+     "values": [
+      300,
+      500,
+      700
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "300 / 500 / 700 (+ 100% AP)"
+    }
+   ]
+  }
+ }
+}

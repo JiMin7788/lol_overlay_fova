@@ -1,0 +1,51 @@
+{
+ "champion": "Viego",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Viego"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Blade of the Ruined King",
+   "facts": [
+    {
+     "field": "PassiveCurrentHP",
+     "kind": "percentCurrentHP",
+     "values": [
+      0.02,
+      0.03,
+      0.04,
+      0.05,
+      0.06
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "2 / 3 / 4 / 5 / 6% of target's current health"
+    }
+   ]
+  },
+  "W": {
+   "name": "Spectral Maw",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      80,
+      135,
+      190,
+      245,
+      300
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 135 / 190 / 245 / 300 (+ 100% AP)"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,21 @@
+{
+  "_note": "Curated (hand-verified against sivir.bin.json). Q (Boomerang Blade) real BIN calc 'TotalDamage' embeds a crit-chance/crit-damage multiplier via mStat ids 8 (CritRatio) and 9 (crit chance) -- both UNMAPPED by SkillDamage.BuildStatResolver (only 0/1/2/6/7/12 are live-mapped), so evaluating 'TotalDamage' throws and silently drops to 0 (a real bug in the prior auto-pick, not just a style choice). Switched to 'PreCritDamage' (BaseDamage + bonus-aware total AD via mStatFormula=2 + 0.6 AP, i.e. the pre-crit flat number), which resolves cleanly with only mapped stats -- also matches this project's established convention of excluding probabilistic crit from combo damage (same as auto-attack nodes, which use total AD with no crit assumed, per loop 28). W (Ricochet/on-hit bounce): 'BounceDamage' = total AD x 37.5-52.5% ratio, Physical -- models ONE empowered ricochet attack (the ability grants up to 3 over its buff duration, and further ricochets hit OTHER enemies, not the same target, so single-target combo damage is the one-attack value; matches the prior auto-pick, kept as-is). E (Spell Shield) and R (On the Hunt) have NO mSpellCalculations in the BIN -- pure utility (block+heal, MS/attack-speed aura) -- correctly left with no hits entry. NOTE CORRECTION (loop 221, no functional change): the claim that mStat 8/9 are 'UNMAPPED' is stale -- the current SkillDamage.cs BuildStatResolver DOES map both (to a documented 0.0 no-crit floor, the §26 fix), so 'TotalDamage' would in fact resolve cleanly today (its multiplier evaluates to 1). This makes 'TotalDamage' and the currently-curated 'PreCritDamage' numerically IDENTICAL under the current engine -- no change needed, PreCritDamage is kept as-is (simpler, sidesteps the multiplier entirely).",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "PreCritDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BounceDamage",
+        "count": 1
+      }
+    ]
+  }
+}

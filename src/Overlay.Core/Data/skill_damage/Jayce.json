@@ -1,0 +1,76 @@
+{
+  "_note": "Curated loop39 (Hammer form) + loop58/59 M22 Phase 2 (Cannon form added). HISTORICAL LIMIT (now lifted): the loop-39 engine resolved Q/W/E/R only from CharacterRecord.spellNames (one BIN spell path per slot), so the Cannon-stance abilities (Shock Blast, Hyper Charge, Acceleration Gate) were categorically inaccessible. M22 Phase 1 removed that constraint: ChampionBinParser now exposes every BIN spell object under its leaf name and SkillHit.BinSpell resolves a curated slot's calc against it. Cannon Q/W are now curated as extra slots QCannon/WCannon (underscore-free keys so the combo runner's SlotOf recovers them; see their _notes). Base Q/E/R remain the Hammer-stance abilities (his spellNames kit); Cannon E (Acceleration Gate) is pure utility (speed + empowers Shock Blast) with no own damage, omitted. Q (To the Skies!) kept: BIN 'Damage' = BaseDamage + 1.35x bonus AD, matches current wiki ratio (135% bonus AD) and damage type (Physical); tagged BurstCeiling as the largest single directly-landed hit this engine can model for Jayce. E (Thundering Blow) fixed: was mistyped Physical with only the flat term; wiki confirms MAGIC damage with TWO summed terms (100% bonus AD flat + 8-22% of target max HP, monster-only cap ignored per PvP convention) -- now Magic type, 'FlatDamage' calc (the AD term) + hpPercentDataValue 'PercHPDamage'/hpBasis Max (the %maxHP term), tagged PercentMaxHp. R (Transform) restructured: BIN 'JayceStanceHtG' bundles calcs for BOTH transform directions plus a self-buff -- 'Damage' (25/60/95/130 champion-level-scaled +30% bonus AD magic on-hit proc for the Gun->Hammer direction, matches patch-noted 'Transform Mercury Hammer' on-hit) is now a bonusEffect (trigger onHit, since R itself deals 0 direct cast damage -- only empowers the next basic attack), NOT a direct hit as the auto-picker had it, and its type corrected Physical->Magic. 'RangedFormShred' (the Hammer->Gun direction's armor/MR%-reduction on-hit, a real cited effect) has no target-damage number to express as a hit, so it is metadata-tagged only (ArmorShred, MagicResistShred) rather than fabricated as a hit; 'Resists' is a self-buff (no target damage), not modeled. CAVEAT: 'Damage' uses a ByCharLevelBreakpoints part keyed to CHAMPION level (verified in FormulaInterpreter.cs), but this is curated under a non-P slot ('R') where the caller conventionally evaluates at SKILL rank (1-3) -- same genuine engine rank-vs-level mismatch already flagged in this project's Cassiopeia E note; the curated number may read low until champion level 6/11/16 breakpoints are reached if the caller passes skill rank instead of level. W (Lightning Field) intentionally left UNRESOLVED (auto stays true): BIN 'Damage' is only the pre-summed FULL 4-tick total (140-440 +100% AP over 4s, self-centered field), with no per-tick/per-second calc or DataValue in the BIN to apply this project's established conservative one-tick DoT convention (see Singed Q DamagePerSecond / Cassiopeia W precedent) -- curating the full total would systematically overstate a typical partial-exposure combo hit, and there is no schema field to express a flat (non-%HP) partial-duration hit (PerSecondHpPercent is %maxHP-only), so it is left uncurated rather than fabricated.",
+  
+  "_noteW": "Lightning Field (Hammer W): BIN calc 'Damage' on JayceStaticField = pre-summed 4-tick total only (BaseDamage[140-440] x1.0 coefficient, default stat AP => +100% AP), no per-tick calc/DataValue exists to derive this project's conservative one-tick DoT convention -- genuinely unresolvable without either overstating or fabricating a division; left out of 'hits' entirely. RE-ADJUDICATED 2026-07-26 (golden-unlock round): the newer duration-scaled schema (perSecondCalc/maxDurationSeconds, Mel E precedent) was checked and does NOT change the verdict -- it requires a PER-SECOND source in the BIN, and Jayce's BIN still carries only the total (evidence crosscheck: 'W PerTickDamage' NOT_IN_BIN). Omission stands; the 'auto' flag is dropped because every slot is now human-adjudicated (this W entry included), same de-auto logic as RekSai 2026-07-24.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ],
+    "tags": ["BurstCeiling"]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "FlatDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentDataValue": "PercHPDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": ["PercentMaxHp"]
+      }
+    ]
+  },
+  "R": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "Damage",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "tags": ["ArmorShred", "MagicResistShred"]
+  },
+  "QCannon": {
+    "icon": "assets/characters/jayce/hud/icons2d/jayceq_ranged.png",
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "binSpell": "JayceShockBlast",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQCannon": "Cannon Q (Shock Blast). M22 Phase 2: reachable via binSpell='JayceShockBlast' (an extra BIN spell object exposed by ChampionBinParser.ParseExtraSpells, previously inaccessible). Calc 'Damage' = BaseDamage[39-285] + StatByNamedDataValue(mStat=2 AD, mStatFormula=2 => BONUS AD, ADRatio=1.3) = base + 130% bonus AD, Physical (verified vs jayce.bin.json). The gate-charged variant is calc 'EmpoweredDamage' (GameCalculationModified referencing Damage) -- NOT curated as a second hit here to keep one node = one number; can be a separate 'QCannonCharged' slot later. Slot key is underscore-free so ComboRunner.SlotOf recovers it intact from a '{slot}_{n}' sequence id.",
+  "WCannon": {
+    "icon": "assets/characters/jayce/hud/icons2d/jaycew_ranged.png",
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "ActualDamage",
+        "binSpell": "JayceHyperCharge",
+        "count": 3
+      }
+    ]
+  },
+  "_noteWCannon": "Cannon W (Hyper Charge) grants max attack speed and empowers the next 3 basic attacks, each dealing ActualDamage = StatByNamedDataValue(mStat=2 AD, DamagePerc) = a % of TOTAL AD per hit (no mStatFormula => total, not bonus), Physical. Modeled as ONE curated slot with count=3 (the three empowered attacks landed fully) -- a full-uptime assumption disclosed like other landed-fully conventions in this file; a target that leaves melee range takes fewer. Reachable via binSpell='JayceHyperCharge' (M22 Phase 2).",
+  "ECannon": {
+    "icon": "assets/characters/jayce/hud/icons2d/jaycee_ranged.png",
+    "tags": ["Utility"],
+    "_noteECannon": "loop 178: Cannon E (Acceleration Gate) is PURE UTILITY — a speed gate that empowers the next Shock Blast (extra range/speed + the 'EmpoweredDamage' variant of QCannon). It has NO own-cast damage, so it is curated as a display/marker slot (icon + a Utility tag to keep the slot; zero hits = 0 damage) purely so the Cannon-form E appears in the palette alongside QCannon/WCannon (user request loop 178). Placing it before QCannon in a combo represents the empower, but this engine still resolves QCannon as its BASE Damage (the EmpoweredDamage modified calc is not curated — see _noteQCannon), so the number is a conservative under-estimate of an actually-gated Shock Blast."
+  },
+  "_noteECannon": "ECannon (Acceleration Gate, Cannon stance E): a speed/empower gate - pure utility, no damage of its own (it empowers the Cannon Q shot passing through it = the QCannon slot). No hits."
+}

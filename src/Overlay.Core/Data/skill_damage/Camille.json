@@ -1,0 +1,77 @@
+{
+  "_note": "Curated. Source: communitydragon/camille.bin.json mSpellCalculations, cross-checked vs wiki.leagueoflegends.com/en-us/Camille.",
+  "_noteQ": "Precision Protocol: BonusDamage = tADRatio * total AD (mStat 2, no mStatFormula; TADRatio rank1-5 = 0.20/0.25/0.30/0.35/0.40, matches wiki '20 / 25 / 30 / 35 / 40% AD', curation_evidence/Camille.json). CORRECTED M26 stage-4 audit: the prior curation used EmpoweredBonusDamage (BonusDamage x QEmpoweredAmp=2.0) on the claim that the doubling applies 'against an enemy champion or large monster' -- that is not the mechanic. Wiki verbatim: the doubling belongs to the RECAST ('If Precision Protocol is recast after 1.5 seconds of the first attack, then the bonus damage is doubled, and 40% - 100% (based on level) of the attack's total damage will be dealt as true damage') -- a second, player-sequenced cast behind its own timing condition, with partial true-damage conversion on top. M26 guaranteed-per-cast rule: curate the first-cast BonusDamage; the empowered recast variant stays out (conservative floor, no double-count).",
+  "_noteW": "Tactical Sweep: BaseDamageTotal = BaseDamage + 0.6*bonusAD (inner 2/3 of the cone). The outer 1/3 instead deals max-HP-based physical damage (OuterConeMaxHPDamage, a %maxHP calc, positional/conditional on hitting with the blade tip) -- omitted as the conservative single-value reading (P2), matching this project's existing %maxHP-omission precedent (e.g. Jinx R floor-only).",
+  "_noteE": "Hookshot (2nd cast, the wall-pull knockup): TotalDamage = BaseDamage + 0.75*bonusAD. Single hit on the enemy it pulls into a wall.",
+  "_noteR": "The Hextech Ultimatum has NO mSpellCalculations entry at all -- its only damage-adjacent DataValue is 'ROnHitDamage', which has an empty values array (no numbers defined in the BIN) and is only referenced via BotData's raw NamedDataValueCalculationPart, not a resolvable GameCalculation. R's actual mechanic (RPercentCurrentHPDamage, 2-14% of the target's CURRENT hp as bonus true damage per on-hit attack while both are trapped in the R zone) is an ongoing per-attack DoT-style effect, not a single burst hit, and the current-HP-scaling number itself is not exposed as a usable calc -- genuinely blocked, no damage recorded (P2, honest omission, no fabricated hit). CORRECTED loop 219: this session's prior conclusion ('genuinely blocked, no damage recorded') under-applied this codebase's own convention -- RPercentCurrentHPDamage (2/4/6/8/10/12/14 per rank, R has 3 real ranks so 4/6/8% at index1-3) IS a plain, directly-readable DataValue (no calc needed, same shape as DrMundo Q's CurrentHealthDamage or Yorick E's hpPercentCalc), and the repeating 'each basic attack while both are trapped in the zone' mechanic is structurally identical to the onHit bonusEffect pattern already used for Sett P / Kaisa P / Poppy P / Nunu P / Warwick P (a conditional recurring on-hit proc, modeled conservatively as firing once). Two independent wiki fetches this session (wiki.leagueoflegends.com and leagueoflegends.fandom.com) agree: 4/6/8% of target's CURRENT health as bonus MAGIC damage (not true damage, correcting this note's earlier assumption) -- matches RPercentCurrentHPDamage's rank-1..3 values (4,6,8) exactly. Curated via hpPercentDataValue on a bonusEffects/onHit node, hpBasis=Current, Magic. ROnHitDamage remains unresolvable (empty values array in the BIN) and is not used.",
+  "_noteQSplit": "Q SPLIT INTO Q AND Q2, AND BOTH BECAME ON-HIT RIDERS (loop 482, user request: no Q2). Precision Protocol deals nothing when cast - the live wiki (wiki.leagueoflegends.com/en-us/Camille, fetched 2026-08-21) says each cast EMPOWERS her next basic attack, the first for 20/25/30/35/40% AD and the recast for 40/50/60/70/80% AD. Curated as direct hits on Q those numbers landed on the cast rather than on the attack that carries them, the same misattribution Dravens Spinning Axe had in loop 479, so both are now onHit bonusEffects with maxProcs 1 - one cast empowers one attack. The BIN pair is unchanged: BonusDamage on Q, EmpoweredBonusDamage (BonusDamage x QEmpoweredAmp 2.0) on Q2, so a Q-then-attack total is exactly what it was and only its attribution moved. NOT MODELLED, and it matters: on the recast, 40-100% of the attacks TOTAL damage (the auto plus the bonus) is CONVERTED to true damage. That is a re-allocation between damage types, not an extra hit, and this schema has no way to say it - every hit carries one type. The raw total is right and the mitigated total is therefore too LOW against an armoured target, by up to the armour reduction on the whole attack at level 18. Recorded rather than faked. The 1.5-second timing gate on the recast is a player-sequencing fact, not a condition the engine can read, and the user places the node deliberately - so no toggle.",
+  "Q": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "maxProcs": 1,
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "BonusDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q2": {
+    "icon": "assets/characters/camille/hud/icons2d/camille_q2.png",
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "maxProcs": 1,
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "EmpoweredBonusDamage",
+            "binSpell": "Q",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BaseDamageTotal",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "AoeUltimate"
+    ],
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "hpPercentDataValue": "RPercentCurrentHPDamage",
+            "hpBasis": "Current",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W ADRequiredFor1PercentDamage(40) is a RATIO PARAMETER (bonus AD per +1% damage) folded into the curated outer-cone composition, not a standalone damage instance. Benign."
+}

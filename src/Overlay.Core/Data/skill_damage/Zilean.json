@@ -1,0 +1,5 @@
+{
+  "_note": "Curated. Source: communitydragon/zilean.bin.json mSpellCalculations this pass (2026-07-10). Zilean's kit is legitimately single-damage-source: Q is the only slot with any mSpellCalculations at all -- W (Rewind, 0 calcs), E (Time Warp, 0 calcs, haste-only), and R (Chronoshift, only a heal calc 'RTotalHeal') carry no damage by design, not by omission.",
+  "_noteQ": "Time Bomb: TotalDamage = NamedDataValue(BombBaseDamage, 30-380) + StatByNamedDataValue(APRatio=0.9 AP). Magic.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] }
+}

@@ -1,0 +1,29 @@
+{
+ "champion": "Aatrox",
+ "collectedAt": "2026-07-23",
+ "collector": "Claude Code F4-1 backfill (quotes transcribed verbatim from the loop-recorded _noteP in skill_damage/Aatrox.json; the live wiki fetch happened during that loop, not at backfill time)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Aatrox"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Deathbringer Stance",
+   "facts": [
+    {
+     "field": "PDamage",
+     "kind": "ratio",
+     "values": [
+      0.04,
+      0.1
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Aatrox's empowered next basic attack deals bonus MAGIC damage equal to 4%-10% (by level) of the target's MAXIMUM health, and Aatrox heals for the damage dealt"
+    }
+   ]
+  }
+ }
+}

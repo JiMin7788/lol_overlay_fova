@@ -1,0 +1,26 @@
+{
+  "_note": "Curated (loop 39). P kept from prior session (see _noteP). Q/W/E/R verified against Lissandra's own bin.json (all four share the same 'TotalDamage'-named calc per slot, each a NamedDataValue/EffectValue base + StatByCoefficient(AP) term -- confirmed live-fetched wiki numbers: Q 'Ice Shard' 80-220(+75%AP), W 'Ring of Frost' 70-210(+70%AP), E 'Glacial Path' 70-210(+60%AP), R 'Frozen Tomb' enemy-cast 150-350(+75%AP) via calc 'CalculatedDamage'). R's SELF-cast path (calc 'HealAmount', missing-HP-scaled self-heal while rooted) is healing, not damage -- intentionally not curated. R tagged BurstCeiling: it is Lissandra's single highest-damage ability and the standard combo finisher (also hard-CCs the target for its duration).",
+  "_noteP": "P (Iceborn Subjugation / Frozen Thralls) curated from mCharacterPassiveSpell -> LissandraPassiveAbility/LissandraPassive. mSpellCalculations.TotalDamage = ByCharLevelBreakpointsCalculationPart(Level1Value=120, InitialBonusPerLevel=20, breakpoint @13->rate30) + StatByCoefficientCalculationPart(mCoefficient=0.5, mStat omitted -> defaults to AP per FormulaInterpreter part.Stat??0). Hand-traced: L1=120, L12=340, L13=370, L18=520 (+50% AP) -- matches known 120-520(+50%AP) tooltip. Curated as a P bonusEffect trigger self (the Frozen Thrall explosion is spawned when a nearby enemy champion dies and the thrall later catches/explodes on a target, not tied to Lissandra's own attack/ability cast) -- the user attaches it manually via the combo editor when relevant.",
+  "P": { "bonusEffects": [ { "trigger": "self", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "CalculatedDamage", "count": 1, "tags": ["BurstCeiling"] }
+    ]
+  }
+}

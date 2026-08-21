@@ -1,0 +1,32 @@
+{
+ "champion": "Tryndamere",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Tryndamere"
+  }
+ ],
+ "slots": {
+  "E": {
+   "name": "Spinning Slash",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 100% bonus AD) (+ 80% AP)"
+    }
+   ]
+  }
+ }
+}

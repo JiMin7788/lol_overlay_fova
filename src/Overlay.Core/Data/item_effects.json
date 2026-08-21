@@ -1,0 +1,307 @@
+{
+  "_note": "Item proc-damage map (T3.2). BIN-sourced raw DataValues + one mSpellCalculations GameCalculation per item; numbers resolved live by FormulaInterpreter (never pre-computed). Regenerate via `dotnet run --project tools/ChampionDataGen -- itemeffects`. EXCEPTION 1: item 3091 (Wit's End) was hand-authored from a LIVE wiki.leagueoflegends.com fetch this session, not the BIN generator -- raw.communitydragon.org (the BIN source) was unreachable from this sandbox. Its DataValues/mSpellCalculations below are a manually-built shape reproducing the wiki's flat on-hit number through the same FormulaInterpreter path; unlike the BIN-sourced items, this entry will NOT be caught by a future itemeffects regen and needs a manual wiki re-check whenever its patch notes change -- see its own _note for the exact quoted passive text and patch. EXCEPTION 2: items 3153 (Blade of the Ruined King) and 3748 (Titanic Hydra) were added in a later session, hand-authored from live wiki.leagueoflegends.com fetches (same reason -- raw.communitydragon.org unreachable). Unlike every other item here their proc value is a flat melee/ranged fraction of a HP value (NOT stat-scaled), so they carry no spell/calc at all and bypass FormulaInterpreter entirely -- see hpPercentBasis/meleeHpPercent/rangedHpPercent and ComboRunner.ResolveBuildProcs/BuildTargetHpItemProc/BuildCasterHpItemProc. Melee/ranged is classified from the active player's champion.BaseStats.AttackRange via a 300-unit threshold calibrated against the cached champion.json summary (see ComboRunner.MeleeRangeThreshold doc comment). Both entries will NOT be caught by a future itemeffects regen and need a manual wiki re-check whenever their patch notes change -- see each item's own _note. EXCEPTION 3: item 3095 (Kraken Slayer) was added in a later session, hand-authored from a live wiki.leagueoflegends.com fetch (same reason -- raw.communitydragon.org unreachable). It introduces a new trigger, \"stackThenConsume\" (see ItemTrigger.StackThenConsume / ComboRunner.BuildStackThenConsumeItemProc): a flat melee/ranged base number that linearly interpolates level 1-18 (meleeDamageAtLevel1/18, rangedDamageAtLevel1/18 -- same BaseAtLevel1/BaseAtLevel18 shape as RuneEffectDb.Evaluate), applied not to every AA but to every (stacksRequired+1)th AA in the combo's own sequence, PLUS a real \"missingHpBonusScalar\" (0.75) scaling term wired into Damage.ExecuteType.BaseWithMissingHpBonus -- see its own _note for the full citation, the combo-internal stack-counting rationale, and the missing-HP formula. EXCEPTION 4: item 3128 (Deathfire Grasp) was added in a later session (loop 48), hand-authored from this project's own bundled item.json (network fetch not needed -- the description text was already present locally). It introduces a new trigger, \"manualActiveBurst\" (see ItemTrigger.ManualActiveBurst): the ONLY item in this file that is not auto-applied across the whole build -- it fires exclusively on the single combo node the user drag-attaches it to (ComboNode.AttachedItemId), via Combo.ComboEngine.ApplyAttachedItemEffects rather than ComboRunner.ResolveBuildProcs. targetMaxHpPercent is a flat magic burst on that node; amplifyDamagePercent/amplifyDurationSeconds describe a genuine damage-amplification WINDOW applied to the combo's other nodes -- see its own _note for the full citation and mechanics.",
+  "items": {
+    "3115": {
+      "name": "Nashor's Tooth",
+      "trigger": "onHit",
+      "damageType": "Magic",
+      "calc": "TotalOnHitDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "NashorsBaseValue",
+            "values": [
+              15
+            ]
+          },
+          {
+            "name": "NashorsAPValue",
+            "values": [
+              0.15000000596046448
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "TotalOnHitDamage": {
+            "{72c5c2a8}": 1,
+            "mFormulaParts": [
+              {
+                "mDataValue": "NashorsBaseValue",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "NashorsAPValue",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3124": {
+      "name": "Guinsoo's Rageblade",
+      "trigger": "onHit",
+      "damageType": "Magic",
+      "calc": "TotalOnHitDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "OnHitDamage",
+            "values": [
+              30
+            ]
+          },
+          {
+            "name": "AttackSpeedPerStack",
+            "values": [
+              0.07999999821186066
+            ]
+          },
+          {
+            "name": "MaxStacks",
+            "values": [
+              4
+            ]
+          },
+          {
+            "name": "BuffDuration",
+            "values": [
+              3
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "TotalOnHitDamage": {
+            "{72c5c2a8}": 1,
+            "mFormulaParts": [
+              {
+                "mDataValue": "OnHitDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3057": {
+      "name": "Sheen",
+      "trigger": "spellblade",
+      "damageType": "Physical",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mCoefficient": 1.0,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3078": {
+      "name": "Trinity Force",
+      "trigger": "spellblade",
+      "damageType": "Physical",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SpellbladeMultiplier",
+            "values": [
+              2
+            ]
+          },
+          {
+            "name": "MoveSpeedBonus",
+            "values": [
+              20
+            ]
+          },
+          {
+            "name": "MSDuration",
+            "values": [
+              2
+            ]
+          },
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SpellbladeMultiplier",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3100": {
+      "name": "Lich Bane",
+      "trigger": "spellblade",
+      "damageType": "Magic",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "LichBaneAPValue",
+            "values": [
+              0.44999998807907104
+            ]
+          },
+          {
+            "name": "SpellbladeADRatio",
+            "values": [
+              0.75
+            ]
+          },
+          {
+            "name": "SheenASBuff",
+            "values": [
+              0.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "SpellBladeDuration",
+            "values": [
+              10
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SpellbladeADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "LichBaneAPValue",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3091": {
+      "_note": "HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Wit%27s_End infobox, fetched live this session: Unique - Fray: 'Basic attacks deal 45 bonus magic damage on-hit.' The wiki's own Patch History for this item shows the value was last changed in V14.19 ('Fray damage changed to 45 at all levels from 40 - 80 (based on level)') with no later entries touching Fray, so 45 is confirmed still current as of this session (2026-07-09). Flat magic on-hit, no melee/ranged split, no stat scaling -- fits the existing onHit shape exactly like Guinsoo's Rageblade (3124). Re-check this note against the wiki on any future patch that mentions Wit's End/Fray.",
+      "name": "Wit's End",
+      "trigger": "onHit",
+      "damageType": "Magic",
+      "calc": "TotalOnHitDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "FrayDamage",
+            "values": [
+              45
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "TotalOnHitDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "FrayDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3153": {
+      "_note": "HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Blade_of_the_Ruined_King infobox, fetched live this session: Unique - Mist's Edge: 'Basic attacks deal bonus physical damage on-hit equal to (Melee 9% / Ranged 6%) of the target's current health, with a maximum of 100 against minions and monsters.' The wiki's Patch History shows this 9%/6% value was set in V25.14 ('Mist's Edge damage increased to (Melee 9% / Ranged 6%) of target's current health from (Melee 8% / Ranged 5%)') with no later entries changing it, so it is confirmed current as of this session (2026-07-09). The 'maximum of 100 against minions and monsters' cap is DELIBERATELY NOT modeled: ComboRunner.ResolveTarget only ever resolves a living ENEMY CHAMPION from the scoreboard (see ComboRunner.cs ResolveTarget/BuildDefenderFor) -- this combo calculator has no minion/monster target concept at all, so the cap can never apply. hpPercentBasis=TargetCurrent: the fraction is of the TARGET's CURRENT health, re-evaluated live at the moment each hit lands (not a frozen pre-combo snapshot) -- reuses the exact ComboExecuteType.CurrentHp mechanism skill %HP hits (Vayne W, Brand P, Skarner P) already use. meleeHpPercent/rangedHpPercent select on the ACTIVE PLAYER's (item holder's) own champion being melee or ranged, per the wiki text -- see ComboRunner.IsMelee. Clawing Shadows (the stacking slow passive) is a non-damage utility effect and is out of scope. Re-check this note against the wiki on any future patch that mentions Blade of the Ruined King/Mist's Edge.",
+      "name": "Blade of the Ruined King",
+      "trigger": "onHit",
+      "damageType": "Physical",
+      "hpPercentBasis": "TargetCurrent",
+      "meleeHpPercent": 0.09,
+      "rangedHpPercent": 0.06
+    },
+    "3748": {
+      "_note": "HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Titanic_Hydra infobox, fetched live this session: Unique - Cleave: 'Basic attacks on-hit deal (Melee 1% / Ranged 0.5%) maximum health bonus physical damage to the target and (Melee 3% / Ranged 1.5%) maximum health physical damage to other enemies in a cone in the direction of the primary target.' ID CONFIRMED FROM THE WIKI INFOBOX THIS SESSION: 3748 (NOT 3181, which an earlier task had assumed -- 3181 does not match this item). The wiki's Patch History shows the 1%/0.5% on-hit value was set in V14.19 ('Cleave on-hit damage reduced to (Melee 1% / Ranged 0.5%) maximum health from (Melee 1.5% / Ranged 0.75%)') with no later patch (incl. V25.14, which only capped the number of cleave splashes) changing the on-hit percentages, so it is confirmed current as of this session (2026-07-09). ONLY the on-hit-to-primary-target portion of Cleave is modeled here (hpPercentBasis=CasterMax: a fraction of the ACTIVE PLAYER's/caster's OWN max health -- Overlay.Core.GameSnapshot ActivePlayerStats.MaxHealth -- not the target's, so unlike Blade of the Ruined King this needs no live re-evaluation and resolves once per combo like a normal on-hit item). DELIBERATELY OUT OF SCOPE: (1) the cone/secondary-target splash damage, since this combo calculator only ever resolves ONE target (see ComboRunner.ResolveTarget) and has no multi-enemy/AoE concept; (2) the Titanic Crescent empowered-attack active (Melee 4%/Ranged 2% primary, Melee 9%/Ranged 4.5% secondary, 10s activation + cooldown state), since the item-proc pipeline models only per-AA on-hit/spellblade procs, not activated abilities with their own timers. meleeHpPercent/rangedHpPercent select on the active player's own champion being melee or ranged -- see ComboRunner.IsMelee. Re-check this note against the wiki on any future patch that mentions Titanic Hydra/Cleave.",
+      "name": "Titanic Hydra",
+      "trigger": "onHit",
+      "damageType": "Physical",
+      "hpPercentBasis": "CasterMax",
+      "meleeHpPercent": 0.01,
+      "rangedHpPercent": 0.005
+    },
+    "3095": {
+      "_note": "HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Kraken_Slayer infobox, fetched live this session: Unique - Bring It Down: 'Basic attacks on-hit grant a stack for 3 seconds, up to 2 stacks. At 2 stacks, the next basic attack consumes all stacks to deal (Melee 150-200 / Ranged 120-160) (based on level) bonus physical damage on-hit, increased by 0%-75% (based on target's missing health), for up to (Melee 262.5-350 / Ranged 210-280) (based on level) bonus physical damage.' The wiki's Patch History shows the base-damage range 150-200/120-160 was set in V14.19 ('Bring It Down base damage changed to (Melee 150-200 / Ranged 120-160) (based on level) from (Melee 140-310 / Ranged 112-248) (based on level)') and the missing-health scaling 0%-75% was set in V25.14 ('Bring It Down bonus damage increased to 0%-75% (based on target's missing health) from 0%-50%'), with no later patch (through V25.16, the latest listed) touching either value, so both are confirmed current as of this session (2026-07-10). The max-damage endpoints (262.5-350/210-280) are exactly base x 1.75 (200x1.75=350, 160x1.75=280 etc.), confirming the formula shape is base x (1 + 0.75 x missingHpFraction), i.e. base + base x 0.75 x missingHpFraction -- a base-plus-scaling-term shape, NOT the project's existing pure fraction x HP-quantity execute shape. COMBO-INTERNAL STACK COUNTING: unlike AurelionSol/Kindred's buff-stack passives (out of scope -- those need real live game-state data the Live Client API doesn't expose), Kraken Slayer's stacking depends only on the SEQUENCE of AA nodes within the combo ComboRunner is already building, so it is computed entirely at combo-assembly time (see ComboRunner.ApplyBinDamage's aaOrdinal counter / ItemTrigger.StackThenConsume): the bonus triggers on every (stacksRequired+1)=3rd AA in the combo's own node order (3rd, 6th, 9th...). This ASSUMES every AA in the combo lands within the real 3-second stack window, which is a reasonable approximation for a short burst combo but would overcount stacks in an unrealistically long/slow one -- documented alongside the existing spellblade 'at most one proc per combo' approximation in ComboRunner.cs. MISSING-HEALTH SCALING NOW MODELED (previously deliberately omitted -- see M05_DAMAGE_ENGINE.md changelog): a new Damage.ExecuteType.BaseWithMissingHpBonus case (base x (1 + scalar x missingHpFraction), the exact confirmed shape) was added rather than forcing this into the pure fraction x HP-quantity mechanism Blade of the Ruined King uses. \"missingHpBonusScalar\": 0.75 below is that confirmed scalar; ComboRunner.BuildStackThenConsumeItemProc wires it in, using the LIVE target's current/max HP (same dynamic mechanism as Blade of the Ruined King's CurrentHp). STARTING-HP CAVEAT NARROWED, NOT CLOSED (see M05_DAMAGE_ENGINE.md changelog and Combo/TargetHealthTracker.cs): the target's HP at the START of a combo used to always be MaxHP (the Live Client API exposes no enemy current-HP at all); when a TargetHealthTracker is wired in (AppComposition), the starting CurrentHP is instead MaxHP minus an honest LOWER-BOUND estimate (100% HP anchored at the target's last known respawn, minus OUR OWN calculated combo damage dealt to them since) -- this can only ever UNDERSTATE real missing health (potion/elixir/buff healing and non-combo damage sources remain invisible to us), never overstate it, so this proc's missing-HP scaling is now sometimes MORE accurate than before but still never provably exact. Re-check this note against the wiki on any future patch that mentions Kraken Slayer/Bring It Down.",
+      "name": "Kraken Slayer",
+      "trigger": "stackThenConsume",
+      "damageType": "Physical",
+      "stacksRequired": 2,
+      "meleeDamageAtLevel1": 150,
+      "meleeDamageAtLevel18": 200,
+      "rangedDamageAtLevel1": 120,
+      "rangedDamageAtLevel18": 160,
+      "missingHpBonusScalar": 0.75
+    },
+    "3128": {
+      "_note": "HAND-AUTHORED from this project's own bundled ddragon/16.13.1/item.json (id 3128, colloq ';dfg', name 'Deathfire Grasp') this session (2026-07-10), user-reported as not applying. Quoted description: 'Active - The Silence: Deal magic damage equal to 15% of the Target's Max Health, and then amplify damage they take by 15% for 4 seconds (90s cooldown).' Introduces a new trigger, \"manualActiveBurst\" (see ItemTrigger.ManualActiveBurst / Combo.ComboEngine.ApplyAttachedItemEffects): unlike every other item in this file, this one is NOT auto-applied across the whole build (it is not an on-hit/spellblade/stack-then-consume proc) -- it only fires on the single combo node the user drag-attaches it to (ComboNode.AttachedItemId), which was previously a UX/organization-only sub-icon with zero engine effect (see M04_COMBO_EDITOR.md loop-38 LEAD DECISION). targetMaxHpPercent (0.15) becomes a new trailing flat magic-damage node keyed to that node (never folded into the attached node's own damage number, since its type -- Magic -- may differ from whatever type that node's own skill/AA damage already is). amplifyDamagePercent (0.15) / amplifyDurationSeconds (4) describe the target-side 'increased damage taken' debuff: every OTHER node in the same combo whose own elapsed-time-in-combo timestamp falls within 4 seconds after the attached node has its damage multiplied by 1.15 -- this generically boosts ANY subsequent damage in that window (abilities, on-hit procs, already-curated burn/DoT sources like Brand's passive or Cassiopeia's Q), matching the item's real debuff (it amplifies damage taken from any source, not just this item's own burst). The 90s cooldown is not modeled (single-application-per-combo, consistent with this project's existing spellblade/manual-rune 'at most once per combo' convention). Re-check this note against the bundled item.json (or a live wiki fetch) whenever the game version this project targets changes.",
+      "name": "Deathfire Grasp",
+      "trigger": "manualActiveBurst",
+      "damageType": "Magic",
+      "targetMaxHpPercent": 0.15,
+      "amplifyDamagePercent": 0.15,
+      "amplifyDurationSeconds": 4
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+ "champion": "Ambessa",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Ambessa"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Cunning Sweep / Sundering Slam",
+   "facts": [
+    {
+     "field": "Q1_CunningSweep_Doubled",
+     "kind": "flat",
+     "values": [
+      40,
+      60,
+      80,
+      100,
+      120
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "40 / 60 / 80 / 100 / 120 (+ 60% bonus AD) (+ 2 / 3 / 4 / 5 / 6% (+ 3% per 100 bonus AD) of target's maximum health)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Repudiation",
+   "facts": [
+    {
+     "field": "ShieldMitigatedBonusDamage",
+     "kind": "flat",
+     "values": [
+      75,
+      112.5,
+      150,
+      187.5,
+      225
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "75 / 112.5 / 150 / 187.5 / 225 (+ 75% bonus AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Lacerate",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 80 / 90 / 100 / 110 / 120% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Public Execution",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 80% bonus AD) physical damage"
+    }
+   ]
+  }
+ }
+}

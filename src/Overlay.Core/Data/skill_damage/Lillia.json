@@ -1,0 +1,29 @@
+{
+  "_noteWSweetSpot": "W EPICENTRE TOGGLE (loop 483). Watch Out! Eep! has an inner circle worth 200% MORE, not more by a little: the live wiki (wiki.leagueoflegends.com/en-us/Lillia, fetched 2026-08-21) gives 80/100/120/140/160 (+35% AP) outer against 240/300/360/420/480 (+105% AP) at the epicentre, and the BIN pairs FlatDamage with FlatDamageSweetSpot for exactly that. The largest sweet-spot multiplier in this batch and the one most worth being able to state.",
+  "_noteENoToggle": "E, ASKED ABOUT AND CORRECTLY UNCHANGED (loop 483, user asked for an enhancement toggle on E). There is nothing to toggle. Swirlseed rolls until it hits terrain or an enemy, and the live wiki (fetched 2026-08-21) says the damage is 60/85/110/135/160 (+50% AP) regardless of how far it travelled. The BIN agrees: LilliaE has exactly one calc, ImpactDamageTotal, and its DataValues are hitbox sizes, a slow and a bounce range - no second tier, no multiplier, nothing distance-scaled. What travels far is the seeds REACH, not its damage. Recorded so this is not re-investigated.",
+  "_note": "Curated (loop 39). P kept from prior session (hpPercentCalc DotPercentTooltip, see _noteP). Q/W/E/R verified against Lillia's own bin.json spellCalculations + a live wiki fetch (wiki.leagueoflegends.com/en-us/Lillia): Q 'Blooming Blows' deals a magic AoE hit (TotalDamage) PLUS an equal amount as bonus TRUE damage (BonusTrueDamage) to targets within the outer ring only -- both curated as independent hits per the wiki's combined 'Total Mixed Damage' tooltip line, though BonusTrueDamage is positionally conditional (not guaranteed on every target hit). W 'Watch Out! Eep!' curated at its BASE value (FlatDamage); the ability's 200%-increased epicenter variant (calc 'FlatDamageSweetSpot') is positional/conditional and NOT auto-included -- flagged here only. E 'Swirlseed' is a single magic hit (ImpactDamageTotal). R 'Lilting Lullaby' (TotalDamage) requires a SUBSEQUENT non-persistent damage instance against the slept target to actually trigger (it consumes the Drowsy/Sleep debuff) -- curated as R's own hit on the assumption a combo's next node triggers it immediately.",
+  "_noteP": "P (Dream-Laden Bough) curated this session (first real trace). LilliaP.mSpellCalculations 'DotPercentTotal' = NamedDataValueCalculationPart(mDataValue='DotDamagePercent', BIN value 5.0 constant across all 7 rank slots) + StatByCoefficientCalculationPart(mCoefficient=0.0125, no mStat -> defaults to AP), mDisplayAsPercent:true (raw result is percent-POINTS, e.g. 6.25 means 6.25%, not yet a fraction). 'DotPercentTooltip' (tooltipOnly:true, same 'tooltip-named but real formula' shape as TahmKench/Leona/Nautilus precedent) = GameCalculationModified referencing DotPercentTotal with mMultiplier=NumberCalculationPart(0.01), converting the percent-points into an actual fraction -- exactly the Skarner-style hpPercentCalc shape (ByCharLevel/NamedDataValue term x 0.01 multiplier), both supported kinds (GameCalculationModified+Multiplier is handled by FormulaInterpreter.EvaluateCalculation). Used 'DotPercentTooltip' as hpPercentCalc so the x0.01 conversion is included. Modeled as a single representative tick (count=1) of the DoT (BIN 'DotTicks'=6 over 'Duration'=3s) -- same conservative single-tick precedent as Skarner P (full DoT-tick sequencing is out of scope for this pass). Damage type Magic per live tooltip (hand-curated, no BIN type field).",
+  "P": { "hits": [ { "type": "Magic", "hpPercentCalc": "DotPercentTooltip", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] },
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 },
+      { "type": "True", "calc": "BonusTrueDamage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "FlatDamage", "conditionType": "SweetSpot", "metCalc": "FlatDamageSweetSpot", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "ImpactDamageTotal", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  }
+}

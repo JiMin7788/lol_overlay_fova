@@ -1,0 +1,27 @@
+{
+  "_note": "Talon — ALL hits referenced EXACTLY from talon.bin.json (no measurement: the engine mechanisms are already golden-verified — crit-neutral mStat 8/9 §12②, multi-hit, bonus-AD ratios, level-interp). Variable parts are USER-controlled, not assumed. AA (A) = universal basic attack = total AD physical (engine AA node). E (Assassin's Path) = pure mobility, NO mSpellCalculations → no hits (correct).",
+  "_noteToggles": "Cowork loop 155 (enum-verified against ComboEngine.ConditionType). Q '강화' = a real conditional: ranged LeapDamage (floor, P2) ↔ melee CriticalDamage = LeapDamage×1.5, using conditionType 'MeleeRangeCast' (the enum value documented in-code for exactly 'Talon Q empowered/crit', classified UserAssumed → surfaces as the M28 checkbox, default unmet). W/R '1타/2타' is NOT a conditionType (no 'Nth-hit-landed' enum exists) — it is a HIT-COUNT choice = the existing 'n' / UserAttackCount ('몇 번') knob used by Illaoi R / Ivern / Anivia. Here both hits are curated (the landed-both max); Claude Code wires the 몇-타 checkbox to reduce W's return / R's converge pass. NOTE: 'UserAssumed' is a ConditionResolution classifier, NOT a conditionType value — do not use it as one.",
+  "_noteP": "P (Blade's End): TalonPassive 'BleedDamage' = level-interp base 80→280 + 2.1× bonus AD, PHYSICAL (BIN: flat + AD, not %maxHP). Standalone Passive node; the marking ability isn't identifiable from the BIN, so the user adds it on proc.",
+  "_noteQ": "Q LeapDamage = BaseDamage + BonusADRatio(1.0)×bonus AD. Melee 'CriticalDamage' = LeapDamage × mMultiplier, mMultiplier = SumOfSubParts[EnhancedDamageMod(1.5) + mStat9(crit-damage BONUS)]. Talon Q melee IS a GUARANTEED crit (tooltip 'can apply crit enhancement'; IE etc. raise it) but has NO crit-chance (mStat8) gate — always crits in melee — so no expected-value model is needed: just resolve mStat9 = the LIVE crit-damage bonus (default 0 with no crit items). No items → 1.5 + 0 = ×1.5 = 97.5 + 150% bonus AD @ rank1 ✓; IE → 1.5 + bonus. ENGINE BUG (§26): the crit-neutral CONSTANT mStat9→1 makes it ×2.5 (~80% over) — fix = mStat9 → live crit-damage bonus (default 0), not 1. Melee-only, behind MeleeRangeCast.",
+  "_noteW": "W (Rake) TotalInitialDamage = InitialBaseDamage + 0.4×bonus AD (outgoing); TotalReturnDamage = ReturnBaseDamage + 0.9×bonus AD (return, larger). Both land on a target that stays in the path; the return is the '2타'.",
+  "_noteR": "R (Shadow Assault) Damage = BaseDamage + 1.0×bonus AD, PER PASS. User confirmed R lands BOTH passes (90 per pass @ rank1 → 180 total; the tooltip 90 is per-instance). Curated as TWO explicit Physical hits so each pass is an independent user CHECKBOX (M28 node option — 1타/2타/both), default BOTH on = the real 2-hit total. (Prior 'count:2' and the count:1 walkback are superseded by the two-hit + per-hit-checkbox model; prior note's 'up to 630' was an index misread — rank3 = index3 = 180.)",
+  "P": { "hits": [ { "type": "Physical", "calc": "BleedDamage", "count": 1 } ] },
+  "Q": {
+    "hits": [
+      { "type": "Physical", "calc": "LeapDamage", "conditionType": "MeleeRangeCast", "metCalc": "CriticalDamage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalInitialDamage", "count": 1 },
+      { "type": "Physical", "calc": "TotalReturnDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "hits": [
+      { "type": "Physical", "calc": "Damage", "count": 1 },
+      { "type": "Physical", "calc": "Damage", "count": 1 }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

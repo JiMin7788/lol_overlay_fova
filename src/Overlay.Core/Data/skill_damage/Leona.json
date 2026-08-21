@@ -1,0 +1,17 @@
+{
+  "_note": "Curated (T2c). Q (TotalDamageTooltip = EffectValueCalculationPart + StatByCoefficientCalculationPart), E (TotalDamageTooltip, same shape) and R (ExplosionCalculatedDamage = NamedDataValueCalculationPart + StatByNamedDataValueCalculationPart) all use CalculationPart kinds FormulaInterpreter fully supports, so these resolve live (verified against FormulaInterpreter.cs's EvaluatePart switch). W (Solar Barrier) is a shield, no damage.",
+  "_noteP": "P (Sunlight): a hit enemy is marked; Leona's next attack/ability against them detonates the mark for bonus magic damage (LeonaSunlightPassive.mSpellCalculations 'TotalDamage' = a single ByCharLevelFormulaCalculationPart, BIN field 'values' = [25,32,39,...,235], 31 entries, step +7). RESOLVED: ChampionBinParser now parses ByCharLevelFormulaCalculationPart's 'values' array (new CalculationPart.Kind.ByCharLevelFormula) and FormulaInterpreter indexes it by champion level directly (index 0 is an unused placeholder, same convention as LookupDataValue/LookupEffectAmount) -- level 1 = values[1] = 32, level 18 = values[18] = 151, exactly matching the live tooltip '32 - 151 (based on level) bonus magic damage' (wiki.leagueoflegends.com/en-us/Leona, Sunlight). Hand-verified in ChampionBinTests.FormulaInterpreter_Evaluate_LeonaPassive_ResolvesByCharLevelFormulaCalculationPart. Modeled as a P bonusEffect trigger onHit (same conditional-proc style as Sejuani/Volibear/Nocturne P; detonation-on-next-hit approximated as firing on every attack).",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "ExplosionCalculatedDamage",
+        "count": 1
+      }
+    ]
+  }
+}

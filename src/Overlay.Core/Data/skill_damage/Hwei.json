@@ -1,0 +1,87 @@
+{
+  "_note": "Curated (T3.x-ext loop 39; Q muse branches added loop 60; slot-shell binSpell fixes 2026-07-26; ALL NINE muse sub-casts split out loop 480). Hwei never casts Q, W or E on their own: each opens a three-way muse choice and the SECOND key is the spell. The file now says so. Q/W/E carry no hits at all, and every sub-cast is its own slot (QQ/QW/QE, WQ/WW/WE, EQ/EW/EE) resolving against its own BIN object via binSpell. Ranks come free -- ChooseRank already inherits an extra slot's rank from the first letter of its key, so WE casts at W's rank. Cross-checked against a live wiki.leagueoflegends.com/en-us/Hwei fetch 2026-08-21.",
+  "_noteFakeSlots": "WHAT THIS REPLACED (user report, section 95): the E slot carried a hit with binSpell HweiEQ and the W slot carried WE's on-hit rider, so the palette showed E and W as if they were casts and the other five sub-casts did not exist. The numbers were right and attributed to the wrong node -- reading Hwei's palette you could not tell EQ from EW, or find WQ at all. The two golden rows measured under those labels are UNCHANGED in value and now cast the node that was actually measured (EQ, WE); see GoldenHweiTests.",
+  "_noteP": "Curated (T3.x-ext passive pass, unchanged loop 39). P (Signature Style): landing a 3rd distinct basic spell within the window deals bonus MAGIC damage (TotalDamage = level-interpolated base 40->285 + 0.35x AP, HweiPassive.mSpellCalculations). Curated as a standalone P hit (not a bonusEffect) since the real trigger is spell-sequencing, not every AA/ability cast -- add a Passive node where the empowered cast lands in the combo.",
+  "_noteQ": "Q (Subject: Disaster) is the muse selector -- HweiQ's own mSpellCalculations are the three Tooltip_Q*Damage display strings and nothing else. No hits, by design. The three casts are QQ/QW/QE below.",
+  "_noteW": "W (Subject: Serenity) is the muse selector -- HweiW holds only Tooltip_W* display calcs. Its two boons deal no damage at all and its third is an on-hit empowerment, so nothing belongs on the W slot itself.",
+  "_noteE": "E (Subject: Torment) is the muse selector -- HweiE holds only Tooltip_E*Damage display calcs. All three casts share IDENTICAL DataValues (BaseDamage 30->270) and formula (NamedDataValue + 0.65 AP), verified by direct comparison, so EQ/EW/EE resolve to the same number and differ only in crowd control. They are still three slots: the palette should show what Hwei can actually cast, and identical damage is a fact about this patch, not a reason to hide two of them.",
+  "P": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": {
+    "tags": ["Zone", "BurstCeiling", "AoeUltimate"],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalMaxDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteR": "R (Spiraling Despair): re-verified and upgraded from the prior floor-only 'Damage' pick (RBaseDamage(75->825)+0.8xAP, the initial attach hit) to 'TotalMaxDamage' = SumOfSubParts(RBaseDamage + ProductOfSubParts(BaseDamageOverTime(0->60) x Duration(3s))) + StatByCoefficient(0.95, default AP) -- both ProductOfSubParts and SumOfSubParts are supported calc kinds. This closely matches the BIN's own MaxDamageHelper tooltip DataValue (e.g. rank2: 200+10x3=230 vs MaxDamageHelper[1]=230, confirmed), representing the full burst+DoT-tick+final-shatter total if the target remains in the expanding zone for its whole 3s duration, matching the wiki description ('expanding zone that inflicts magic damage and a stacking slow... shatters for a final burst of magic damage'). Tagged Zone (real ground/aura DoT the target can walk out of) and BurstCeiling (largest modeled number in Hwei's kit by a wide margin). Confirmed directly by GOLDEN #13's clean-room rows at AP 18 and AP 83.",
+  "QQ": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiqq.png",
+    "hits": [
+      { "type": "Magic", "calc": "Damage", "binSpell": "HweiQQ", "count": 1 },
+      { "type": "Magic", "hpPercentDataValue": "BonusDamage", "hpBasis": "Max", "binSpell": "HweiQQ", "count": 1, "tags": ["PercentMaxHp"] }
+    ]
+  },
+  "_noteQQ": "Devastating Fire. Damage = BaseDamage(20->200) + 0.8 AP, PLUS the target's maximum health, curated loop 480 after the user supplied the namu.wiki entry (both wikis agree: +대상 최대 체력의 3/4/5/6/7%, with the 250 cap applying to monsters only). The BIN DataValue is BonusDamage, 2/3/4/5/6/7/8 by rank index, read through hpPercentDataValue which divides a >=1 value by 100. WHAT MADE THIS LOOK LIKE A CONFLICT, AND WHY IT WAS NOT: GOLDEN #13's QQ row measured 62, and the loop-39-era file reconciled that only by assuming Q was at RANK 2 -- which is where the goldens note about forcing the rankSlot threading came from. Rank 2 flat-only is 80 + 0.8x9 = 87.2. Rank 1 WITH the health ratio is 50 + 7.2 + 3% of 1000 = 87.2. The same number, to the decimal. Every other row of that same session reconciles at rank 1 (E 54.6 vs 54, QW 45.1 vs 45, WE rider 15.4 vs 15, AA 48.2 vs 48), so an all-rank-1 session with the health ratio present is the reading that needs no special pleading, and the rank-2 inference was an artifact of the missing hit. The golden row keeps its measured 62 and now evaluates at rank 1; see GoldenHweiTests.",
+  "QW": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiqw.png",
+    "hits": [
+      { "type": "Magic", "calc": "Damage", "binSpell": "HweiQW", "missingHpBonusDataValue": "BonusDamageMult", "count": 1, "tags": ["PercentMissingHp"] }
+    ]
+  },
+  "_noteQW": "Severing Bolt. Damage = BaseDamage(35->185) + 0.3 AP, wiki 60/85/110/135/160 (+30% AP). THE AMPLIFICATION IS NOW CURATED (loop 480) -- it was the file's largest disclosed gap and the reason GOLDEN #13 had to re-measure QW on a full-health dummy. BIN BonusDamage is GameCalculationModified(Damage x BonusDamageMult), and BonusDamageMult by rank is 2.0/2.375/2.75/3.125/3.5, exactly the wiki's 'increased by up to 200/237.5/275/312.5/350% based on the targets missing health'. That is a base-times-missing-fraction shape, NOT a fraction of the targets absolute missing health, so it is curated through the new missingHpBonusDataValue field into ComboExecuteType.BaseWithMissingHpBonus -- the same machinery Kraken Slayers Bring It Down has always used, which re-reads the targets health where the hit lands instead of freezing a pre-combo fraction. Against a full-health target it resolves to exactly the old number, which is why the golden row still holds.",
+  "QE": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiqe.png",
+    "tags": ["Zone"],
+    "hits": [
+      { "type": "Magic", "calc": "Damage", "binSpell": "HweiQE", "count": 1 },
+      { "type": "Magic", "perSecondCalc": "DamagePerSecond", "maxDurationSeconds": 2.5, "binSpell": "HweiQE", "count": 1, "tags": ["Zone"] }
+    ]
+  },
+  "_noteQE": "Molten Fissure. Initial explosion Damage = BaseDamage(5->95) + 0.3 AP, wiki 20/35/50/65/80 (+30% AP). THE ZONE DoT IS NOW CURATED (loop 480) as the escapable-zone shape this project uses for Malzahar W: perSecondCalc DamagePerSecond (BaseDPS + 0.24 AP) with maxDurationSeconds 2.5 from the BINs own Duration DataValue, so the user states how long the target actually stood in it and an untouched knob contributes 0. Note for anyone reconciling GOLDEN #13: that rounds QE reading of 72 was 5 ticks x BaseDPS[rank2] 20, i.e. BaseDPS is per 0.5-SECOND TICK, not per second -- the wikis 'per tick 5/8.75/12.5/16.25/20' with a 50/87.5/125/162.5/200 total over 2.5s agrees. So DamagePerSecond names a per-tick number and 2.5 seconds of exposure yields half the wikis full-duration total. Kept as-is rather than doubling the duration: the field means seconds and the calc name is Riots, and inventing a 5-second duration to compensate would be a lie that happens to multiply correctly. Recorded as a known 2x floor on this one hit.",
+  "WQ": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiwq.png",
+    "hits": []
+  },
+  "_noteWQ": "Fleeting Current: movement speed 30-40% (+3% per 100 AP) and ghosting along the path, no damage anywhere in the tooltip. BIN HweiWQ has exactly one calc, MoveSpeed. Curated as a real slot with an EMPTY hits array rather than omitted -- the user asked to see all nine muse casts, and a boon that costs a cast and a cooldown belongs in a combo timeline even when it contributes no damage.",
+  "WW": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiww.png",
+    "hits": []
+  },
+  "_noteWW": "Pool of Reflection: a shield, 100/140/180/220/260 (+60% AP), 85% of it on an ally. BIN HweiWW has ShieldAmount and nothing else. Same empty-hits treatment as WQ.",
+  "WE": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiwe.png",
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "maxProcs": 3,
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "OnHitDamage",
+            "binSpell": "HweiWE",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "_noteWE": "Stirring Lights: empowers Hweis next 3 basic attacks within 9 seconds for 20/30/40/50/60 (+15% AP) magic damage each, wiki-confirmed total 60/90/120/150/180 (+45% AP). MOVED OFF THE W SLOT loop 480 -- it lived there because the canonical five were the only slots scanned for bonus effects, which meant a rider that belongs to one of three muse casts fired after any W, including the two that are pure utility. SkillDamageDb.BonusSourceSlots now includes extra slots, so it rides WE and only WE. maxProcs 3 is the wikis three-attack window, using the cap loop 477 added for Rengar and Evelynn; TotalOnHitDamage (OnHitDamage x 3) is the tooltips preview of the same three and is deliberately not curated as a fourth hit.",
+  "EQ": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweieq.png",
+    "hits": [ { "type": "Magic", "calc": "Damage", "binSpell": "HweiEQ", "count": 1 } ]
+  },
+  "EW": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiew.png",
+    "hits": [ { "type": "Magic", "calc": "Damage", "binSpell": "HweiEW", "count": 1 } ]
+  },
+  "EE": {
+    "icon": "assets/characters/hwei/hud/icons2d/hweiee.png",
+    "hits": [ { "type": "Magic", "calc": "Damage", "binSpell": "HweiEE", "count": 1 } ]
+  },
+  "_noteEsub": "EQ Grim Visage (knockdown + fear), EW Gaze of the Abyss (root + reveal), EE Crushing Maw (pull to centre + decaying slow). All three: Damage = BaseDamage(30->270) + 0.65 AP, wiki 70/110/150/190/230 (+65% AP) -- identical numbers, different crowd control. Each routes to its own BIN object so a future patch that splits them apart needs no re-curation here.",
+  "_noteQsub": "M22 Phase 2 (loop 60), extended loop 480. Hweis Q muse branches resolve against their own exposed BIN spell objects via binSpell. All Magic (Hwei is a pure AP mage). The two omissions this note used to disclose -- QWs missing-health amplification and QEs zone DoT -- are both curated now; see _noteQW and _noteQE. Underscore-free keys for ComboRunner.SlotOf.",
+  "_noteAuto": "loop 60 (M22 Phase 2): 'auto' flag DROPPED."
+}

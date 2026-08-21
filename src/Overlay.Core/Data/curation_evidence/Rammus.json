@@ -1,0 +1,68 @@
+{
+ "champion": "Rammus",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Rammus"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Powerball",
+   "facts": [
+    {
+     "field": "ImpactDamage",
+     "kind": "ratio",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 100% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Defensive Ball Curl",
+   "facts": [
+    {
+     "field": "OnHitDamage",
+     "kind": "ratio",
+     "values": [
+      27,
+      32,
+      37,
+      42,
+      47
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "27 / 32 / 37 / 42 / 47 (+ 30 / 37.5 / 45 / 52.5 / 60% total armor)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Soaring Slam",
+   "facts": [
+    {
+     "field": "SlamDamage",
+     "kind": "ratio",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 60% AP)"
+    }
+   ]
+  }
+ }
+}

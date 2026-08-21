@@ -1,0 +1,32 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Umbra Blades): periodically Nocturne's next basic attack deals bonus MAGIC damage (TotalDamageNoCrit = 1.2x total AD, NocturneP.mSpellCalculations — flat AD coefficient, no interpolation). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than the periodic empowered attack (documented, same style as other on-hit passives). TotalDamageCrit (the version that can critically strike) is intentionally omitted. Q/E/R kept as the auto first-pass picks.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamageNoCrit", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling"],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  }
+}

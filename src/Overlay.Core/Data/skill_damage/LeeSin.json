@@ -1,0 +1,25 @@
+{
+  "_note": "Curated. Source: communitydragon/leesin.bin.json mSpellCalculations, cross-checked vs wiki.leagueoflegends.com/en-us/Lee_Sin.",
+  "_noteQ": "Sonic Wave / Resonating Strike (LeeSinQOne): InitialDamage (Sonic Wave mark) = Q1BaseDamage + 0.9*bonusAD; RecastDamage (Resonating Strike dash-strike on the marked target) = Q2BaseDamage + 0.9*bonusAD. Both curated as separate Physical hits (matching the real 2-step combo: mark then recast-strike on the same target). Q2's known 'up to +100% of target's missing health' bonus (DataValue Q2MaxMissingHealthMod) is NOT part of RecastDamage's own mFormulaParts (applied by separate game logic, target-current-HP dependent) -- omitted per this project's existing kill-from-full-HP convention (see Jinx R DamageFloor precedent).",
+  "_noteW": "Safeguard/Iron Will (LeeSinWOne): only calc is ShieldAmount (a shield, not damage). No damage in this slot -- correctly omitted.",
+  "_noteE": "Tempest/Cripple (LeeSinEOne): InitialDamage = E1Damage + 0.9*totalAD (mStat 2, no mStatFormula = TOTAL AD). Single cone hit on cast; the Cripple follow-up only applies a slow debuff, no additional damage calc exists for it.",
+  "_noteR": "Dragon's Rage (LeeSinR): Damage = BaseDamage + 2.0*bonusAD (mStat 2, mStatFormula 2, mCoefficient 2.0). Single kick hit. The wall-collision bonus (PercentHPCarryThrough, extra damage if the target is knocked into terrain) is positional/conditional, not part of this calc -- omitted (conservative, P2), same treatment as Camille W's outer-cone bonus.",
+  "_noteP": "Energy resource-return mechanic only, no damage -- correctly omitted.",
+  "_noteQSplit": "Q SPLIT INTO Q AND Q2 (loop 482, user request). Sonic Wave and Resonating Strike are two casts and two damage instances; they were curated as two hits on ONE slot, so a Q node always scored both and there was no way to say the recast was never landed. Q now carries InitialDamage alone and Q2 carries RecastDamage. THE MISSING-HEALTH SCALING IS NOW CURATED TOO: the live wiki (wiki.leagueoflegends.com/en-us/Lee_Sin, fetched 2026-08-21) says the recast is increased by 0-100% based on the targets missing health, minimum 60/90/120/150/180 (+90% bonus AD) and maximum double that at 0% health, and the BIN carries exactly that as Q2MaxMissingHealthMod (1.0). Routed through missingHpBonusDataValue, the field added in loop 480 for Hwei QW, so the recast re-reads the targets health where it actually lands in the sequence rather than freezing a pre-combo value - which is the whole point for a champion whose combo is built around finishing a damaged target. EmpoweredDamage (RecastDamage x2) is the tooltips maximum preview and is flagged tooltipOnly in the BIN; not curated, because the same number now falls out of the scaling at 0% health. ⚠️ A saved combo whose Q node stood for the whole Q1+Q2 now scores the first cast only; add a Q2 node beside it.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "InitialDamage", "count": 1 } ] },
+  "Q2": {
+    "icon": "assets/characters/leesin/hud/icons2d/leesinq2.png",
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "RecastDamage",
+        "binSpell": "Q",
+        "missingHpBonusDataValue": "Q2MaxMissingHealthMod",
+        "count": 1,
+        "tags": ["PercentMissingHp"]
+      }
+    ]
+  },
+  "E": { "hits": [ { "type": "Physical", "calc": "InitialDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "Damage", "count": 1 } ] }
+}

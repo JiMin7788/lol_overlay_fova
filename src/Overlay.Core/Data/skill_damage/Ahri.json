@@ -1,0 +1,13 @@
+{
+  "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
+  "Q": { "hits": [
+    { "type": "Magic", "calc": "TotalDamage", "count": 1 },
+    { "type": "True", "calc": "TotalDamage", "count": 1 }
+  ] },
+  "W": { "hits": [
+    { "type": "Magic", "calc": "SingleFireDamage", "count": 1 },
+    { "type": "Magic", "calc": "MultiFireDamage", "count": 2 }
+  ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "RCalculatedDamage", "count": 1 } ] }
+}

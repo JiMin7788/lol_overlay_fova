@@ -1,0 +1,65 @@
+{
+  "_note": "Curated. Source: communitydragon/zaahen.bin.json mSpellCalculations, cross-checked against a live wiki.leagueoflegends.com/en-us/Zaahen fetch this session (2026-07-10) -- Zaahen is post-training-data, so the passive (Cultivation of War) and Q (The Darkin Glaive) names/mechanics were confirmed live; W/E/R names were not individually re-verified by name but their BIN structure (pull, dash+AoE, dash+execute-style ultimate) is unambiguous and all four ability slots resolve cleanly from mapped BIN calcs.",
+  "_noteP": "Cultivation of War: wiki-confirmed as a stacking bonus-AD + revive-on-lethal passive with NO direct damage of its own. ReviveCooldownCalc/RevivePercentCalc/PercentBonusADCalc all reference hashed/obfuscated CalculationPart shapes ('{4ce08984}', '{ee18a47b}' with hashed field keys) that this project's parser cannot cross-reference to a known kind -- genuinely blocked even if it were damage, which it is not (stat buff + heal-on-revive only). No P hit.",
+  "_noteQ": "The Darkin Glaive: wiki-confirmed as an empower-next-basic-attack (double strike) with a recast for bonus damage + knockup. InitialDamage = NamedDataValue(Q1BaseDamage) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> bonus AD, QCoeff 0.15-0.45) -- the first cast's double-strike total. SecondHitDamage = NamedDataValue(Q2BaseDamage) + the same QCoeff bonus-AD scaling -- the recast's separate bonus-damage-plus-knockup hit. Curated as two independent hits (not a repeat of one hit) since they are functionally different casts. Physical.",
+  "_noteW": "Pull ability (grab + damage on pull-in). InitialDamage = NamedDataValue(InitialBaseDamage) + 0.5x bonus AD (initial hit). SecondaryDamage = NamedDataValue(SecondaryBaseDamage) + 0.3x bonus AD (damage when the target reaches Zaahen). Curated as two hits. Physical.",
+  "_noteE": "Dash ability with a sweet-spot damage bonus. BaseDamageCalc = NamedDataValue(Damage_Base) + 0.5x bonus AD -- the guaranteed hit. A second calc, BonusDamageCalc (= BaseDamageCalc x1.5 SweetSpotDamageMod), exists for a positional sweet spot but is conditional, so only the guaranteed base is curated (consistent with the Xerath W treatment elsewhere in this pass). Physical. ADDITIONAL VERIFICATION (loop 221): a separate DataValue 'PercentHPDamage' (real ranks 4/4.5/5/5.5/6%, not wired to any named calc) was checked against a live wiki fetch -- it is the ability's 'Bonus Magic Damage: 4/4.5/5/5.5/6% of target's maximum health' term, but per the same fetch this ONLY applies on the same conditional outer-edge/sweet-spot hit as BonusDamageCalc (not on the guaranteed inner hit) -- so it is correctly excluded for the identical conditional-hit reason, not an oversight.",
+  "_noteR": "Dash/execute ultimate. DamageEndCalc = NamedDataValue(EndDamage, 100-1000) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 200% bonus AD via BonusADDamageRatio). Physical. Tagged BurstCeiling: the 200% bonus-AD ratio makes this Zaahen's single largest realistic burst hit by a wide margin.",
+  "_noteQ_split": "MULTI-CAST SPLIT (loop 471, user request). _noteQ already established what these two calcs are - InitialDamage is the first cast's double strike, SecondHitDamage is the RECAST's separate bonus - but both sat in one Q slot, so the editor could only charge for both and no combo could land the first cast without the recast. Moved the recast to its own selectable slot; binSpell Q keeps it resolving against the same BIN spell object at the same rank. No number changed: Q + Q2 sums to exactly what Q alone summed to before.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "InitialDamage",
+        "count": 1
+      }
+    ]
+  },
+  "Q2": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "SecondHitDamage",
+        "binSpell": "Q",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "InitialDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "SecondaryDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BaseDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageEndCalc",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "_noteE_sweep2": "STAGE-4 AUDIT (loop 439, 2026-07-27): sweep tier-A DamageBonusBase(60->180 at ranks 1-5)/PercentHPDamage(3.5->6.5%) and tier-B SweetSpotDamageMod(1.5) are all the INCREASED/sweet-spot E variant family - the M32 evidence file already records the increased variant (60/90/120/150/180) as a wiki fact explicitly FLAGGED NON-GUARANTEED for curation. BonusDamageCalc (MODIFIES BaseDamageCalc) is that variant; the sweep does not follow MODIFIES chains. Deliberate conservative omission CONFIRMED, no calc changes."
+}

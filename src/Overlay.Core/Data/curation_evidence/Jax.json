@@ -1,0 +1,87 @@
+{
+ "champion": "Jax",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Jax"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Leap Strike",
+   "facts": [
+    {
+     "field": "LeapStrikeDamage",
+     "kind": "ratio",
+     "values": [
+      65,
+      105,
+      145,
+      185,
+      225
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 65 / 105 / 145 / 185 / 225 (+ 100% bonus AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Empower",
+   "facts": [
+    {
+     "field": "EmpowerBonusDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      85,
+      120,
+      155,
+      190
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Additional Magic Damage: 50 / 85 / 120 / 155 / 190 (+ 60% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Counter Strike",
+   "facts": [
+    {
+     "field": "CounterStrikeMaxDamage",
+     "kind": "other",
+     "values": [
+      80,
+      140,
+      200,
+      260,
+      320
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Maximum Magic Damage: 80 / 140 / 200 / 260 / 320 (+ 140% AP) (+ 8% of target's maximum health)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Grandmaster-at-Arms",
+   "facts": [
+    {
+     "field": "GrandmasterActiveDamage",
+     "kind": "ratio",
+     "values": [
+      100,
+      175,
+      250
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 100 / 175 / 250 (+ 100% AP)"
+    }
+   ]
+  }
+ }
+}

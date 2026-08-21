@@ -1,0 +1,27 @@
+<Window x:Class="Overlay.Client.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="Fova"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        WindowState="Normal"
+        ResizeMode="NoResize"
+        d:DesignHeight="1080" d:DesignWidth="1920">
+    <!--
+        In-game overlay shell — skill: frontend-wpf-overlay/SKILL.md
+        Hard Rule #3: this XAML has no I/O, no timers, no data production.
+                      The UI thread renders only.
+
+        The overlay renders exclusively via the M02 HUD system: OverlayHost
+        inserts its M16 RenderSurface into WidgetCanvas (host.Children.Insert(0, _surface))
+        and drives it from UI.* events. The Canvas is intentionally empty here —
+        keep it as the render host. The legacy data widgets were removed.
+    -->
+    <Canvas x:Name="WidgetCanvas" />
+</Window>

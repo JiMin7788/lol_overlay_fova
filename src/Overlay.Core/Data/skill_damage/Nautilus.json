@@ -1,0 +1,46 @@
+{
+  "_note": "Curated. Source: communitydragon/nautilus.bin.json mSpellCalculations, damage TYPES cross-checked vs wiki.leagueoflegends.com/en-us/Nautilus infobox (P is Physical; Q/W/E/R are all Magic -- confirmed live, matches the auto-picker's Q/W/E/R type picks).",
+  "_noteP": "P (Staggering Blow) curated in an earlier session (first real trace). NautilusPassive.mSpellCalculations 'BonusDamage' = a single ByCharLevelFormulaCalculationPart, BIN field 'values' = [8,14,20,...,188], 31 entries, step +6 (index6=44 at level6, index18=134 at level18). 'TotalDamageTooltip' (flagged tooltipOnly:true, same 'tooltip name but is the real formula' shape already established for TahmKench/Leona/Nautilus's own Q-style precedent) adds a second mFormulaPart: StatByCoefficientCalculationPart(mStat=2, no mStatFormula -> TOTAL AD, mCoefficient=1.0), i.e. BonusDamage + 100% total AD. Both parts (ByCharLevelFormula, StatByCoefficient) are fully-supported kinds, so 'TotalDamageTooltip' resolves live end to end via FormulaInterpreter -- used directly (same as Leona's Q/E 'TotalDamageTooltip'). Modeled as a P bonusEffect trigger onHit (Staggering Blow procs on Nautilus's next basic attack against a given target, gated by a per-target 6s cooldown per DataValue 'PerTargetCD' -- the cooldown-gating itself is out of scope, same simplification precedent as every other on-hit P in this file). Type Physical per live tooltip (BIN calc carries no type field; hand-curated per project convention).",
+  "_noteQ": "Dredge Line (NautilusAnchorDragAbility): QDamageCalc = BaseDamage + 0.9*AP (StatByCoefficient, no mStat -> AP by default). Single hit on the grapple pulling the target/self together.",
+  "_noteW": "Titan's Wrath (NautilusPiercingGazeAbility): DotDamageCalc = DotDamageBase + 0.4*AP -- the bonus magic damage pulse dealt on each of the next 3 basic attacks while the shield (ShieldCalc, not damage) is active. Curated as a single representative pulse (count 1); the up-to-3-attacks repetition is on-hit-gated and not modeled as a guaranteed multi-hit (conservative, P2).",
+  "_noteE": "Riptide (NautilusSplashZoneAbility): DamageCalc = DamageBase + 0.5*AP. Single pulse hit; MonsterBonusCalc is a monster-only (jungle-clear) bonus, not applicable to a champion target -- omitted.",
+  "_noteR": "Depth Charge (NautilusGrandLineAbility): PrimaryTargetDamage = PrimaryDamage + 0.8*AP, the direct hit on Nautilus's chosen target. SecondaryTargetDamage (0.4*AP) is dealt to OTHER enemies caught in the wake as the rock travels past the primary target -- not applicable to the primary target itself, omitted.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "TotalDamageTooltip", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "QDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "DotDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "DamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "PrimaryTargetDamage",
+        "count": 1
+      }
+    ]
+  }
+}

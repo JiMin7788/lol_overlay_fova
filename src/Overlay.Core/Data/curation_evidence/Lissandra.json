@@ -1,0 +1,103 @@
+{
+ "champion": "Lissandra",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Lissandra"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Iceborn Subjugation",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      120,
+      520
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deal 120 - 520 (based on level) (+ 50% AP) magic damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Ice Shard",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      80,
+      115,
+      150,
+      185,
+      220
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 115 / 150 / 185 / 220 (+ 75% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Ring of Frost",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 70% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Glacial Path",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 60% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Frozen Tomb",
+   "facts": [
+    {
+     "field": "StunDamage",
+     "kind": "flat",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 75% AP)"
+    }
+   ]
+  }
+ }
+}

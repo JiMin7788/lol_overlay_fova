@@ -1,0 +1,58 @@
+{
+  "_note": "Curated. Source: communitydragon/yunara.bin.json mSpellCalculations, cross-checked against a live wiki.leagueoflegends.com/en-us/Yunara fetch this session (2026-07-10) -- Yunara released 2025-07-16 (V25.14), post-training-data, so ability names/mechanics were confirmed live rather than from memory.",
+  "_noteP": "Vow of the First Lands (passive): P investigated this session (first real trace) and found GENUINELY BLOCKED. YunaraPassive ({171bcf58}) mSpellCalculations has exactly ONE entry, 'Calc_Damage_Amp' = NumberCalculationPart(0.10) + StatByCoefficientCalculationPart(mCoefficient=0.001, no mStat -> AP), mDisplayAsPercent:true -- i.e. 10% + 0.1% per AP, matching the wiki's 'critical strikes deal 10% (+10% per 100 AP) bonus magic damage'. This is a DAMAGE-AMPLIFICATION multiplier applied to Yunara's own crit damage, not a standalone additive hit -- there is no base-damage NamedDataValue/EffectValue anywhere in the object for it to scale, and mSpell has no DataValues array at all. The SkillHit/bonusEffects schema only models ADDITIVE hits; it has no representation for a multiplicative damage-amp modifier applied to another damage source. Correctly left with no P block.",
+  "_noteQ": "Cultivation of Spirit: wiki-confirmed as the passive-attack-stacking / active-burst-window ability (Q). Calc_Passive_Damage = NamedDataValue(Damage_Passive, 0-30) + 0.2 AP -- matches wiki's 'Passive Bonus Magic Damage: 5/10/15/20/25 (+20% AP)' on-hit bonus. Magic. Tagged Stacking: builds 'Unleash' stacks on-attack (cap 8) before the burst window can be cast. GENUINE GAP documented this pass (not fixed): live wiki confirms Q's ACTIVE burst window (cast at 8 Unleash stacks, lasts 5s) ADDS a second identical on-hit magic instance ('Calc_Damage' in the BIN, same formula/values as Calc_Passive_Damage -- combined on-hit total 10/20/30/40/50 (+40% AP) during the window) PLUS a 30% total-AD physical spread hit to nearby enemies ('Calc_Damage_Spread', Spread_AD_Ratio=0.3) not present outside the window. Neither is curated: the always-on baseline (Calc_Passive_Damage) is correct as a permanent on-hit floor, but a real player will frequently be in the doubled+spread active window, which this project's onHit/alwaysOn schema cannot represent as a distinct temporary state without either overstating the baseline (if forced always-on) or needing an unsupported activation-window knob -- left undercounted rather than fabricated, consistent with this project's conditional-window precedent (Twisted Fate W, Warwick's active-only terms).",
+  "_noteW": "Arc of Judgment: wiki-confirmed damage classification is 'Magic' (Sub-type: Magic damage) despite scaling off bonus AD -- FIXED this pass, the prior stub had 'Physical'. Calc_Damage_Initial = NamedDataValue(Damage, 15-255) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 85% bonus AD) + StatByNamedDataValue(APRatio=0.5, mStat omitted -> AP) -- matches wiki's 'Initial Magic Damage: 55/95/135/175/215 (+85% bonus AD)(+50% AP)' exactly.",
+  "_noteR": "Transcend One's Self: a buff ultimate with no damage of its own -- it upgrades W (Arc of Judgment) into 'Arc of Ruin' for its duration. Calc_RW_Damage = NamedDataValue(RW_Damage_Base, 160-960) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 120% bonus AD) + StatByNamedDataValue(RW_APRatio=0.75 AP) -- matches wiki's Arc of Ruin 'deals 160/320/480 (based on R rank) (+120% bonus AD)(+75% AP) magic damage' exactly (the 'RW' calc-name prefix is the BIN's own shorthand for 'R's effect on W'). FIXED damage type to Magic (wiki-confirmed, prior stub had Physical). Curated on the R slot per project convention for R-empowers-basic-ability kits. Tagged BurstCeiling: this is Yunara's single highest realistic burst number by a wide margin.",
+  "_noteQRiders": "Q RESHAPED INTO TWO ON-HIT RIDERS (loop 479, user request: the Q-on-hit passive was missing from the bonus effects, and casting Q doubles it for a while). Both halves were already understood - the prior note called the active window a genuine gap - and both are now expressible without any new mechanism, because this engine already separates an ALWAYS-ON on-hit passive from an EMPOWERED auto that only fires after its ability was cast. (1) Calc_Passive_Damage, wiki 5/10/15/20/25 (+20% AP) magic on-hit, is alwaysOn: it rides every auto whether or not Q was ever pressed. (2) Calc_Damage, the same formula again, is NOT alwaysOn: it rides only autos that follow a Q node, which is the 5-second active window, and the two together give the wikis combined 10/20/30/40/50 (+40% AP). Q no longer carries a direct hit, because the active deals no damage on cast - it grants attack speed and doubles the on-hit. Live wiki fetched 2026-08-21. Calc_Damage_Spread (30% AD physical to nearby enemies at 30% on-hit effectiveness) stays out: this schema models one target.",
+  "Q": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "alwaysOn": true,
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "Calc_Passive_Damage",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "Calc_Damage",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "Stacking"
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Calc_Damage_Initial",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Calc_RW_Damage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  }
+}

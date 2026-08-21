@@ -1,0 +1,45 @@
+{
+  "_note": "Curated (T3.1). P (Petricite Burst): after casting a spell Sylas's next basic attacks deal MAGIC AoE damage (PassiveDamage = 1.3*total AD + 0.3*AP). Curated as a P passive node. Q/W/E kept as the auto first-pass magic picks.",
+  "P": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "PassiveDamage",
+        "count": 1
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Damage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "ExplosionDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MinDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQ": "CORRECTED this pass: Q (Chain Lash) was missing its second, automatic damage instance. BIN SylasQAbility/SylasQ has TWO real calcs -- Damage (initial chain hit, BaseDamage+0.45xAP) and ExplosionDamage (ExplosionBaseDamage+0.8xAP, the chains' intersection detonating 0.6s later). Verified via a live wiki fetch this session (2026-07-20): 'After a 0.6-second delay, the chains' intersection explodes... occurs automatically after a 0.6-second delay without requiring additional player input' -- both hits are guaranteed parts of a single Q cast (same automatic-two-phase pattern as Vel'Koz W and Mel Q, fixed elsewhere this session). Added ExplosionDamage as a second hit alongside the existing initial Damage hit."
+}

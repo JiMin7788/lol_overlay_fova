@@ -1,0 +1,11 @@
+{
+  "_note": "Curated. Source: communitydragon/rakan.bin.json mSpellCalculations, cross-checked vs live wiki.leagueoflegends.com/en-us/Rakan and Template:Data_Rakan/The_Quickness fetches this session (2026-07-10).",
+  "_noteP": "Fey Feathers (RakanPassive) only carries 'TotalShield'/'ShieldCooldown' calcs -- a periodic self-shield on ability use, not damage. P carries no hits.",
+  "_noteQ": "Gleaming Quill: TotalDamage = NamedDataValue(BaseDamage) + StatByNamedDataValue(no mStat field -> AP default per FormulaInterpreter's 'part.Stat ?? 0', mDataValue=DamageAPRatio=0.7) = wiki's 'Magic Damage: 70/115/160/205/250 (+70% AP)' (BaseDamage DataValues rank1-5 = 70/115/160/205/250). The companion self-heal (TotalHeal, a ByCharLevelInterpolation x HealAPRatio) is healing, not damage -- not modeled.",
+  "_noteW": "Grand Entrance: TotalDamage = NamedDataValue(BaseDamage) + StatByCoefficient(no mStat -> AP default, coefficient 0.8) -- BaseDamage DataValues rank1-5 = 70/120/170/220/270, +80% AP, matching Grand Entrance's known magic-damage-plus-knockup burst.",
+  "_noteE": "Battle Dance (dash to an ally + shield, recastable) only carries a 'TotalShield' calc -- pure mobility/shield utility, no damage anywhere in the BIN. E carries no hits.",
+  "_noteR": "The Quickness: dashes through nearby enemies, dealing magic damage and briefly disabling (charming) each enemy champion collided with, extending the ability's duration per champion hit. 'TotalDamageTooltip' = NamedDataValue(BaseDamage) + StatByCoefficient(no mStat -> AP default, coefficient 0.5) = the live rendered tooltip preview 'Magic Damage: 100/200/300 (+50% AP)' exactly (BaseDamage DataValues rank1-3 = 100/200/300; R has only 3 ranks). The calc's own name ends in 'Tooltip' but (same precedent as Amumu Q's tooltipOnly-flagged TotalDamage, and Sett's BonusEnemyMaxHealthDamage-style tooltip calcs elsewhere) this does not block FormulaInterpreter.Evaluate -- confirmed it resolves to the correct number. One collision instance per target (count 1).",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] }
+}

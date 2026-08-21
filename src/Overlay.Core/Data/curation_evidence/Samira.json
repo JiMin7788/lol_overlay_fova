@@ -1,0 +1,87 @@
+{
+ "champion": "Samira",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Samira"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Flair",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "ratio",
+     "values": [
+      0,
+      5,
+      10,
+      15,
+      20
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "0 / 5 / 10 / 15 / 20 (+ 110% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Blade Whirl",
+   "facts": [
+    {
+     "field": "TotalSlashDamage",
+     "kind": "ratio",
+     "values": [
+      40,
+      70,
+      100,
+      130,
+      160
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "40 / 70 / 100 / 130 / 160 (+ 100% bonus AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Wild Rush",
+   "facts": [
+    {
+     "field": "DashDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      60,
+      70,
+      80,
+      90
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "50 / 60 / 70 / 80 / 90 (+ 20% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Inferno Trigger",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "ratio",
+     "values": [
+      200,
+      400,
+      600
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "200 / 400 / 600 (+ 300% AD)"
+    }
+   ]
+  }
+ }
+}

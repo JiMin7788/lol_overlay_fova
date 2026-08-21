@@ -1,0 +1,16 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: shen.bin.json mSpellCalculations (Q=ShenQAbility/ShenQ Twilight Assault, E=ShenEAbility/ShenE Shadow Dash). Cross-checked vs a live wiki.leagueoflegends.com/en-us/Template:Data_Shen/Twilight_Assault fetch and a WebSearch Shadow Dash snippet. Q gains a second hit and both get their real count (3, matching 'next three basic attacks'). E's type corrected Magic->Physical (wiki: Shadow Dash was reworked off magic damage in an earlier patch). P/W/R confirmed genuinely damage-less (pure shield/block/teleport-shield) -- no BIN damage calc exists for any.",
+  "_noteP": "Ki Barrier has zero 'Damage'-named mSpellCalculations -- only shield-value calcs scaling off bonus health. No hits.",
+  "_noteW": "Spirit's Refuge has no DataValues/mSpellCalculations beyond zone timing -- a pure block-zone with zero damage. No hits.",
+  "_noteQ": "Twilight Assault empowers the next 3 basic attacks with PER-ATTACK bonus magic damage. Live wiki disambiguates the per-attack value ('Bonus Magic Damage: 10-40(level)(+2/2.5/3/3.5/4%(+1.5%/100AP) of max health)') from the 3x SUMMED total ('Total Magic Damage: 30-120 ... +6/7.5/9/10.5/12%'), confirming BIN's BaseFlatDamage and BasePercentHealth(=0.01*(BasePercentDamage+0.015*AP), matches 2-4%+1.5%/100AP exactly) are each PER-ATTACK -- curated at count 3, not 1. A conditional 'enhanced' variant only fires if Spirit Blade hits a champion in flight -- not guaranteed, so only the base variant is curated (conservative-baseline precedent). Two hits (flat calc + hpPercentCalc, hpBasis Max), both count 3.",
+  "_noteE": "Shadow Dash: TauntDamage=BaseDamage+BonusHPRatio(0.11 bonus health). WebSearch confirms 'physical damage based on his bonus health' and explicitly that Shadow Dash was reworked OFF magic damage -- type corrected Magic->Physical. One hit.",
+  "_noteR": "Stand United has only shield-value calcs, zero damage. No hits.",
+  "_noteQ_sweep2": "STAGE-4 AUDIT (loop 438, 2026-07-27): sweep tier-A flags QBaseOnHitDamage(10 flat)/QPerLevelOnHitDamage(6 flat) are FALSE POSITIVES - script-side mirrors of the same 10-40 level scaling that the curated BaseFlatDamage calc encodes in its ByCharLevelBreakpoints tree (base 10 + 6-per-breakpoint; wiki 10-40 matches). Tier-B EnhancedPercentDamage(4.5->7.5% +2%/100AP, calc EmpPercentHealth) is REAL: the enhanced Q variant when the blade passes through an enemy - a conditional %maxHP upgrade the current schema cannot express (IsConditional/MetCalc selects flat calcs only, not hpPercentCalc fractions). DISCLOSED-OMITTED, conservative baseline BasePercentHealth kept (P2: base 1.5-4.5% never overstates). QTowerDamageModifier(1.0) is structure-only. Rank mapping re-confirmed: wiki rank1 %=2.0 = BIN index1 (the established index1=rank1 rule). NO CALC CHANGES.",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "BaseFlatDamage", "count": 3 },
+      { "type": "Magic", "hpPercentCalc": "BasePercentHealth", "hpBasis": "Max", "count": 3, "tags": ["PercentMaxHp"] }
+    ]
+  },
+  "E": { "hits": [ { "type": "Physical", "calc": "TauntDamage", "count": 1 } ] }
+}

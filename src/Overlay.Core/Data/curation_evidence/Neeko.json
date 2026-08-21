@@ -1,0 +1,212 @@
+{
+ "champion": "Neeko",
+ "collectedAt": "2026-07-24",
+ "collector": "Claude Code local re-collection (truncation backfill)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Neeko/LoL"
+  },
+  {
+   "id": "wiki-data-e",
+   "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Neeko/Tangle-Barbs"
+  },
+  {
+   "id": "wiki-data-r",
+   "url": "https://wiki.leagueoflegends.com/en-us/Template:Data_Neeko/Pop_Blossom"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Inherent Glamour",
+   "facts": []
+  },
+  "Q": {
+   "name": "Blooming Burst",
+   "facts": [
+    {
+     "field": "InitialBaseDamage",
+     "kind": "flat",
+     "values": [
+      60,
+      110,
+      160,
+      210,
+      260
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 110 / 160 / 210 / 260 (+ 60% AP)"
+    },
+    {
+     "field": "InitialAPRatio",
+     "kind": "ratio",
+     "values": [
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 110 / 160 / 210 / 260 (+ 60% AP)"
+    },
+    {
+     "field": "SubsequentPopBaseDamage",
+     "kind": "flat",
+     "values": [
+      35,
+      60,
+      85,
+      110,
+      135
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "35 / 60 / 85 / 110 / 135 (+ 25% AP)"
+    },
+    {
+     "field": "SubsequentPopAPRatio",
+     "kind": "ratio",
+     "values": [
+      0.25,
+      0.25,
+      0.25,
+      0.25,
+      0.25
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "35 / 60 / 85 / 110 / 135 (+ 25% AP)"
+    },
+    {
+     "field": "MonsterBonusDamage",
+     "kind": "flat",
+     "values": [
+      35,
+      50,
+      65,
+      80,
+      95
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "35 / 50 / 65 / 80 / 95"
+    }
+   ]
+  },
+  "W": {
+   "name": "Shapesplitter",
+   "facts": [
+    {
+     "field": "ThirdAttackBonusDamage",
+     "kind": "flat",
+     "values": [
+      30,
+      65,
+      100,
+      135,
+      170
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Bonus Magic Damage: 30 / 65 / 100 / 135 / 170 (+ 60% AP)"
+    },
+    {
+     "field": "ThirdAttackAPRatio",
+     "kind": "ratio",
+     "values": [
+      0.6,
+      0.6,
+      0.6,
+      0.6,
+      0.6
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Bonus Magic Damage: 30 / 65 / 100 / 135 / 170 (+ 60% AP)"
+    },
+    {
+     "field": "MonsterBonusDamage",
+     "kind": "flat",
+     "values": [
+      75,
+      75,
+      75,
+      75,
+      75
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "This attack deals 75 bonus magic damage against monsters."
+    }
+   ]
+  },
+  "E": {
+   "name": "Tangle-Barbs",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "wiki-data-e",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 65% AP)"
+    },
+    {
+     "field": "APRatio",
+     "kind": "ratio",
+     "values": [
+      0.65,
+      0.65,
+      0.65,
+      0.65,
+      0.65
+     ],
+     "damageType": "Magic",
+     "source": "wiki-data-e",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 65% AP)",
+     "note": "crosscheck MISMATCH is a NAME-COLLISION artifact, not patch drift: the only DataValue named APRatio in the bin belongs to NeekoW (0.60); this ratio lives as mCoefficient inside the slot calc itself (BIN-verified 2026-07-24: NeekoE coeff 0.65, NeekoR coeff 1.20) -> calc-composed, hand to BIN-read curation per M32 section 6."
+    }
+   ]
+  },
+  "R": {
+   "name": "Pop Blossom",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      150,
+      350,
+      550
+     ],
+     "damageType": "Magic",
+     "source": "wiki-data-r",
+     "quote": "150 / 350 / 550 (+ 120% AP)"
+    },
+    {
+     "field": "APRatio",
+     "kind": "ratio",
+     "values": [
+      1.2,
+      1.2,
+      1.2
+     ],
+     "damageType": "Magic",
+     "source": "wiki-data-r",
+     "quote": "150 / 350 / 550 (+ 120% AP)",
+     "note": "crosscheck MISMATCH is a NAME-COLLISION artifact, not patch drift: the only DataValue named APRatio in the bin belongs to NeekoW (0.60); this ratio lives as mCoefficient inside the slot calc itself (BIN-verified 2026-07-24: NeekoE coeff 0.65, NeekoR coeff 1.20) -> calc-composed, hand to BIN-read curation per M32 section 6."
+    }
+   ]
+  }
+ },
+ "note": "Full re-collection after the earlier session captured no slots. P (Inherent Glamour) deals no damage (disguise mechanic only). The main /LoL page truncated before E and R, so those were sourced from the wiki's per-ability data template pages (wiki-data-e, wiki-data-r). Q's listed maximum total damage (130/230/330/430/530, +110% AP) is derived from initial + 2 subsequent pops and was not recorded as a separate fact. R's shield value was not present in the fetched template text; shield is a non-damage component and is omitted."
+}

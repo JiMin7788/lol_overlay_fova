@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "note": "M31 detail-mode camp/objective anchors. Detail mode speaks the NEAREST camp to a sighting, so this is nearest-neighbour point data -- map_regions.json (region grid) drives simple mode instead. Canonical minimap space, same as map_regions.json: (0,0)=top-left, x right, y DOWN; 'ally' = blue side = bottom-left (classify()'s y>x half). Derived from Summoner's Rift world coords (~14870x14980, blue base at origin) via x01=wx/W, y01=1-wy/H. v1 APPROXIMATION -- camp world coords are commonly-cited values, not traced from live client capture, and scuttle spawns are the roughest of the set. Needs a live pass before detail mode is trusted (same caveat map_regions.json carries). detailModeKeepsZone lists zones that stay coarse even in detail mode: lanes hold no camps, so nearest-camp on a bot-lane sighting answers '드래곤', which is worse than the zone name it replaced. Regenerate/validate: tools/validate_jungle_camps.py | 2026-07-20: added laneCorridors so detail mode can answer with a LANE when the position is on one. Previously detail mode searched camps only, so a bot-lane sighting resolved to the nearest CAMP and was announced as 두꺼비. Corridors are polylines derived from Summoner's Rift's fixed geometry (bot runs the bottom then right edge, top the left then top edge, mid the diagonal) -- deliberately NOT per-turret coordinates, which would have to be invented. Lane-level is also as precise as the recorded clip set can express: naming a specific turret would need new audio.",
+  "simpleMode": {
+    "top_lane": "loc_top_lane",
+    "mid_lane": "loc_mid_lane",
+    "bot_lane": "loc_bot_lane",
+    "river_top": "loc_river_top",
+    "river_bottom": "loc_river_bottom",
+    "baron_pit": "loc_river_top",
+    "dragon_pit": "loc_river_bottom",
+    "our_jungle_top": "loc_ally_camp",
+    "our_jungle_bottom": "loc_ally_camp",
+    "enemy_jungle_top": "loc_enemy_camp",
+    "enemy_jungle_bottom": "loc_enemy_camp"
+  },
+  "detailModeKeepsZone": [
+    "top_lane",
+    "mid_lane",
+    "bot_lane"
+  ],
+  "camps": [
+    {
+      "key": "ally_blue",
+      "voice": "loc_ally_blue",
+      "x01": 0.257,
+      "y01": 0.4592
+    },
+    {
+      "key": "ally_gromp",
+      "voice": "loc_ally_gromp",
+      "x01": 0.1455,
+      "y01": 0.4378
+    },
+    {
+      "key": "ally_wolves",
+      "voice": "loc_ally_wolves",
+      "x01": 0.2543,
+      "y01": 0.5718
+    },
+    {
+      "key": "ally_raptors",
+      "voice": "loc_ally_raptors",
+      "x01": 0.4694,
+      "y01": 0.6435
+    },
+    {
+      "key": "ally_red",
+      "voice": "loc_ally_red",
+      "x01": 0.5273,
+      "y01": 0.7307
+    },
+    {
+      "key": "ally_krugs",
+      "voice": "loc_ally_krugs",
+      "x01": 0.5701,
+      "y01": 0.8226
+    },
+    {
+      "key": "enemy_blue",
+      "voice": "loc_enemy_blue",
+      "x01": 0.7386,
+      "y01": 0.5348
+    },
+    {
+      "key": "enemy_gromp",
+      "voice": "loc_enemy_gromp",
+      "x01": 0.8481,
+      "y01": 0.5626
+    },
+    {
+      "key": "enemy_wolves",
+      "voice": "loc_enemy_wolves",
+      "x01": 0.7412,
+      "y01": 0.4233
+    },
+    {
+      "key": "enemy_raptors",
+      "voice": "loc_enemy_raptors",
+      "x01": 0.5262,
+      "y01": 0.3522
+    },
+    {
+      "key": "enemy_red",
+      "voice": "loc_enemy_red",
+      "x01": 0.4796,
+      "y01": 0.2648
+    },
+    {
+      "key": "enemy_krugs",
+      "voice": "loc_enemy_krugs",
+      "x01": 0.4341,
+      "y01": 0.1732
+    },
+    {
+      "key": "baron",
+      "voice": "loc_baron",
+      "x01": 0.3367,
+      "y01": 0.301
+    },
+    {
+      "key": "dragon",
+      "voice": "loc_dragon",
+      "x01": 0.6635,
+      "y01": 0.7053
+    },
+    {
+      "key": "scuttle_top",
+      "voice": "loc_scuttle_top",
+      "x01": 0.3026,
+      "y01": 0.3525
+    },
+    {
+      "key": "scuttle_bottom",
+      "voice": "loc_scuttle_bottom",
+      "x01": 0.6994,
+      "y01": 0.6662
+    }
+  ],
+  "laneCorridors": [
+    {
+      "key": "bot_lane",
+      "voice": "loc_bot_lane",
+      "points": [
+        [
+          0.16,
+          0.9
+        ],
+        [
+          0.55,
+          0.905
+        ],
+        [
+          0.84,
+          0.86
+        ],
+        [
+          0.9,
+          0.55
+        ],
+        [
+          0.905,
+          0.16
+        ]
+      ]
+    },
+    {
+      "key": "top_lane",
+      "voice": "loc_top_lane",
+      "points": [
+        [
+          0.1,
+          0.84
+        ],
+        [
+          0.095,
+          0.45
+        ],
+        [
+          0.14,
+          0.16
+        ],
+        [
+          0.45,
+          0.1
+        ],
+        [
+          0.84,
+          0.095
+        ]
+      ]
+    },
+    {
+      "key": "mid_lane",
+      "voice": "loc_mid_lane",
+      "points": [
+        [
+          0.2,
+          0.8
+        ],
+        [
+          0.35,
+          0.65
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.65,
+          0.35
+        ],
+        [
+          0.8,
+          0.2
+        ]
+      ]
+    }
+  ]
+}

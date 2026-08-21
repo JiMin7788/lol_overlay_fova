@@ -1,0 +1,51 @@
+{
+  "_note": "Hand-curated (loop 39). All BIN mSpellCalculations cross-verified against a live wiki.leagueoflegends.com/en-us/Viktor fetch (2026-07-10). NOTE: a recent patch renamed E 'Death Ray' -> 'Hextech Ray' and R 'Chaos Storm' -> 'Arcane Storm' (BIN script/calc names -- ViktorE, ViktorR, LaserDamage, InitialBurstDamage, etc. -- are unchanged, only the in-game display names moved); this file's _note text uses the current live names. P (Glorious Evolution) is a pure passive stack-and-augment system (Hex Fragments -> pick an ability augment at 100 stacks) with NO mSpellCalculations of its own in the BIN (null) and no direct damage in the wiki tooltip -- it only conditionally modifies Q/E/R's OWN calcs once the player picks an augment, which this engine has no live way to know was picked (BuffCounter/stack-tracking-style mechanic, explicitly out of scope per the infeasible-mechanics list) -- omitted entirely (no P key). W (Gravity Field) is a pure CC zone (slow + 5-stack knockdown/stun) with NO mSpellCalculations at all (null) and no damage anywhere in its BIN DataValues or the wiki tooltip -- omitted entirely (no W key), a genuine no-damage skill, not the Death Ray gap the module doc's stale first-pass guess assumed. Removed the top-level auto flag: every slot below is hand-verified against both BIN and wiki.",
+  "_noteQ": "Siphon Power. Direct hit: TotalMissileDamage = MissileDamage[rank] + MissileAPRatio(0.4)*AP -- matches wiki 'Magic Damage: 60/75/90/105/120 (+40% AP)' exactly. The cast ALSO grants Viktor 'Discharge': his next basic attack becomes a magic-damage-converted, non-projectile empowered hit -- curated as an onHit bonusEffect using BIN AttackTotalDMG = AABonusDamage[rank] + HitAPRatio(0.5)*AP + StatByCoefficient(mStat=2,mCoefficient=1)*totalAD, which matches the wiki's 'Modified Magic Damage: 20/45/70/95/120 (+100% AD) (+50% AP)' (the full replacement damage of that empowered auto, not an add-on) exactly. The wiki's separate 'Total Magic Damage: 80/120/160/200/240 (+100% AD)(+90% AP)' line is just device+Discharge SUMMED for display (60+20=80, 40%+50%=90% AP) and is not curated as a third number -- it would double count the two hits already curated.",
+  "_noteE": "Hextech Ray. LaserDamage = BaseDamageLaser[rank] + LaserAPRatio(0.5)*AP -- matches wiki 'Magic Damage: 70/110/150/190/230 (+50% AP)' exactly. BIN also defines AftershockDamage (a delayed explosion along the beam's path) but per the live wiki this is ONLY available via the optional Glorious Evolution 'Augment: Aftershock' pick (P's 100-Hex-Fragment augment system) -- not baseline E behavior, and this engine has no live signal for which augment (if any) a player chose, so AftershockDamage is deliberately left uncurated rather than assumed-always-active (P2: no inference beyond what's actually guaranteed to happen).",
+  "_noteR": "Arcane Storm. InitialBurstDamage = InitialBurstBaseDamage[rank] + InitialBurstAPRatio(0.5)*AP -- matches wiki 'Magic Damage: 100/175/250 (+50% AP)' at ranks 1-3. The singularity then remains for 6.5s, striking every 1s for up to MaxTicks=6 ticks: SubsequentBurstDamage = SubsequentBurstBaseDamage[rank] + SubsequentBurstAPRaio(0.35)*AP, matching wiki 'Magic Damage Per Tick: 65/105/145 (+35% AP)' exactly -- and Initial + 6xSubsequent reproduces the wiki's own 'Total Magic Damage: 490/805/1120 (+260% AP)' line precisely at all 3 ranks (e.g. rank1: 100 + 6x65 = 490), confirming 6 ticks is correct and not a guess. Curated as TWO hits (count 1 + count 6), assuming the full duration lands on one target -- the same 'assume full landed duration' convention as Darius E (count 7) and Garen E (count 7) elsewhere in this file set; a target who walks out of the moving storm early would take less than this in reality (tagged Zone on the tick hit for that reason). Tagged BurstCeiling at the slot level: Arcane Storm is Viktor's single highest realistic burst-damage contribution (his ultimate, up to ~1120 + 260% AP magic against one target who stays in the singularity).",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalMissileDamage",
+        "count": 1
+      }
+    ],
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "AttackTotalDMG",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "_noteE": "E AFTERSHOCK TOGGLE (loop 479, user request - and the user is right that E is the ONLY evolution that raises damage). Live wiki (wiki.leagueoflegends.com/en-us/Viktor, fetched 2026-08-21): Q Turbocharge grows the shield, W Magnetize adds a slow, R Perfect Storm grows size and duration - none touch damage. E Aftershock makes the beam path explode a second later for 20/50/80/110/140 (+80% AP) on top of the 70/110/150/190/230 (+50% AP) beam, giving the wiki total of 90/160/230/300/370 (+130% AP). The BIN already had AftershockDamage sitting uncurated next to LaserDamage. Added as a second hit behind the new Upgraded condition with no calc of its own, because an unupgraded E does not explode at all. Upgraded is UserAssumed - no API reports which augments were taken - so the floor is the plain beam and the checkbox raises it.",
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "LaserDamage", "count": 1 },
+      { "type": "Magic", "conditionType": "Upgraded", "metCalc": "AftershockDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "InitialBurstDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "SubsequentBurstDamage",
+        "count": 6,
+        "tags": ["Zone"]
+      }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  },
+  "_noteE_sweep2": "STAGE-4 AUDIT (loop 441, 2026-07-27), NO calc changes: tier-B BaseDamageAftershock(-10..170, calc AftershockDamage) is the AFTERSHOCK second explosion, which live requires the E AUGMENT - augment state is not visible in the Live Client API, so the base LaserDamage stays the conservative floor. Q TurretDamageMod(1.0) structure-only."
+}

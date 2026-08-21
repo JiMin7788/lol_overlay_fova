@@ -1,0 +1,49 @@
+{
+  "_note": "Curated. Source: communitydragon/zeri.bin.json mSpellCalculations this pass (2026-07-10). MAJOR CORRECTION (loop 221): re-verified directly against the current SkillDamage.cs source -- mStat ids 8 (crit chance) and 9 (crit damage) ARE mapped by BuildStatResolver, both to a documented 0.0 'model as no crit' floor (the \u00a726 fix, StatCritChance=>0.0/StatCritDamage=>0.0). They do NOT throw/block. E's prior 'GENUINELY BLOCKED' verdict was wrong and is fixed; see _noteE.",
+  "_noteQ": "Burst Fire (basic-attack replacement): FIXED this pass -- the prior stub used 'MinDamage' (an unrelated ByCharLevelInterpolation fallback formula, not Q's real per-shot damage). The correct calc is 'ActiveDamageThatCanCrit' = NamedDataValue(BaseDamage, 18-42) + StatByNamedDataValue(mStat=2 total AD, ActiveADRatio~1.0-1.12) -- Q's real per-shot number (crit multiplier itself is applied elsewhere in the engine, not modeled here). Physical, matching Q's basic-attack-like classification (can crit).",
+  "_noteW": "Ultrashock Laser: TotalDamage = NamedDataValue(Damage, -10 to 230) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 120% bonus AD) + StatByNamedDataValue(APRatio=0.5 AP). Magic (Zeri's non-Q ability damage is magic type despite AD scaling, a known kit quirk). 'WallDamage' (a wall-bounce bonus) references mStat=9 (unsupported) and is skipped.",
+  "_noteE": "Spark Surge CORRECTED (loop 221). BonusDamageTotal = NamedDataValue(BonusDamageBase, real ranks 22/24/26/28/30) + StatByNamedDataValue(no mStat -> AP default, BonusAPRatio=0.2), wrapped in mMultiplier 1+ProductOfSubParts[StatByNamedDataValue(mStat=8), SumOfSubParts[StatByCoefficient(mStat=9),-1]]. Both mStat 8/9 resolve to 0.0 in the current engine (\u00a726 no-crit floor, verified directly in SkillDamage.cs), so the multiplier is always 1 and BonusDamageTotal cleanly resolves. Matches wiki 'Bonus Magic Damage: 22/24/26/28/30 (+20% AP)' exactly (Magic, on the first target struck by the empowered Burst Fire during Spark Surge). Curated as a direct hit (not a bonusEffect) since it's tied to E's own cast window, count 1.",
+  "_noteR": "Lightning Crash: FIXED this pass -- the prior stub used 'TotalBonusDamage' (a smaller secondary on-hit bonus after the nova, BonusMagicDamage 0-30 + 0.15 AP). The real ultimate burst is 'TotalActiveDamage' = NamedDataValue(ActiveDamage, 50-650) + StatByCoefficient(1.1 AP) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 60% bonus AD) -- the center-of-nova hit. Magic. A third calc, ChainPhysicalDamage (0.4x total AD, no base), is the lightning-chain damage to OTHER nearby enemies, out of scope for this single-primary-target combo model. Tagged BurstCeiling as Zeri's clearly largest single hit.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "ActiveDamageThatCanCrit",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalActiveDamage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BonusDamageTotal",
+        "count": 1
+      }
+    ]
+  },
+  "_noteP": "P (Living Battery) investigated (loop 357) -- genuinely NOT curatable as a simple hit, documented rather than force-fit. Wiki: charge builds via movement+Q casts (max 100); UNCHARGED attacks apply magic on-hit damage AND can flat-HP-execute targets below a threshold (BIN PassiveExecuteThreshold = ByCharLevelInterpolation(70->160) + 0.2 AP, stored oddly inside ZeriQAbility/ZeriQ, not the passive spell object); at MAX charge the next attack instead deals %maxHP magic damage (BIN PassiveMaxDamage = ByCharLevelInterpolation(75->160) + 1.1 AP, PassiveMaxChargePercentHealth = 0.01->0.11 fraction of max HP) with NO execute-threshold gate. This is a genuine two-state conditional (uncharged-with-flat-execute vs max-charge-with-%HP, mutually exclusive, gated on a charge meter this pipeline does not track live) plus an execute mechanic (kills outright below a threshold rather than dealing finite damage) that this schema has no representation for. No P block added -- same honest-gap class as Draven R falloff / Sona Melody / Vayne W DamageFloor. ZeriPassiveAbility itself only carries PassiveAttackSpeed (an AS steroid, unrelated to the above).",
+  "_noteSweep2": "STAGE-4 AUDIT (loop 439, 2026-07-27), three sweep flags adjudicated, NO calc changes: (1) Q ActivePercentDamageToTowers(1.0) - structure-only modifier, out of scope. (2) E PenDamagePercent(75->105%) - the wall-pierce/penetration multiplier for targets BEYOND the first (multi-target attenuation; this schema models single-target damage). (3) R BonusMagicDamage: BIN says overcharge hits gain 5/10/15 (+0.15AP) at R ranks, but the live wiki says 22-30 (+20% AP) - BIN and wiki CONFLICT, so per M26 the rider stays uncurated; RE-CHECK on the next cdragon snapshot refresh (RESOLVED (loop 447, 2026-07-28 drift audit): a FRESH cdragon fetch returned the IDENTICAL BonusMagicDamage [0,5,10,15,20,25,30] - the snapshot is NOT stale, so the BIN genuinely says 5/10/15 (+0.15AP) at R ranks while the wiki lists 22-30 (+20%AP, a 5-value = per-level/Q-rank pattern, NOT the 3-rank R scaling). The two describe different indexings of the overcharge rider; the conservative uncurated stance stands (the rider is a live-buff-state overcharge effect anyway). R chain lightning (ChainADRatio) is multi-target, out of scope."
+}

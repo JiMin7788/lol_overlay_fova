@@ -1,0 +1,87 @@
+{
+ "champion": "Vex",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Vex"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Mistral Bolt",
+   "facts": [
+    {
+     "field": "BoltDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      115,
+      160,
+      205,
+      250
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 115 / 160 / 205 / 250 (+ 70% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Personal Space",
+   "facts": [
+    {
+     "field": "PulseDamage",
+     "kind": "ratio",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 30% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Looming Darkness",
+   "facts": [
+    {
+     "field": "BindDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      70,
+      90,
+      110,
+      130
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "50 / 70 / 90 / 110 / 130 (+ 40 / 45 / 50 / 55 / 60% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Shadow Surge",
+   "facts": [
+    {
+     "field": "RecastDamage",
+     "kind": "ratio",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 50% AP)"
+    }
+   ]
+  }
+ }
+}

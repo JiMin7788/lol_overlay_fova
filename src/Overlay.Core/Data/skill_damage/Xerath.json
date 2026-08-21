@@ -1,0 +1,15 @@
+{
+  "_noteWSweetSpot": "W EPICENTRE TOGGLE (loop 483, user request). Eye of Destruction has a 125-unit inner circle inside its 275-unit area that deals 66.7% more, which the BIN carries as SweetSpotTotalDamage = TotalDamage x SweetSpotMultiplier (1.667) and the live wiki (wiki.leagueoflegends.com/en-us/Xerath, fetched 2026-08-21) confirms as 50/85/120/155/190 (+65% AP) outer against 83.35/141.7/200/258.4/316.7 (+108.4% AP) centre. Curated through the new SweetSpot condition, default unmet so the outer number stays the floor.",
+  "_note": "Curated. Source: communitydragon/xerath.bin.json mSpellCalculations this pass (2026-07-10). Original stub only had W/R -- Q/E were entirely missing and are added here.",
+  "_noteQ": "Arcanopulse: TooltipTotalDamage = NamedDataValue(BaseDamage, 35-275) + StatByCoefficient(0.9 AP, mStat omitted -> AP default). Magic.",
+  "_noteW": "Eye of Destruction: TotalDamage = BaseDamage(15-225) + 0.65 AP -- the guaranteed edge-of-blast number. SweetSpotTotalDamage = TotalDamage x 1.667 (the center-of-blast sweet spot) exists but is conditional on precise positioning, so the guaranteed TotalDamage is curated rather than assuming the sweet spot every cast.",
+  "_noteE": "Mage Spear: TooltipTotalDamage = NamedDataValue(BaseDamage, 40-220) + StatByCoefficient(0.45 AP). Magic, knockback/stun.",
+  "_noteR": "Rite of the Arcane: TooltipTotalDamage = BaseDamage(120-420) + 0.45 AP per landed shot, curated as ONE hit (count 1). A second calc, RampDamageCalc (RampBaseDamage 15-45 + 0.05 AP), adds an escalating bonus per CONSECUTIVE shot landed on the same target, and NumberOfShots (3-9) is rank-dependent -- neither is modeled here since the curated schema's castCount is a single static int and can't express a rank-varying shot count without overstating low ranks or understating high ranks; a conservative single-shot floor is used instead. Tagged BurstCeiling: focus-firing several ramping shots on one target during the ult's duration is Xerath's single highest realistic burst.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "conditionType": "SweetSpot", "metCalc": "SweetSpotTotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ] },
+  "R": {
+    "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

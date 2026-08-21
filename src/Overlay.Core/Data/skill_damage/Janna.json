@@ -1,0 +1,30 @@
+{
+  "_note": "Curated (loop 39). 'auto' flag removed: P/Q/W are hand-verified against janna.bin.json + wiki.leagueoflegends.com/en-us/Janna, and E/R are confirmed genuinely damage-less (see per-slot notes) rather than unresolved.",
+  "_noteP": "P (Tailwind): TailwindSelf.BonusDamage (Characters/Janna/Spells/TailwindSelfAbility/TailwindSelf in janna.bin.json) = StatByNamedDataValueCalculationPart(mStat=7, mStatFormula=2, mDataValue=MSBonusMagicDamage=0.30). mStat=7 is confirmed here as Movement Speed (mStatFormula=2 = bonus, same marker AD/Armor/MR already use) -- matches the live tooltip 'deals bonus magic damage equal to 30% of her bonus movement speed' (wiki.leagueoflegends.com/en-us/Janna, Tailwind). Resolved by SkillDamage.BuildStatResolver's new id-7 mapping to ActivePlayerStats.MoveSpeed minus ChampionBaseStats.Ms. Modeled as a P bonusEffect trigger onHit (same on-next-attack-proc pattern as Leona's Sunlight). Unchanged loop 39.",
+  "_noteQ": "Q (Howling Gale) charges 0-3s; the prior auto-pick (MinimumDamage = NamedDataValue(MinDamage 20->230)+StatByNamedDataValue(AP ratio MinimumRatio=0.5), i.e. the instant no-charge release) was the FLOOR value, not the representative number. HowlingGaleAbility/HowlingGale also exposes MaxDamage = MinimumDamage-equivalent + ProductOfSubParts(NamedDataValue(MaxDuration=3) x SumOfSubParts(NamedDataValue(BonusDamage 5->35)+StatByNamedDataValue(AP ratio BonusRatio=0.1))) -- both ProductOfSubParts and SumOfSubParts are supported CalculationPart kinds per this engine, so it resolves cleanly. Wiki confirms: base 55/90/125/160/195 (+50%AP) + 10/15/20/25/30 (+10%AP) per extra second charged, fully charged at 3s -- matches MaxDamage exactly. Switched to MaxDamage (fully-charged release), matching this project's established convention for charge-scaling spells (see Nunu.json W/R using Maximum* calcs over floor values). Magic damage confirmed via wiki.",
+  "_noteW": "W (Zephyr): TotalDamage = NamedDataValue(BaseDamage 25->205) + StatByNamedDataValue(APRatio=0.5). Magic, matches wiki (55/85/115/145/175 +50%AP) exactly. Unchanged, verified correct. Note: wiki also states Zephyr itself procs the Tailwind onHit bonus (already modeled separately under P's bonusEffect) -- not duplicated here to avoid double-counting.",
+  "_noteE": "E (Eye of the Storm): EyeOfTheStormAbility/EyeOfTheStorm's only calcs are TotalShield and TotalAD (a shield + bonus-AD buff, spellTags = ['PositiveEffect_Boon','Trait_Shield'], no Trait_DamageAbility). Confirmed genuinely no direct damage. Slot correctly absent.",
+  "_noteR": "R (Monsoon): ReapTheWhirlwindAbility/ReapTheWhirlwind's only calcs are HealPerSecond and TotalHeal (heal + knockback CC, spellTags include Trait_ActiveHeal, no Trait_DamageAbility). Confirmed genuinely no direct damage. Slot correctly absent.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "BonusDamage", "count": 1 } ] } ] },
+  "Q": {
+    "tags": ["BurstCeiling"],
+    "_tagNote": "BurstCeiling: fully-charged Howling Gale (MaxDamage, up to 195+90 base +60%AP total) is the single largest number in Janna's modeled kit.",
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MaxDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": { "tags": ["AoeUltimate"] }
+}

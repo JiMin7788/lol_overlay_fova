@@ -1,0 +1,9 @@
+{
+  "_note": "Curated (loop 39). Source: communitydragon/tryndamere.bin.json mSpellCalculations, cross-checked vs a live wiki.leagueoflegends.com/en-us/Tryndamere fetch (2026-07-10). Slot mapping confirmed via spellNames: Q=TryndamereQAbility/TryndamereQ (Bloodlust), W=TryndamereWAbility/TryndamereW (Mocking Shout), E=TryndamereEAbility/TryndamereE (Spinning Slash), R=UndyingRageAbility/UndyingRage (Undying Rage), P=TryndamerePassiveAbility/TryndamerePassive (Battle Fury).",
+  "_noteP": "Battle Fury: wiki confirms pure passive (crit-chance-to-bonus-AD conversion + bonus gold on Fury cap), no damage. BIN's only calcs are a tooltip-display Number(0.5) and a hashed conversion-ratio calc, neither is a damage formula. Correctly no damage -- omitted.",
+  "_noteQ": "Bloodlust: wiki confirms pure self-heal + bonus AD (both scaling with missing health/Fury), no damage dealt. BIN calcs (BaseHeal/HealPerFury/MaximumHeal) are all healing formulas. Correctly no damage -- omitted.",
+  "_noteW": "Mocking Shout: wiki confirms pure AD-reduction debuff + slow, no damage. BIN has no damage calc, only ADReduction/SlowPotency DataValues. Correctly no damage -- omitted.",
+  "_noteE": "Spinning Slash: TotalDamage = Damage (DataValue, 40/80/120/160/200/240/280) + bonus AD * ADRatio (mStat 2, mStatFormula 2 = BONUS AD, ratio 1.0) + AP * APRatio (0.8). Wiki: 'Physical Damage: 80/120/160/200/240 (+100% bonus AD) (+80% AP)' -- matches exactly. Whole hit is Physical (Riot's own sub-type classification) despite the AP term.",
+  "_noteR": "Undying Rage: wiki confirms pure survive-at-1hp buff (Fury gain + brief near-unkillable state), no damage. BIN's own BotData damage calc key is an empty GameCalculation (no formula parts). Correctly no damage -- omitted.",
+  "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] }
+}

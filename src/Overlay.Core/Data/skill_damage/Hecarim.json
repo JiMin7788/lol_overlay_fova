@@ -1,0 +1,32 @@
+{
+  "_note": "Loop 39: Q/W/R curated + verified against hecarim.bin.json + wiki.leagueoflegends.com/en-us/Hecarim. Loop 51 (Cowork, user decision): E (Devastating Charge) NOW curated using the FULL-CHARGE MaxDamage calc -- 'auto' flag dropped. All damaging slots (Q/W/E/R) curated; P is a pure stat grant (see _noteP). See _noteE for the full-charge assumption.",
+  "_noteP": "P (HecarimPassive) has NO schema slot, confirmed again this loop. HecarimPassive.mSpellCalculations 'BonusAD' = StatBySubPartCalculationPart(mStat=7 bonus MoveSpeed) x ByCharLevelBreakpointsCalculationPart(0.12 base +0.02 every 3 levels) -- a pure stat GRANT (bonus AD equal to a % of Hecarim's bonus move speed), not a damage hit. Matches prior loop's finding; there is no 'grants stat' hit type in this schema (only damage hits/bonusEffects), so this stays uncurated/omitted.",
+  "Q": {
+    "tags": ["Stacking"],
+    "hits": [
+      { "type": "Physical", "calc": "Damage", "count": 1 }
+    ]
+  },
+  "_noteQ": "Q (Rampage) base hit curated: HecarimRapidSlash.mSpellCalculations 'Damage' = BaseDamage(30-210) + StatByNamedDataValue(bonus AD x0.9), matches wiki base tooltip shape (small ratio drift vs an older wiki snapshot is expected patch drift -- resolved live from the BIN, not a concern). NOT curated as a separate hit: 'RampageBonusDamagePerc' (RampageBonusRatio DataValue=3.0 + 0.03xbonusAD coefficient) -- this is a PERCENT damage-amplification modifier gained per consecutive Rampage stack (max 3 stacks per DataValue 'MaxStacks'), i.e. a live stack count this combo-damage model has no way to read, same category as Gwen's Snippy-stack omission. 'MinionDamage' is a tooltip-only x0.6 modifier for minion targets, not a champion-facing hit. Tagged 'Stacking' since the ability's real damage builds up over repeated casts.",
+  "W": {
+    "tags": ["Zone"],
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  },
+  "_noteW": "W (Spirit of Dread) curated using the BIN's own pre-named aggregate. HecarimW.mSpellCalculations 'TotalDamage' = Damage(DataValue, per-rank) + StatByNamedDataValue(APRatio) -- a plain, fully-supported GameCalculation. Wiki confirms the mechanic: 'Hecarim surrounds himself with the Spirit of Dread for 4 seconds, dealing magic damage every second to nearby enemies' (wiki's own damage-classification table tags it 'AOE DOT damage'/Magic), with a separate 'Total Magic Damage' tooltip line that is what 'TotalDamage' represents (full-duration tick sum) -- curated as ONE hit (count 1) using that aggregate, the same full-duration-assumed convention already used for AoE DoT champions elsewhere in this codebase (no perSecondHpPercent/maxDurationSeconds partial-duration mechanism applies -- that field is %HP-only per SkillHit's doc comment, and this is a flat, non-%HP DoT). Tagged 'Zone' since it is a persistent AoE the target can walk away from Hecarim to reduce real exposure -- honestly flagged here as an assumption of full duration landed.",
+  "E": {
+    "hits": [
+      { "type": "Physical", "calc": "MaxDamage", "minCalc": "MinDamage", "maxCalc": "MaxDamage", "count": 1 }
+    ]
+  },
+  "_noteE": "E (Devastating Charge) — M24 P3 DistanceScaled (loop 92, Claude Code). calc=MaxDamage (full charge) is UNCHANGED as the resolved default (UserDistanceFraction unset -> max, so the displayed number is identical to the loop-51 full-charge curation = value identity, zero regression); minCalc=MinDamage adds the min-charge floor so the uncertainty RANGE spans [MinDamage, MaxDamage] (RangeMin..RangeMax), and a per-node 거리 knob (0-1) interpolates. Per the BIN, MaxDamage = GameCalculationModified(MinDamage x2.0), so the min charge is exactly half the full-charge number. Supersedes the loop-51 fixed-CEILING assumption below with an honest [min,max] range. Loop 51 note kept for history:  curated at FULL CHARGE (loop 51, Cowork, explicit user decision). HecarimRamp.mSpellCalculations: 'MinDamage' (tooltipOnly:true) = MinBaseDamage(15-105) + StatByNamedDataValue(bonus AD x0.5); 'MaxDamage' = GameCalculationModified referencing MinDamage x2.0 (effectively MaxBaseDamage=30-210, bonus AD x1.0), confirmed via wiki 'Minimum Physical Damage: 60/90/120/150/180(+100% bonus AD)' Max-damage line. The BIN defines 'DistanceToMaxDamage'=1200(units): the real empowered-attack bonus interpolates Min->Max by how far Hecarim charged (0-1200 units) before landing -- a LIVE, player-controlled distance with NO calc-level interpolation in the BIN (engine/script-side at runtime) and no 'distance traveled' resolver in FormulaInterpreter. Loop 39 left this uncurated to avoid forcing an arbitrary bound; loop 51 the user chose the MaxDamage (full-charge) bound. This is a documented CEILING assumption -- like this file's W 'Zone' full-duration assumption -- and can OVERSTATE E's damage when Hecarim did not charge the full 1200 units. (No tag: R remains the single BurstCeiling slot.) If a future 'distance traveled' input is added, replace this with the interpolated value.",
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "DamageDone", "count": 1 }
+    ]
+  },
+  "_noteR": "R (Onslaught of Shadows) curated: HecarimUlt.mSpellCalculations 'DamageDone' = BaseDamage + StatByNamedDataValue(APRatio), matches wiki '150/250/350(+100% AP)' single-instance magic damage from the charging spectral riders; fear/slow durations scale with distance traveled but that only affects CC duration, not the damage number itself (unlike E, the damage here is a flat per-rank+AP value, not distance-interpolated). Tagged 'BurstCeiling' (only slot tagged) as Hecarim's single highest realistic burst-damage contribution.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W DamageLeechPerc(25) is a HEALING ratio (leech off damage dealt), not a damage instance. Benign."
+}

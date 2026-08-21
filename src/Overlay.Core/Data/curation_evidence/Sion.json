@@ -1,0 +1,89 @@
+{
+ "champion": "Sion",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Sion"
+  },
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Sion.json"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Glory in Death",
+   "facts": [
+    {
+     "field": "GloryInDeathDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.1
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Deals bonus physical damage on-hit equal to 10% of the target's maximum health"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Decimating Smash",
+   "facts": [
+    {
+     "field": "DecimatingSmashMaxDamage",
+     "kind": "ratio",
+     "values": [
+      90,
+      155,
+      220,
+      285,
+      350
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Maximum: 90 / 155 / 220 / 285 / 350 (+ 120 / 150 / 180 / 210 / 240% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Soul Furnace",
+   "facts": [
+    {
+     "field": "SoulFurnaceRecastDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.08,
+      0.1,
+      0.12,
+      0.14,
+      0.16
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 8/10/12/14/16"
+    }
+   ]
+  },
+  "E": {
+   "name": "Roar of the Slayer",
+   "facts": [
+    {
+     "field": "RoarOfTheSlayerDamage",
+     "kind": "flat",
+     "values": [
+      65,
+      100,
+      135,
+      170,
+      205
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 65/100/135/170/205"
+    }
+   ]
+  }
+ }
+}

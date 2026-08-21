@@ -1,0 +1,163 @@
+{
+ "champion": "Mordekaiser",
+ "collectedAt": "2026-07-24",
+ "collector": "Claude Code local re-collection (Cowork 403 backfill)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Mordekaiser/LoL"
+  },
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Mordekaiser.json"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Darkness Rise",
+   "facts": [
+    {
+     "field": "AuraBaseDamagePerSecond",
+     "kind": "flat",
+     "values": [5],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deals 5 (+ 30% AP) (+ 1% - 5% (based on level) of target's maximum health) magic damage every second"
+    },
+    {
+     "field": "AuraAPRatioPerSecond",
+     "kind": "ratio",
+     "values": [0.30],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deals 5 (+ 30% AP) (+ 1% - 5% (based on level) of target's maximum health) magic damage every second"
+    },
+    {
+     "field": "AuraPercentMaxHPPerSecondByLevel",
+     "kind": "percentMaxHP",
+     "values": [0.01, 0.05],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deals 5 (+ 30% AP) (+ 1% - 5% (based on level) of target's maximum health) magic damage every second"
+    },
+    {
+     "field": "AuraMonsterCap",
+     "kind": "other",
+     "values": null,
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Against monsters, the damage is capped at 40 - 200 (based on level) per second."
+    },
+    {
+     "field": "OnHitAPRatio",
+     "kind": "ratio",
+     "values": [0.40],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Mordekaiser's basic attacks are empowered to deal 40% AP bonus magic damage on-hit."
+    }
+   ]
+  },
+  "Q": {
+   "name": "Obliterate",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [80, 115, 150, 185, 220],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 0 - 55 (based on level) (+ 80 / 115 / 150 / 185 / 220) (+ 120% bonus AD) (+ 70% AP)"
+    },
+    {
+     "field": "BaseDamageByLevel",
+     "kind": "other",
+     "values": [0, 55],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 0 - 55 (based on level) (+ 80 / 115 / 150 / 185 / 220) (+ 120% bonus AD) (+ 70% AP)"
+    },
+    {
+     "field": "BonusADRatio",
+     "kind": "ratio",
+     "values": [1.20],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 0 - 55 (based on level) (+ 80 / 115 / 150 / 185 / 220) (+ 120% bonus AD) (+ 70% AP)"
+    },
+    {
+     "field": "APRatio",
+     "kind": "ratio",
+     "values": [0.70],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 0 - 55 (based on level) (+ 80 / 115 / 150 / 185 / 220) (+ 120% bonus AD) (+ 70% AP)"
+    },
+    {
+     "field": "IsolatedDamageIncrease",
+     "kind": "other",
+     "values": [0.30, 0.35, 0.40, 0.45, 0.50],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Isolated Damage Increase: 30 / 35 / 40 / 45 / 50%"
+    }
+   ]
+  },
+  "W": {
+   "name": "Indestructible",
+   "facts": [
+    {
+     "field": "NoDamageShieldHealOnly",
+     "kind": "other",
+     "values": null,
+     "damageType": null,
+     "source": "wiki",
+     "quote": "Shield to Healing: 35 / 37.5 / 40 / 42.5 / 45%"
+    }
+   ]
+  },
+  "E": {
+   "name": "Death's Grasp",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [60, 80, 100, 120, 140],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 60 / 80 / 100 / 120 / 140 (+ 45% AP)"
+    },
+    {
+     "field": "APRatio",
+     "kind": "ratio",
+     "values": [0.45],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 60 / 80 / 100 / 120 / 140 (+ 45% AP)"
+    },
+    {
+     "field": "PassiveMagicPenetration",
+     "kind": "other",
+     "values": [0.05, 0.075, 0.10, 0.125, 0.15],
+     "damageType": null,
+     "source": "wiki",
+     "quote": "Magic Penetration: 5 / 7.5 / 10 / 12.5 / 15%"
+    }
+   ]
+  },
+  "R": {
+   "name": "Realm of Death",
+   "facts": [
+    {
+     "field": "NoDirectDamageStatSteal",
+     "kind": "other",
+     "values": null,
+     "damageType": null,
+     "source": "wiki",
+     "quote": "Mordekaiser also consumes the target's soul for 7 seconds, healing himself for 13% of their maximum health and reducing their current ability power, total attack speed, maximum health, armor, magic resistance, and size by 13% for the duration."
+    }
+   ]
+  }
+ },
+ "note": "All 5 slots captured from live wiki fetch. Q 'Magic Damage' line has two base components: a per-rank array (80-220) and a 0-55 level-scaling term (recorded separately, kind other because it is level-based not rank-based); Q line re-verified with a second character-for-character fetch (identical). P aura %maxHP term is a level-based 1%-5% range, not per-rank. W deals no damage (shield/heal only). R deals no direct damage (13% max-HP heal + 13% stat steal); its damage impact is indirect."
+}

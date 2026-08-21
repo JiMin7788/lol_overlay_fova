@@ -1,0 +1,87 @@
+{
+ "champion": "Galio",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Galio"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Winds of War",
+   "facts": [
+    {
+     "field": "InitialDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 70% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Shield of Durand",
+   "facts": [
+    {
+     "field": "RecastMaxDamage",
+     "kind": "ratio",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 90 / 120 / 150 / 180 (+ 90% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Justice Punch",
+   "facts": [
+    {
+     "field": "ChampionDamage",
+     "kind": "ratio",
+     "values": [
+      100,
+      135,
+      170,
+      205,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "100 / 135 / 170 / 205 / 240 (+ 100% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Hero's Entrance",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 70% AP) (+ 100% bonus magic resistance)"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,28 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: akali.bin.json mSpellCalculations (Q=AkaliQAbility/AkaliQ, E=AkaliEAbility/AkaliE, R=AkaliRAbility/AkaliR), cross-checked vs live wiki.leagueoflegends.com/en-us/Akali. P kept as-is. Q/E type fixed Physical->Magic. E gains 2nd dash hit, R gains recast hit.",
+  "_noteP": "P (Assassin's Mark) unchanged from prior pass: Damage=ByCharLevelBreakpoints(L1=35,+3/lvl,breaks@8,14)+PassiveBADRatio(0.60 bonus AD)+PassiveAPRatio(0.55). bonusEffect onAbility.",
+  "_noteQ": "Five Point Strike: Damage=BaseDamageNamed+tADRatio(0.65 total AD)+APRatio(0.60). Wiki: Magic Damage 45/70/95/120/145(+65%AD)(+60%AP), matches exactly. One hit, type corrected Physical->Magic.",
+  "_noteE": "Shuriken Flip: TWO casts, both real hits. Wiki: 21/42/63/84/105(+30%AD)(+33%AP) throw + 49/98/147/196/245(+70%AD)(+77%AP) recast = Total 70/140/210/280/350(+100%AD)(+110%AP). BIN E1Damage(x0.30 of full formula)+E2DamageCalc(x0.70) match the 30/70 split exactly. Two hits, type corrected Physical->Magic.",
+  "_noteR": "Perfect Execution: Cast1Damage=BaseDamage+R1ADRatio(0.5 bonus AD)+R1APRatio(0.3), matches wiki 110/220/330(+50% bonus AD)(+30%AP). Recast Cast2DamageMin=R2BaseDamage+R2APRatio(0.3), matches wiki minimum 70/140/210(+30%AP) exactly; Cast2DamageMax multiplies by a flat x3 cap (missing-HP scaling, not expressible as %HP here) -- skipped, conservative floor only. Two hits (R1+R2 guaranteed cast), Magic.",
+    "_noteP_appliesTo": "APPLIES-TO CURATED (loop 476, user report that P attached anywhere). The trigger is onAbility because an ability CAST is what spawns the ring, but the damage is not dealt by the ability. Live wiki (wiki.leagueoflegends.com/en-us/Akali, fetched 2026-08-20): after passing through the ring, Akali next BASIC ATTACK is empowered and deals the bonus magic damage. So it rides the attack, and appliesTo says AA even though the trigger reads onAbility - which is exactly the case the field exists for, since neither trigger default would land it in the right place.",
+"P": { "bonusEffects": [ { "trigger": "onAbility", "appliesTo": ["AA"], "maxProcs": 1, "hits": [ { "type": "Magic", "calc": "Damage", "count": 1 } ] } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "Damage", "count": 1 } ] },
+  "_noteE_split": "MULTI-CAST SPLIT (loop 471, user request). _noteE already recorded these as 'TWO casts, both real hits' - the throw (E1Damage, 30% of the full formula) and the recast dash (E2DamageCalc, 70%) - but holding them in one slot meant the editor always charged for both. Shuriken Flip's recast only happens if the shuriken hit, so it belongs in a sequence as its own node. binSpell E keeps the calc and rank resolution identical, and E + E2 sums to exactly the previous single-slot total.",
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "E1Damage", "count": 1 }
+    ]
+  },
+  "E2": {
+    "hits": [
+      { "type": "Magic", "calc": "E2DamageCalc", "binSpell": "E", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "Cast1Damage", "count": 1 },
+      { "type": "Magic", "calc": "Cast2DamageMin", "count": 1 }
+    ]
+  }
+}

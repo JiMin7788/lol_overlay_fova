@@ -1,0 +1,74 @@
+{
+ "champion": "Warwick",
+ "collectedAt": "2026-07-24",
+ "collector": "Claude Code local re-collection (truncation backfill)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Warwick"
+  },
+  {
+   "id": "wiki-lol",
+   "url": "https://wiki.leagueoflegends.com/en-us/Warwick/LoL"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Jaws of the Beast",
+   "facts": [
+    {
+     "field": "MaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.06,
+      0.07,
+      0.08,
+      0.09,
+      0.1
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "6 / 7 / 8 / 9 / 10% of target's maximum health (+ 120% AD) (+ 100% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Blood Hunt",
+   "facts": []
+  },
+  "E": {
+   "name": "Primal Howl",
+   "facts": []
+  },
+  "R": {
+   "name": "Infinite Duress",
+   "facts": [
+    {
+     "field": "TotalBaseDamage",
+     "kind": "flat",
+     "values": [
+      175,
+      350,
+      525
+     ],
+     "damageType": "Magic",
+     "source": "wiki-lol",
+     "quote": "175 / 350 / 525 (+ 167% bonus AD)"
+    },
+    {
+     "field": "BonusADRatio",
+     "kind": "ratio",
+     "values": [
+      1.67,
+      1.67,
+      1.67
+     ],
+     "damageType": "Magic",
+     "source": "wiki-lol",
+     "quote": "175 / 350 / 525 (+ 167% bonus AD)"
+    }
+   ]
+  }
+ },
+ "note": "Backfill of W/E/R after earlier truncation; Q preserved from Cowork M32 batch. W (Blood Hunt) deals no direct damage: it grants bonus attack speed 70/80/90/100/110% (increased 140/160/180/200/220%) and movement speed vs low-health enemies. E (Primal Howl) deals no damage: 35/40/45/50/55% damage reduction plus fear/slow CC. R heals Warwick for 100% of post-mitigation damage dealt to the target during the ability (heal, not damage, so no fact recorded). P (Eternal Hunger) on-hit damage was not part of this backfill's fetches."
+}

@@ -1,0 +1,49 @@
+{
+  "_note": "Curated (T2c). E (Shunpo) deals MAGIC damage (auto-picker wrongly tagged Physical) - all Katarina damage is magic. R (Death Lotus) DamageCalc is the per-dagger value; dagger count is variable so it is kept as a single modeled hit. P (Voracity) ADDED this pass -- was entirely missing despite having a real, cleanly resolvable dagger-pickup damage calc -- see _noteP.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "DamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "_noteP": "Voracity (KatarinaPassiveAbility, child spell KatarinaDaggerPickupPBAoE) has TWO components: the cooldown-reset-on-takedown mechanic (no damage, not modeled) and a SEPARATE 'Dagger Slash' AoE proc -- confirmed via live source (mobafire Voracity page): 'When Katarina picks up a dagger, she performs an area slash dealing magic damage' with base damage scaling by level, 70-100% AP, +0.6 bonus AD. This matches the BIN exactly: 'TotalDamage' = ByCharLevelFormula(base 68.2->495.2 by champion level) + StatByNamedDataValue(mStat=2 bonus AD, BonusADRatio=0.6) + StatBySubPart(AP-scaled, subpart ByCharLevelBreakpoints 0.7->1.0 by level). Curated as a P bonusEffect trigger onAbility (approximated as firing whenever an ability is cast, since Katarina's combo routinely drops and picks daggers back up via Q/E -- not a strict guarantee on every single ability cast, same simplification style used elsewhere in this project for proc-based passives).",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onAbility",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,193 @@
+<UserControl x:Class="Overlay.Client.Views.ComboSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600">
+    <!-- One outer ScrollViewer wraps BOTH columns so a single wheel scroll moves the whole page
+         (task 3). Inner lists do not scroll independently; the scrollbar is hidden but the wheel
+         still works. -->
+    <ScrollViewer x:Name="PageScroll" Style="{StaticResource HiddenScroll}">
+        <StackPanel Margin="4">
+
+            <TextBlock x:Name="TitleLabel" Text="콤보설정" Style="{StaticResource TitleText}" Margin="0,0,0,16" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="2*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ── Builder (left) ─────────────────────────────────────── -->
+                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,10,0" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock x:Name="BuildCaption" Text="콤보 만들기" Style="{StaticResource SectionHeader}" />
+
+                        <TextBlock x:Name="ChampionCaption" Text="챔피언" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <!-- Search-to-filter + capped-scroll icon-tile champion picker (loop 38
+                             pending items 4/5): the search box filters the tile grid below it; the
+                             grid's own ScrollViewer caps visible height so the ~173+ roster never
+                             grows the picker unbounded. -->
+                        <TextBox x:Name="ChampionSearchBox" Tag="챔피언 검색" TextChanged="ChampionSearchBox_TextChanged" />
+                        <ScrollViewer MaxHeight="180" Margin="0,6,0,0" Style="{StaticResource HiddenScroll}">
+                            <WrapPanel x:Name="ChampionPanel" Orientation="Horizontal" />
+                        </ScrollViewer>
+
+                        <TextBlock x:Name="PaletteCaption" Text="스킬 팔레트" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <!-- Palette: drag a chip DOWN into the sequence. Also a drop target so a
+                             sequence chip dragged UP here is deleted. -->
+                        <Border x:Name="PaletteZone" AllowDrop="True" Background="Transparent"
+                                DragOver="PaletteZone_DragOver" Drop="PaletteZone_Drop">
+                            <!-- Labeled palette categories so runes/items can be added as further
+                                 sections later (task 5). Today only the 스킬 section is populated. -->
+                            <StackPanel>
+                                <TextBlock x:Name="PaletteSkillsLabel" Text="스킬" Style="{StaticResource CaptionText}"
+                                           Margin="0,0,0,6" />
+                                <WrapPanel x:Name="PalettePanel" Orientation="Horizontal" />
+                                <TextBlock x:Name="PaletteHint" Text="챔피언을 선택하면 스킬이 표시됩니다."
+                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}" />
+
+                                <!-- Item picker (loop 38 pending item 2): search-to-add, icon tiles
+                                     for both the matched results and the chosen "hypothetical build"
+                                     row. UI-only for now — see ItemHint / code-behind: not yet wired
+                                     into any damage calculation. -->
+                                <!-- (loop 175) Collapsible 아이템 section — VSCode-style fold; header row
+                                     toggles the content, default COLLAPSED. -->
+                                <Border x:Name="ItemHeader" Background="Transparent" Cursor="Hand"
+                                        Margin="0,14,0,6" MouseLeftButtonUp="ItemHeader_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="ItemChevron" Text="▸" Style="{StaticResource CaptionText}" Margin="0,0,6,0" />
+                                        <TextBlock x:Name="ItemCaption" Text="아이템" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="ItemSection" Visibility="Collapsed">
+                                    <TextBox x:Name="ItemSearchBox" Tag="아이템 검색으로 추가" TextChanged="ItemSearchBox_TextChanged" />
+                                    <ScrollViewer x:Name="ItemResultsScroll" MaxHeight="140" Margin="0,6,0,0"
+                                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                                  Visibility="Collapsed">
+                                        <WrapPanel x:Name="ItemResultsPanel" Orientation="Horizontal" />
+                                    </ScrollViewer>
+                                    <WrapPanel x:Name="BuildItemsPanel" Orientation="Horizontal" Margin="0,8,0,0" />
+                                    <TextBlock x:Name="ItemHint" Style="{StaticResource BodyText}" FontSize="11"
+                                               Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                </StackPanel>
+
+                                <!-- Rune drag-attach palette (M04 item 3, rune half): a static set of
+                                     the 14 modeled runes. Drag one onto a combo-sequence skill and hold
+                                     ~1s to force-apply it to that node (theory-crafting override).
+                                     (loop 175) Collapsible — default COLLAPSED. -->
+                                <Border x:Name="RuneHeader" Background="Transparent" Cursor="Hand"
+                                        Margin="0,14,0,6" MouseLeftButtonUp="RuneHeader_Click">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock x:Name="RuneChevron" Text="▸" Style="{StaticResource CaptionText}" Margin="0,0,6,0" />
+                                        <TextBlock x:Name="RuneCaption" Text="룬" Style="{StaticResource CaptionText}" />
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel x:Name="RuneSection" Visibility="Collapsed">
+                                    <WrapPanel x:Name="RunesPanel" Orientation="Horizontal" />
+                                    <TextBlock x:Name="RuneHint" Text="룬을 콤보 순서의 스킬 위로 드래그해 1초간 올려두면 그 스킬에 강제 적용됩니다(이론상 계산)." Style="{StaticResource BodyText}" FontSize="11" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock x:Name="DragHint" Text="스킬을 아래로 드래그해 순서에 추가하세요."
+                                   Style="{StaticResource CaptionText}" Foreground="{StaticResource TextDim}"
+                                   Margin="0,10,0,6" />
+
+                        <TextBlock x:Name="SequenceCaption" Text="콤보 순서" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <!-- Sequence drop zone: palette chips land here (insertion indicator shows
+                             where); placed chips can be reordered or dragged out to delete. -->
+                        <Border x:Name="SequenceZone" AllowDrop="True" Background="{StaticResource SurfaceHi}"
+                                BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
+                                Padding="10" MinHeight="88"
+                                DragEnter="SequenceZone_DragOver" DragOver="SequenceZone_DragOver"
+                                DragLeave="SequenceZone_DragLeave" Drop="SequenceZone_Drop">
+                            <Grid>
+                                <TextBlock x:Name="SequenceHint" Text="여기로 스킬을 드래그하세요. 위로 드래그하면 삭제됩니다."
+                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           VerticalAlignment="Center" IsHitTestVisible="False" />
+                                <WrapPanel x:Name="SequencePanel" Orientation="Horizontal" />
+                            </Grid>
+                        </Border>
+                        <!-- (loop 487) Live damage preview. Every knob added since loop 471 changed a
+                             number the editor never showed; this is that number, with the basis it was
+                             computed on stated underneath so a reference never reads as a prediction. -->
+                        <Border x:Name="PreviewCard" Background="{StaticResource Surface}"
+                                BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
+                                Padding="12,10" Margin="0,10,0,0" Visibility="Collapsed">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="PreviewCaption" Text="예상 피해" Style="{StaticResource CaptionText}"
+                                               VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBlock x:Name="PreviewRange" Text="—" FontSize="18" FontWeight="Bold"
+                                               Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock x:Name="PreviewBasis" Style="{StaticResource BodyText}" FontSize="11"
+                                           Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                           Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button x:Name="ClearButton" Content="순서 비우기" Style="{StaticResource GhostButton}"
+                                HorizontalAlignment="Left" Margin="0,10,0,0" Click="ClearButton_Click" />
+
+                        <TextBlock x:Name="NameCaption" Text="콤보 이름" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <TextBox x:Name="NameBox" Tag="예: 올인 콤보" />
+
+                        <TextBlock x:Name="HotkeyCaption" Text="단축키 (선택)" Style="{StaticResource CaptionText}" Margin="0,14,0,6" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="HotkeyButton" Content="단축키 설정" Style="{StaticResource GhostButton}"
+                                    HorizontalAlignment="Left" Focusable="True" Click="HotkeyButton_Click"
+                                    PreviewKeyDown="HotkeyButton_PreviewKeyDown" LostFocus="HotkeyButton_LostFocus" />
+                            <Button x:Name="HotkeyButton2" Content="＋" Style="{StaticResource GhostButton}"
+                                    Margin="6,0,0,0" HorizontalAlignment="Left" Focusable="True"
+                                    Click="HotkeyButton2_Click"
+                                    PreviewKeyDown="HotkeyButton2_PreviewKeyDown" LostFocus="HotkeyButton2_LostFocus" />
+                        </StackPanel>
+
+                        <Button x:Name="SaveButton" Content="저장" Style="{StaticResource PrimaryButton}"
+                                HorizontalAlignment="Left" Margin="0,18,0,0" Click="SaveButton_Click" />
+
+                        <TextBlock x:Name="SaveMessage" Style="{StaticResource BodyText}" Margin="0,12,0,0"
+                                   Visibility="Collapsed" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Target + Saved list (right) ────────────────────────── -->
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="10,0,0,0" VerticalAlignment="Top">
+                    <StackPanel>
+                        <!-- Combo target selector (user mandate): Auto (same-position) or a specific
+                             living enemy champion. Writes targeting.mode/manualTarget to config. -->
+                        <TextBlock x:Name="TargetCaption" Text="콤보 대상" Style="{StaticResource SectionHeader}" Margin="0,0,0,8" />
+                        <ComboBox x:Name="TargetCombo" Style="{StaticResource ThemedComboBox}"
+                                  Height="34" HorizontalAlignment="Left" Width="200"
+                                  SelectionChanged="TargetCombo_SelectionChanged" />
+                        <TextBlock x:Name="TargetHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                   Margin="0,6,0,18" TextWrapping="Wrap"
+                                   Text="자동은 같은 라인 상대를 노립니다. 특정 챔피언을 선택하면 그 대상으로 계산합니다." />
+
+                        <!-- (M24 P5/P7) Assumed ENEMY defensive runes. The enemy's runes aren't readable
+                             from the Live Client API, so this is an honest user input: checking a rune
+                             lowers the damage range's FLOOR (worst case), never the resolved number.
+                             Writes "combo.assumedEnemyDefensiveRunes" (comma-separated ids). -->
+                        <TextBlock x:Name="EnemyRunesCaption" Text="적 방어룬 (가정)" Style="{StaticResource CaptionText}" Margin="0,0,0,6" />
+                        <StackPanel x:Name="EnemyDefensiveRunesPanel" />
+                        <TextBlock x:Name="EnemyRunesHint" Style="{StaticResource BodyText}" FontSize="11"
+                                   Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,18"
+                                   Text="적이 가졌다고 가정할 방어룬을 체크하면 데미지 구간의 하한(최악)이 낮아집니다. 적 룬은 API로 읽을 수 없어 유저 입력입니다." />
+
+                        <TextBlock x:Name="SavedCaption" Text="저장된 콤보" Style="{StaticResource SectionHeader}" Margin="0,0,0,12" />
+                        <!-- Plain ItemsControl (no inner ScrollViewer) so the outer page scroll owns
+                             the wheel. -->
+                        <ItemsControl x:Name="SavedList" />
+                        <TextBlock x:Name="EmptySaved" Text="아직 저장된 콤보가 없습니다." Style="{StaticResource BodyText}"
+                                   Foreground="{StaticResource TextDim}" />
+                        <TextBlock x:Name="SavedHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                   Margin="0,12,0,0"
+                                   Text="게임 입장 후 등록한 단축키를 누르면 콤보 데미지가 오버레이에 표시됩니다." />
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

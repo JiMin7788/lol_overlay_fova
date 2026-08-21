@@ -1,0 +1,33 @@
+{
+  "_note": "Curated (T3.x passive pass). P (High Note / Stage Presence): periodically empowers Seraphine's next basic attack to deal bonus MAGIC damage (AutoDamage = level-interpolated base 4→25 + 0.04x AP, SeraphinePassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than the periodic empowered attack (documented, same style as other on-hit passives). Q/E/R kept as the auto first-pass magic picks.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "AutoDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "ExplosionDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "FinalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "R1TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): P AllyNoteDamagePercent(0.25) scales notes granted BY ALLIES - a multi-actor echo term outside the single-attacker model. Documented."
+}

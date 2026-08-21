@@ -1,0 +1,88 @@
+{
+  "_note": "Curated (T3.x passive pass). P (on-hit empowered strike): basic attacks deal bonus PHYSICAL damage (Calc_OnHit_Damage_Flat = level-interpolated base 5→30 + 0.25x bonus AD, Ambessa's hashed passive spell key {3f70c67a}.mSpellCalculations). Curated as a P bonusEffect trigger onHit. Type inferred Physical from the bonus-AD scaling (consistent with Ambessa's AD kit); Q/W/E/R kept as the auto first-pass physical picks. Q re-verified this pass (loop 221) and CORRECTED -- see _noteQ.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "Calc_OnHit_Damage_Flat",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "_noteQ_split": "MULTI-CAST SPLIT + NOTE CORRECTION (loop 471, user request). The four hits were NOT 'base plus an edge-doubled conditional' as the older _noteQ describes - they are the TWO CASTS, each with its flat and its %maxHP term. Read off the BIN: {a7907b77}/{17768f39} modify Calc_Damage_1_(Percent_)Max and {3ce89b9e}/{1442dbe0} modify Calc_Damage_2_(Percent_)Max, and every one is multiplied by its Damage_N_Min_Ratio of 0.5. Those _Max calcs are the DOUBLED values, so the 0.5 brings them back to normal: Damage_1_Base[rank1]=40 x0.5 = 20 and Damage_2_Base[rank1]=50 x0.5 = 25, which is exactly the live wiki (wiki.leagueoflegends.com/en-us/Ambessa, fetched 2026-08-20): Cunning Sweep 20/30/40/50/60 (+30% bonus AD)(+2-3% max HP), Sundering Slam 25/37.5/50/62.5/75 (+45% bonus AD)(+2-3% max HP). Curated as Q (Cunning Sweep) and Q2 (Sundering Slam, binSpell Q); Q + Q2 sums to exactly what the single slot summed to before. STILL NOT CURATED, and now precisely located for the conditional pass: dropping the x0.5 - i.e. using Calc_Damage_N_Max directly - is the doubled damage against an outer-edge hit (cast 1) or the first target struck (cast 2). That is a positional condition, so it belongs behind a user checkbox rather than in every Q.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "{a7907b77}",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "hpPercentCalc": "{17768f39}",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ]
+  },
+  "Q2": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "{3ce89b9e}",
+        "count": 1,
+        "binSpell": "Q"
+      },
+      {
+        "type": "Physical",
+        "hpPercentCalc": "{1442dbe0}",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ],
+        "binSpell": "Q"
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Calc_Damage_Low",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Calc_Damage_Flat",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Calc_Damage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQ": "Q (Cunning Sweep + Sundering Slam) FIXED (loop 221) -- was both wrong AND incomplete. Cunning Sweep is a cone slash with two damage tiers per a live wiki fetch: a GUARANTEED base hit on every enemy struck (20/30/40/50/60 +30%bonusAD +2/2.25/2.5/2.75/3%(+1.5%/100bonusAD) max HP) and a CONDITIONAL 'doubled' bonus only for enemies caught at the outer edge of the cone (40/60/80/100/120 +60%bonusAD +4/4.5/5/5.5/6%(+3%/100bonusAD) max HP). The prior curation used 'Calc_Damage_1_Max' -- which BIN structure confirms is actually the DOUBLED/outer-edge value (matches the wiki's 'Increased Damage' line exactly), not the guaranteed baseline -- an overcount by assuming the conditional edge-hit always lands. FIXED to the guaranteed (non-doubled) calc, hashed key '{a7907b77}' (= Calc_Damage_1_Max x Damage_1_Min_Ratio 0.5, matching the wiki's base-tier numbers exactly), plus its %maxHP companion '{17768f39}'. ADDED: Sundering Slam (Phase 2, a recast within 4s after Cunning Sweep lands at least one hit -- landing the recast is the ability's whole design intent, same 'assume the intended full combo use' convention as Corki W/Galio W's charge-duration picks), same guaranteed-vs-doubled structure: guaranteed flat '{3ce89b9e}' (=Calc_Damage_2_Max x Damage_2_Min_Ratio) + %maxHP '{1442dbe0}', matching wiki's Phase-2 base tier (25/37.5/50/62.5/75 +45%bonusAD +1/1.5/2/2.5/3%(+2%/100bonusAD) max HP) exactly. All four hits Physical, count 1 each -- both phases' 'doubled/outer-edge' conditional bonuses are deliberately NOT modeled (positional, not guaranteed).",
+  "_noteQ_sweep2": "STAGE-4 AUDIT (loop 439, 2026-07-27): all six sweep tier-B flags (Damage_1/2_Base, Damage_1/2_Percent, Damage_1/2_Min_Ratio) are FALSE POSITIVES of the MODIFIES-chain class: the four curated hashed calcs each MODIFY Calc_Damage_N_(Percent_)Max, which reference these DataValues transitively - the sweep tool does not follow GameCalculationModified chains (same limitation as the Gragas Q / KSante allOut cases). The loop-221 wiki-verified two-tier curation (guaranteed base + edge bonus) stands unchanged."
+}

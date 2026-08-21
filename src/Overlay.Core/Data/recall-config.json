@@ -1,0 +1,39 @@
+{
+  "_comment": "Recall detection + return-countdown constants for DA-002. Config-driven per Hard Rule #4 - RecallDetector hardcodes NO map distances, channel durations, or lane assumptions inline. Bump 'patch' if Riot changes the recall channel time or map geometry. Distances are in LoL map units (Summoner's Rift is 14820x14820; fountain-to-lane straight-line distances below are coarse reference values, NOT precise pathed distances). See data-algo SKILL 'Travel / return timer' and 'Static data'.",
+  "patch": "14.12",
+  "schemaVersion": 1,
+
+  "recallChannelSeconds": 8.0,
+  "_comment_channel": "Base recall channel duration. The Live Client Data API exposes neither recall progress nor a 'B' event, so detection is INFERENCE from an item-array change while the player is presumed out of vision (see RecallDetector proxy note). Recall actually has tiered channel times (8s standard / 4.5s with enhanced recall); 8s is the conservative default.",
+
+  "defaultMoveSpeed": 335.0,
+  "_comment_movespeed": "Fallback move speed (map units/sec) used for return-ETA when neither a live move-speed stat nor a champion static base is available. The Live Client Data API exposes live moveSpeed ONLY for the active player, so enemy ETA uses static champion base move speed (+ boots items if modeled) and is therefore an estimate.",
+
+  "lanes": {
+    "_comment_lanes": "Straight-line fountain-to-lane reference distances (map units) per team side. 'ORDER' = bottom-left fountain, 'CHAOS' = top-right fountain. Keyed by inferred lane role; 'default' covers unknown role. These are coarse estimates for an ETA hint, not a routing engine.",
+    "ORDER": {
+      "TOP": 7200.0,
+      "MID": 4800.0,
+      "BOT": 7200.0,
+      "JUNGLE": 5200.0,
+      "default": 6000.0
+    },
+    "CHAOS": {
+      "TOP": 7200.0,
+      "MID": 4800.0,
+      "BOT": 7200.0,
+      "JUNGLE": 5200.0,
+      "default": 6000.0
+    }
+  },
+
+  "detection": {
+    "_comment_detection": "Heuristic knobs for the fog-recall inference. Because the API gives no visibility flag, an item change is treated as a recall only when these proxy conditions hold; a change that fails them is classified as a normal in-lane/visible shop and NOT reported as a recall.",
+    "treatItemChangeWhileFarmingAsVisibleShop": true,
+    "_comment_farming": "If true, an item-array change in the same tick the player also gained CS/kills/assists is treated as activity-while-visible (they were just seen acting on the map), lowering confidence / suppressing the recall event.",
+    "minConfidence": 0.0,
+    "_comment_minconf": "Events below this confidence are dropped. 0.0 = report all inferred recalls (consumer decides). Raise toward 1.0 to only surface high-confidence inferences.",
+    "visibleActivityConfidencePenalty": 0.4,
+    "_comment_visiblepenalty": "Confidence assigned to an item-change event when the player also gained CS/kills/assists in the same tick (treatItemChangeWhileFarmingAsVisibleShop must be true). 0.4 = plausible recall but ambiguous (player may have been visible). Must be >= minConfidence to surface the event; lower to suppress noisy farming-tick events, raise toward 1.0 to treat them as high-confidence."
+  }
+}

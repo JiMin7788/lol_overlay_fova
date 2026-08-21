@@ -1,0 +1,65 @@
+{
+ "champion": "Braum",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Braum"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Concussive Blows",
+   "facts": [
+    {
+     "field": "StunDamage",
+     "kind": "flat",
+     "values": [
+      26,
+      216
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deal 26 - 216 (based on his level) magic damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Winter's Bite",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "other",
+     "values": [
+      75,
+      120,
+      165,
+      210,
+      255
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "75 / 120 / 165 / 210 / 255 (+ 2.5% of Braum's maximum health)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Glacial Fissure",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 250 / 350 (+ 60% AP)"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,45 @@
+{
+  "_note": "Curated (passive pass, prior loop). Q/E/R and W re-verified this pass. Q (Winds of War) QMissileDamage = BaseDamage + 0.7 AP. E (Justice Punch) TotalDamage = BaseDamage + 1.0 AP (PVEDamage is a monster-only 0.8x modifier, skipped). R (Hero's Entrance) TotalDamage = BaseDamage + 0.7 AP + 1.0 bonus MR (mStat6/formula2) -- tagged BurstCeiling (Galio's ultimate, and MR-scaling makes it a real burst source even on tank builds). W (Winds of War... Shield of Durand) SWITCHED this pass from MinTotalDamage to MaxTotalDamage: W's damage is a self-controlled charge-duration tradeoff (MinimumWBaseDamage at min charge, up to 3x at MaxChargeDuration=2s, both caster-decided not target-state-gated) -- same 'assume the intended full use' reasoning as Corki W/Gragas Q's Min/Max picks elsewhere in this batch.",
+  "_noteP": "Curated (passive pass). P (Colossal Consciousness): after Galio casts an ability, his next basic attack (script GalioPassiveAttack, an attack-override spell with no damage calc of its own) deals bonus magic damage using GalioPassive.mSpellCalculations 'TotalDamage' = ByCharLevelInterpolationCalculationPart(start=15, end=115) + StatByCoefficientCalculationPart(mStat=2 AD, no mStatFormula -> TOTAL AD id=2, coeff=1.0) + StatByCoefficientCalculationPart(no mStat field -> defaults to AP id=0, coeff=0.4) + StatByCoefficientCalculationPart(mStat=6 MR, mStatFormula=2 -> BONUS MR, coeff=0.6). This 'TotalDamage' calc belongs to the GalioPassive spell record, distinct from the same-named calc under GalioE/GalioR. Hand-traced level-only term (t=(rank-1)/17): level1 t=0 -> 15, level18 t=1 -> 115 (both plus 100% total AD + 40% AP + 60% bonus MR, live stats not baked here). Curated as a P bonusEffect trigger onAbility (approximated as firing on every ability cast rather than strictly the next-attack window, same documented style as Akali P/Volibear P). Rank convention: champion level (1-18), matching the ByCharLevelInterpolation part.",
+  "P": { "bonusEffects": [ { "trigger": "onAbility", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "QMissileDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "_noteW_sweep2": "STAGE-4 AUDIT fix (loop 438, 2026-07-27): W was curated on MaxTotalDamage = the FULL 2s charge (MaxTotalDamage MODIFIES MinTotalDamage) - a P2 overstatement for a quick tap, and why the sweep tier-A flagged BaseDamage/MaximumWBaseDamage (script-side mirrors; the calc chain uses MinimumWBaseDamage). Re-curated to the Fizz-R DistanceScaled pattern: anchor calc=MinTotalDamage (conservative, unset knob = tap), range [MinTotalDamage, MaxTotalDamage] via UserDistanceFraction.",
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MinTotalDamage",
+        "minCalc": "MinTotalDamage",
+        "maxCalc": "MaxTotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

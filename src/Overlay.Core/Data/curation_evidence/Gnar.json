@@ -1,0 +1,108 @@
+{
+ "champion": "Gnar",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Gnar"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Boomerang Throw (Mini) / Boulder Toss (Mega)",
+   "facts": [
+    {
+     "field": "MiniOutboundDamage",
+     "kind": "ratio",
+     "values": [
+      5,
+      45,
+      85,
+      125,
+      165
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "5 / 45 / 85 / 125 / 165 (+ 125% AD)"
+    },
+    {
+     "field": "MiniReturnDamage",
+     "kind": "ratio",
+     "values": [
+      2.5,
+      22.5,
+      42.5,
+      62.5,
+      82.5
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "2.5 / 22.5 / 42.5 / 62.5 / 82.5 (+ 62.5% AD)"
+    },
+    {
+     "field": "MegaDamage",
+     "kind": "ratio",
+     "values": [
+      45,
+      90,
+      135,
+      180,
+      225
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "45 / 90 / 135 / 180 / 225 (+ 140% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Hyper (Mini) / Wallop (Mega)",
+   "facts": [
+    {
+     "field": "MiniPercentHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.06,
+      0.08,
+      0.1,
+      0.12,
+      0.14
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "0 / 10 / 20 / 30 / 40 (+ 6 / 8 / 10 / 12 / 14% of target's maximum health) (+ 100% AP)"
+    },
+    {
+     "field": "MegaDamage",
+     "kind": "ratio",
+     "values": [
+      45,
+      75,
+      105,
+      135,
+      165
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "45 / 75 / 105 / 135 / 165 (+ 100% AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Hop (Mini)",
+   "facts": [
+    {
+     "field": "PercentMaxHP",
+     "kind": "percentMaxHP",
+     "values": [
+      0.06
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "50 / 85 / 120 / 155 / 190 (+ 6% maximum health)"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,45 @@
+{
+  "_note": "Curated. Source: communitydragon/draven.bin.json mSpellCalculations, cross-checked vs wiki.leagueoflegends.com/en-us/Draven.",
+  "_noteQ": "Spinning Axe (DravenSpinningAbility): TotalDamage = BaseDamage + bonusAD*ADScaling (mStat 2, mStatFormula 2). Single hit on cast; the axe-catch bonus damage on the return-catch auto attack is a separate on-hit mechanic (DravenSpinningReturnCatch) not a burst hit -- kept out, conservative.",
+  "_noteW": "Blood Rush (DravenFuryAbility): pure self movement-speed buff, no mSpellCalculations at all -- correctly no damage.",
+  "_noteE": "Stand Aside (DravenDoubleShotAbility): TotalDamage = BaseDamage + 0.5*bonusAD (StatByCoefficient, mStat 2, mStatFormula 2). Single hit per enemy struck by the linear skillshot.",
+  "_noteR": "Whirling Death (DravenRCastAbility): RCalculatedDamage = RBaseDamage + bonusAD*RCoefficient. Draven can hold up to 2 caught axes and throw both in one R cast along the same line -- if the target stands in the path for both, it is hit twice (curated count 2). RE-VERIFIED this pass: the BIN's own RDamageReductionPerHit (0.05 flat, 7 ranks all equal) and RMinDamagePercent (50) DataValues confirm the real ability reduces each successive hit on the SAME target down to a 50% floor -- but neither DataValue is referenced by any GameCalculation in this BIN dump (RCalculatedDamage itself carries no mMultiplier/GameCalculationModified wrapper), so the falloff is applied by native game code with no exposed calc to compute it from. The curated count=2 therefore OVERSTATES a real double-axe R by the reduction on the second hit (up to 50% too high on that hit alone) -- documented here as a genuine engine-side gap (no calc exists to model the per-hit reduction), not silently assumed away; kept as the established 'full completed-combo' convention pending a future per-hit-falloff schema field. RPassiveTrueDamage (bonus true damage per League/Adoration stack) uses BuffCounterByNamedDataValueCalculationPart, needs live buff-stack-count game data this pipeline doesn't expose -- genuinely infeasible, same documented blocker category as Aphelios P and other BuffCounterBy* gaps in this codebase. Omitted (P2, honest).",
+  "_noteQRider": "Q RESHAPED INTO AN ON-HIT RIDER (loop 479, user request: whether Q applies to the auto). Spinning Axe deals NO damage when cast - the live wiki (wiki.leagueoflegends.com/en-us/Draven, fetched 2026-08-21) says it empowers his next basic attack within 5.8 seconds to deal bonus physical damage 40/45/50/55/60 (+75/85/95/105/115% bonus AD), the axe then ricochets to be caught. Curating it as a direct hit on Q put that damage on the CAST, so a lone Q node scored and the auto it actually rides scored only plain AD. It is now a bonusEffect with trigger onHit on the Q slot, which is exactly this engines empowered-auto shape: not alwaysOn, so it fires only on an AA that FOLLOWS a Q in the sequence. TotalDamage and its resolved number are untouched - a Q-then-AA combo totals the same as before, it is only attributed to the right node now. maxProcs 2 because the wiki caps him at two axes held at once, so a burst combo can land at most two axe autos; a longer juggle in a real game re-catches, which this fixed-sequence model does not track.",
+  "Q": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "maxProcs": 2,
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "RCalculatedDamage",
+        "count": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "_note": "Q/W/E are Gnar's MINI-form (base playable form) abilities -- MEGA-form calcs (MegaTotalDamage etc.) exist in the SAME BIN spell objects (Riot reuses one GnarQAbility/GnarW/GnarE record for both forms) but the schema/combo editor has no form-state concept (mirrors the Elise human-form-only precedent), so only Mini-form is curated. Q (Boomerang Throw) has a real 2-hit shape like Ahri Q/Ekko Q: MiniTotalDamage (MiniBaseDamage+1.25 total AD) on the way out + the hashed calc '{4b371c72}' (MiniTotalDamage*0.5, the boomerang's return hit) on the way back -- both curated, Physical. W (Hyper, mini) MiniTotalDamage = MiniBaseDamage + 1.0 AP, Magic. E (mini) MiniTotalDamage = MiniDamage + 0.06 total Health (mStat12), Magic. R (GNAR!) Damage = RBaseDamage + 1.0 AP + 0.5 bonus AD (mStat2/formula2), Physical, tagged BurstCeiling; WallDamage (Damage*1.5, target knocked into terrain) is an external/positional condition not guaranteed by the cast -- base Damage curated instead (Fiddlesticks-Q-Feared-style conservatism). P (Rage Gauge) is entirely tooltipOnly stat-growth calcs (attack range/MS/AS/Mega-form base stats) -- no damage calc at all, correctly left with no hits.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "MiniTotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "{4b371c72}",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MiniTotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentDataValue": "MiniPercentHPDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MiniTotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "QMega": {
+    "icon": "assets/characters/gnar/hud/icons2d/gnarbig_q.png",
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "MegaTotalDamage",
+        "binSpell": "Q",
+        "count": 1
+      }
+    ]
+  },
+  "WMega": {
+    "icon": "assets/characters/gnar/hud/icons2d/gnarbig_w.png",
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MegaTotalDamage",
+        "binSpell": "W",
+        "count": 1
+      }
+    ]
+  },
+  "EMega": {
+    "icon": "assets/characters/gnar/hud/icons2d/gnarbig_e.png",
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MegaTotalDamage",
+        "binSpell": "E",
+        "count": 1
+      }
+    ]
+  },
+  "_noteMega": "M22 Phase 2 (loop 60): Gnar Mega-form Q/W/E added as separate selectable skills. Per this file's own _note, Riot stores the Mega calcs in the SAME BIN spell object as Mini (GnarQ/GnarW/GnarE), so binSpell points at the canonical slot key ('Q'/'W'/'E') and the hit resolves the 'MegaTotalDamage' calc on that same spell (verified present in gnar.bin.json). Damage TYPES mirror the Mini-form curation above (Q Physical, W/E Magic) since an ability's damage type is form-invariant; only the numbers differ. Mega Q (Boulder Toss) is a single throw (no return-halving second hit unlike Mini boomerang). Mega R = the existing R slot (GNAR! is Mega-only). Underscore-free keys so ComboRunner.SlotOf recovers them.",
+  "_noteW_sweep": "SWEEP §41 (2026-07-20): found by tools/sweep_unreferenced_damage.py (Zac-W risk class: a damage term whose DataValue no GameCalculation references is invisible to calc-name-driven curation). Wiki-verified against the live tooltip; the BIN array matches the tooltip digit-for-digit once the rank-0 placeholder at index 0 is dropped, which is the corroboration that it is live, not vestigial. Curated as a BIN-sourced dynamic reference -- no patch-dependent number is hardcoded. Gnar W (Hyper) mini-form third-hit proc is flat + %maxHP; only MiniTotalDamage (flat) was curated. Worst severity found in this sweep: MiniBaseDamage is 0 at rank 1, so the proc reported ZERO damage while actually dealing 6% max health. MiniPercentHPDamage[1..5] = 6/8/10/12/14% matches the tooltip exactly. NOT modeled: the 300 cap vs monsters (this schema is single-target champion damage, consistent with how other monster caps are handled here).",
+  "_noteE_sweep2": "AUDIT (loop 417, 2026-07-26): sweep tier-A flagged E DataValue \"MegaDamageAoE\" (flat 375 at every rank 1-7, in the same GnarE bin spell as MegaDamage) as referenced by NO mSpellCalculation anywhere in the bin -- genuinely orphaned, unlike the Q/W Mega tier-B hits in this sweep which ARE covered (those are already curated under the QMega/WMega slots below; the sweep tool only cross-checks the canonical Q/W/E/R slot keys and does not know about this file's Mega-form extra slots, so those two were false positives, not real gaps). MegaDamageAoE could not be confirmed: the champion's Mega E is now named differently across sources for this patch (\"Wallop\" per wiki/mobafire vs \"Crunch\" per the DDragon en_US tooltip fetched this loop), and the fetched tooltip text conflicts with this file's existing curation (physical +AD ratio in the fetched wiki/mobafire text vs the BIN's own MegaTotalDamage formula, which is MegaDamage + 6% total-Health via mStat 12 -- the same shape as the already-curated Mini E). A flat identical value across all 7 rank slots is also consistent with a non-per-rank cap (e.g. a secondary-target or PvE cap) rather than a real scaling term. Per M26 P2, not curating on an unresolved/conflicting premise: EMega calc is UNCHANGED (still MegaTotalDamage only). Needs a human to verify the current live in-client tooltip for Mega Gnar E before any change to MegaDamageAoE. RESOLVED (golden #14 live measurement, 2026-07-26): single-target Mega E dealt 100.5 = MegaDamage(80 rank1) + 6% own-HP exactly - the flat 375 (~250 post-mitigation) is demonstrably ABSENT from single-target damage, so MegaDamageAoE is an AoE/secondary cap or vestigial value, not a missed damage term. Curation unchanged is CORRECT; flag closed."
+}

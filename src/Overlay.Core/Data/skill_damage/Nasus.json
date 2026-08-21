@@ -1,0 +1,22 @@
+{
+  "_note": "Curated (loop 39). Verified against Nasus's own bin.json spellCalculations + a live wiki fetch (wiki.leagueoflegends.com/en-us/Nasus). P 'Soul Eater' is lifesteal-scaling only (calc 'LifestealTooltip'), zero direct-damage calcs -- correctly has no hits. Q 'Siphoning Strike' (M25 §11.G, loop 107 — now curated via the full 'TotalDamage' calc): TotalDamage = BonusDamage (flat per-rank base) + 1.0×(total AD) + BuffCounterByCoefficient(mCoefficient 1.0) × Siphoning-Strike stacks, matching wiki 'bonus physical damage ... (+100% AD), increased by his current Siphoning Strike stacks (1 per stack)'. The BuffCounterByCoefficient stack term was previously UNSUPPORTED (evaluating 'TotalDamage' threw), so this slot was curated via flatDataValue='BonusDamage' — a floor that omitted BOTH the +100% total-AD term AND the stacks. Now that BuffCounterByCoefficient is supported and fed by a user stack knob (ComboNode.UserStackCount), the calc resolves: at 0 stacks (the default, conservative floor) it is BonusDamage + total AD (a CORRECTION restoring the previously-dropped AD term — the old flatDataValue reading was a documented undercount, not a golden value to preserve; no test asserted it), and the '몇 스택' knob adds 1 damage per stack. Stacks are unbounded in-game so, like the summon '몇 대' knob, this does NOT auto-widen the range (default 0 = floor). Tagged Stacking. W 'Wither' is pure CC (slow + attack-speed reduction), its own bin.json lists ZERO spellCalculations for this slot -- correctly has no hits. E 'Spirit Fire': the guaranteed initial magic hit (InitialDamage, 50-170+60%AP) is curated; the 5-second escapable-zone DoT portion (calc 'TotalDotDamage', flat 10-34+12%AP per tick, NOT %HP) has no schema support (this codebase's only duration-scaling hit mechanism is %-max-HP-only) so is left auto rather than assumed-full-duration -- slot tagged Zone + ArmorShred since the wiki explicitly confirms Spirit Fire reduces enemies' armor by 30-50% while standing in the zone (a real cited MR/armor-reduction EFFECT, not just magic damage). R 'Fury of the Sands' NOW CURATED (§27): the AoE %-target-max-HP DoT is BIN-sourced via the new perSecondHpPercentDataValue schema field (AOEDamagePercent, read as a PER-SECOND rate r1-3 = 3/4/5%). The earlier 'per-tick, independently-capped total' reading reconciled once AOEDamagePercent was recognized as per-second: 5%/s x 0.5s = 2.5%/tick and x 15s = 75% total, matching the wiki's 1.5-2.5%/tick and 45-75% total, so the 15s maxDuration ceiling IS the total cap (no separate cap needed; MaxDamageCap is monster-only). See the R block note.",
+  "Q": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamage", "count": 1, "stackScaled": true, "tags": ["Stacking"] }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "InitialDamage", "count": 1 }
+    ],
+    "tags": ["Zone", "ArmorShred"]
+  },
+  "R": {
+    "note": "§27 curation: %-target-max-HP-PER-SECOND DoT. AOEDamagePercent (BIN DataValue, r1-3 = 3/4/5% maxHP per SECOND) resolved live/rank-scaled, then scaled by the user-entered exposure seconds (clamped to the 15s duration). Reconciles the wiki: 5%/s x 0.5s tick = 2.5%/tick, and x 15s = 75% total -- both wiki-confirmed (1.5-2.5%/tick, 45-75% total). The 15s maxDuration ceiling is what caps the total; MaxDamageCap in the BIN is a monster-only per-tick cap, no champion total cap. Unset exposure seconds -> 0 (honest floor, P2). Champion cap / exact rate can be re-checked vs a live measurement if desired.",
+    "hits": [
+      { "type": "Magic", "perSecondHpPercentDataValue": "AOEDamagePercent", "maxDurationSeconds": 15.0 }
+    ],
+    "tags": ["AoeUltimate"]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): E DamagePerTick is the zone tick term of a DoT whose initial hit is curated; Nasus is golden-locked (coverage row 8 stackScaled session owns any change). Documented."
+}

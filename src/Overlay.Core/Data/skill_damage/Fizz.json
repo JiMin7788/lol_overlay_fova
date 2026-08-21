@@ -1,0 +1,46 @@
+{
+  "_note": "Curated (T2c). Q (Urchin Strike) deals MAGIC damage (auto-picker wrongly tagged Physical); QDamage resolves null so TotalDamage is used. W uses the ActiveDamage (empowered hit) rather than the DoT tick. E and R are magic. R uses the minimum-throw SmallSharkDamage.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "QDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": { "hits": [ { "type": "Magic", "calc": "ActiveDamage", "count": 1 } ], "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "OnHitBuffDamage", "count": 1 } ] } ], "_noteW_sweep2": "STAGE-4 AUDIT (loop 442, 2026-07-27): ADDED the follow-up on-hit buff as a W onHit rider - after the active attack, basic attacks deal OnHitBuffDamage (wiki 20->40 +30%AP) for 5s (empowered-AA-after-cast rule, Hwei-W class). The PASSIVE BLEED (DoTDamage 30->90 total over 3s on every attack) stays DISCLOSED-OMITTED: it REFRESHES rather than stacks, so a per-AA full-DoT rider would overcount rapid attack sequences (P2) - needs refresh-aware modeling." },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "EDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "SmallSharkDamage",
+        "minCalc": "SmallSharkDamage",
+        "maxCalc": "BigSharkDamage",
+        "count": 1
+      }
+    ],
+    "_noteR": "M24 P3 DistanceScaled (loop 93): calc:SmallSharkDamage kept as resolved default (conservative near-throw = value identity, zero regression); range [SmallSharkDamage(near), BigSharkDamage(far)] via UserDistanceFraction. Chum the Waters: the fish becomes a bigger shark the farther it travels before latching."
+  },
+  "_noteQ": "CORRECTED this pass: Q (Urchin Strike) was curated with ONLY 'TotalDamage' (a pure 1.0x total-AD formula, no AP term anywhere) mislabeled as type Magic -- self-contradictory (a calc with only an AD coefficient cannot be a magic-damage number). Verified via a live wiki fetch this session (2026-07-20): Urchin Strike deals BOTH a Physical component (100% AD, from Fizz's dash triggering a normal attack) AND a separate Magic component ('Magic Damage: 10/25/40/55/70 (+55% AP)', the ability's own bonus). The prior note claimed 'QDamage resolves null' -- FALSE: QDamage = EffectValueCalculationPart(index1) + 0.55x AP (default stat), and EffectValueCalculationPart IS supported by FormulaInterpreter.cs (case CalculationPart.Kind.EffectValue -> LookupEffectAmount), same stale-unsupported-part bug class fixed elsewhere this session (Vladimir E, Caitlyn Q, Nilah Q). Curated as two hits: TotalDamage (Physical, the AD-based triggered attack) + QDamage (Magic, the ability's own AP-scaled bonus) -- matches the wiki's two-part tooltip exactly.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R MidDamageMulti(1.25) is the mid-size shark interior point of the already-curated [small, big] range. Benign.",
+  "_noteSweepTierB": "SWEEP TIER-B (loop 443, 2026-07-28): W DoTBaseDamage(15->105) is the DataValue behind the refreshing bleed already adjudicated disclosed-omitted in _noteW_sweep2 (DoTDamage calc; refreshes rather than stacks, so a per-AA full-DoT rider would overcount - needs refresh-aware modeling). Same term, name recorded."
+}

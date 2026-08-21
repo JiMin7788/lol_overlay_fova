@@ -1,0 +1,74 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: xinzhao.bin.json mSpellCalculations (Q=XinZhaoQAbility/XinZhaoQ Three Talon Strike, W=XinZhaoWAbility/XinZhaoW Wind Becomes Lightning, E=XinZhaoEAbility/XinZhaoE Audacious Charge, R=XinZhaoRAbility/XinZhaoR Crescent Guard). Cross-checked vs WebSearch snippets for all four. E kept unchanged. Q's count corrected (1->3). W's Slash hit added (was missing) and Thrust confirmed genuinely blocked. R gains its missing current-health term. P kept as-is from an earlier pass. MAJOR CORRECTION (loop 221): W's Thrust phase, previously 'genuinely unresolvable', is now added -- re-verified directly against the current SkillDamage.cs source that mStat=8 (crit chance) IS mapped (0.0 no-crit floor, the §26 fix), so ThrustDamage's multiplier (1 + mStat8*CritChanceAmp) evaluates to 1, not a throw. See _noteW.",
+  "_noteP": "P unchanged: TotalDamage sums two StatBySubPart terms (mStat=2 total AD x ByCharLevelBreakpoints(0.15,+0.15 steps); AP-default x an identically-shaped breakpoints part). bonusEffect onHit.",
+  "_noteQ": "Three Talon Strike: BonusDamage=BaseDamage+BADRatio(0.4 bonus AD). WebSearch confirms 'empowers his next THREE basic attacks ... bonus physical damage' -- 3 separate procs, so count corrected 1->3 (same multi-strike-count-from-wiki-text precedent as Garen E count 7 / Renekton W count 2). Physical.",
+  "_noteW": "Wind Becomes Lightning FIXED (loop 221) -- Thrust phase added as a second hit. ThrustDamage = NamedDataValue(ThrustBaseDamage, real ranks 50/85/120/155/190) + 0.9x total AD + 0.65x AP, wrapped in mMultiplier (1 + StatByNamedDataValue(mStat=8, CritChanceAmp)); mStat=8 resolves to 0.0 in the current engine (§26 no-crit floor) so the multiplier is always 1 and ThrustDamage cleanly resolves. Matches wiki 'Thrust Physical Damage: 50/85/120/155/190 (+90% AD)(+65% AP)' exactly (the wiki's crit-scaling range, 0%-33.3%, floors at 0% here same as everywhere else in this engine). Physical, count 1, added alongside the existing 4x Slash hits (both phases of the same W cast land on a stationary combo target).",
+  "_noteE": "Audacious Charge unchanged: ChargeDamage=BaseDamage+APRatio(1.2). WebSearch confirms 'dealing magic damage to nearby enemies' on the dash. One hit, Magic.",
+  "_noteR": "Crescent Guard: TotalDamage=BaseDamage+StatByCoefficient(1.0 bonus AD)+StatByCoefficient(1.1 AP). WebSearch: 'deals 75/175/275(+110% AP)(+1.0 per bonus AD) plus 15% current health as physical damage' -- 110%AP and 100% bonus-AD coefficients match exactly. The '15% current health' term is a separate standalone DataValue PercentCurrentHealthDamage (bare fraction) -- modeled via hpPercentDataValue, hpBasis Current (was missing). Whole hit Physical despite the AP term. Two hits.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BonusDamage",
+        "count": 3
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "SlashDamage",
+        "count": 4
+      },
+      {
+        "type": "Physical",
+        "calc": "ThrustDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "ChargeDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "_noteR_order": "HIT ORDER (Cowork 2026-07-16 hit-order audit): the %CURRENT-hp hit is ordered FIRST, before flat TotalDamage. R (Crescent Guard) is one instantaneous cast (flat base + % of target CURRENT hp), so the %current must read the PRE-cast current HP. The engine re-evaluates a Current-HP hit against RUNNING HP, so flat-first UNDER-counts the %current term (flat already lowered current). Flat is HP-independent, inert when second. Same class as the %missing cases (Kindred E / Belveth R / RekSai R), opposite sign.",
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "hpPercentDataValue": "PercentCurrentHealthDamage",
+        "hpBasis": "Current",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  }
+}

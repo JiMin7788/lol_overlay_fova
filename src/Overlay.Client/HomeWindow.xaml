@@ -1,0 +1,223 @@
+<Window x:Class="Overlay.Client.HomeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="Fova"
+        Width="1040" Height="830" MinWidth="900" MinHeight="730"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Bg}"
+        FontFamily="{StaticResource AppFont}"
+        Icon="fova.ico">
+    <!-- RootGrid carries a LayoutTransform ScaleTransform (set in code-behind) so the whole
+         UI scales up to ~1.5x on large screens and shrinks to fit on small ones. Layout is
+         scaled, not a bitmap, so text stays crisp. -->
+    <Grid x:Name="RootGrid">
+        <Grid.LayoutTransform>
+            <ScaleTransform x:Name="RootScale" ScaleX="1" ScaleY="1" />
+        </Grid.LayoutTransform>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ── Left nav rail ─────────────────────────────────────────── -->
+        <!-- Icon-only (60px) by default; expands to the full 200px on hover, revealing the
+             title/label text, and collapses back on mouse-leave. The ColumnDefinition above is
+             Auto so the Grid sizes to this Border's (animated) Width — a GridLength can't be
+             animated directly, so Width is the real sizing mechanism instead. ClipToBounds
+             prevents label text from visibly overflowing the rail while it's still collapsed
+             (the labels also fade via Opacity, animated alongside Width below). -->
+        <Border x:Name="NavRail" Grid.Column="0" Width="60" HorizontalAlignment="Left" ClipToBounds="True"
+                Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
+                BorderThickness="0,0,1,0">
+            <Border.Triggers>
+                <EventTrigger RoutedEvent="Border.MouseEnter">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Width" To="200" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="AppTitleLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavHomeLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavSearchLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavComboLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavStatsLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavSettingsLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavHelpLabel" Storyboard.TargetProperty="Opacity"
+                                             To="1" Duration="0:0:0.15" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+                <EventTrigger RoutedEvent="Border.MouseLeave">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Width" To="60" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="AppTitleLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavHomeLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavSearchLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavComboLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavStatsLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavSettingsLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                            <DoubleAnimation Storyboard.TargetName="NavHelpLabel" Storyboard.TargetProperty="Opacity"
+                                             To="0" Duration="0:0:0.15" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Border.Triggers>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="18,26,0,28">
+                    <!-- Fova mark: FOV ring (Aperture) — steel arc = your field of view, red arc =
+                         the blind spot fova fills (the "+a"); centre dot = focus. fova = FOV + a.
+                         Drawn on a 64-unit canvas (matches the brand kit) and scaled by the Viewbox.
+                         Icon-only when the rail is collapsed; the "fova." wordmark to its right
+                         fades in on hover via the AppTitleLabel Opacity animation above. -->
+                    <Viewbox Width="26" Height="26" VerticalAlignment="Center">
+                        <Canvas Width="64" Height="64">
+                            <!-- base field of view (steel, ~270deg arc) -->
+                            <Path Data="M38.84,50.79 A 20,20 0 1 1 50.79,25.16"
+                                  Stroke="{StaticResource FovaScan}" StrokeThickness="6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            <!-- blind spot fova fills (red arc = the +a) -->
+                            <Path Data="M50.79,25.16 A 20,20 0 0 1 38.84,50.79"
+                                  Stroke="{StaticResource FovaContact}" StrokeThickness="6"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                            <!-- focus point -->
+                            <Ellipse Canvas.Left="28.4" Canvas.Top="28.4" Width="7.2" Height="7.2"
+                                     Fill="{StaticResource FovaScan}" />
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock x:Name="AppTitleLabel" FontSize="17" FontWeight="SemiBold"
+                               Margin="10,0,0,0" VerticalAlignment="Center" Opacity="0">
+                        <Run Text="fova" Foreground="{StaticResource Text}" /><Run Text="." Foreground="{StaticResource FovaContact}" />
+                    </TextBlock>
+                </StackPanel>
+
+                <RadioButton x:Name="NavHome" Style="{StaticResource NavItem}" GroupName="nav"
+                             IsChecked="True" Checked="Nav_Home">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavHomeLabel" Text="홈" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavSearch" Style="{StaticResource NavItem}" GroupName="nav"
+                             Checked="Nav_Search">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavSearchLabel" Text="유저검색" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavCombo" Style="{StaticResource NavItem}" GroupName="nav"
+                             Checked="Nav_Combo">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavComboLabel" Text="콤보설정" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavStats" Style="{StaticResource NavItem}" GroupName="nav"
+                             Checked="Nav_Stats">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- MDL2 "AreaChart" — the statistics table -->
+                        <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavStatsLabel" Text="통계" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" GroupName="nav"
+                             Checked="Nav_Settings">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavSettingsLabel" Text="설정" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="NavHelp" Style="{StaticResource NavItem}" GroupName="nav"
+                             Checked="Nav_Help">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                        <TextBlock x:Name="NavHelpLabel" Text="도움말" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                    </StackPanel>
+                </RadioButton>
+            </StackPanel>
+        </Border>
+
+        <!-- ── Content area ──────────────────────────────────────────── -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!-- M33 champ-select panel: Auto-height strip, collapsed (zero height) outside
+                     champ select. Unlike the M29 slot below it is transient by design — it may
+                     shift the view when champ select starts/ends, which is exactly when the user
+                     is looking at the client anyway. -->
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <!-- M29 ad slot: a FIXED reserved 130px (90px 728x90 leaderboard + 16/24 margins).
+                     The window is 130px taller than the design height it had before the slot
+                     existed (700 -> 830), so the content row — every view — keeps exactly the
+                     size it had. Reserved unconditionally: an empty, failed, or in-game-dormant
+                     slot hides its contents but never gives the space back, so the UI above never
+                     shifts. -->
+                <RowDefinition x:Name="AdRow" Height="130" />
+            </Grid.RowDefinitions>
+
+            <!-- Header bar -->
+            <Grid Grid.Row="0" Margin="28,22,28,0">
+                <TextBlock x:Name="SectionTitle" Text="홈" Style="{StaticResource SectionHeader}"
+                           VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="PreviewToggle" Content="오버레이 · OFF" Style="{StaticResource GhostButton}"
+                            Click="PreviewToggle_Click" Margin="0,0,12,0" />
+                    <Border x:Name="StatusPill" Background="{StaticResource SurfaceHi}"
+                            BorderBrush="{StaticResource Border}" BorderThickness="1"
+                            CornerRadius="14" Padding="12,6">
+                        <TextBlock x:Name="StatusText" Text="&#x25CF; 게임 대기 중" FontSize="12"
+                                   FontWeight="SemiBold" Foreground="{StaticResource TextDim}" />
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <Border Grid.Row="0" Height="1" Background="{StaticResource Border}" VerticalAlignment="Bottom"
+                    Margin="28,0,28,0" />
+
+            <!-- M33 champ-select panel host; inserted in code-behind (needs the composition's
+                 LcuConnector + preset store). Collapsed row outside champ select. -->
+            <StackPanel x:Name="HomeDashboardExtras" Grid.Row="1">
+                <!-- First-run Flash-key question (2026-07-25): asked ONCE at app start; never
+                     shown again while champSelect.flashKey holds a value. -->
+                <Border x:Name="FlashKeyBanner" Margin="28,12,28,0" Visibility="Collapsed"
+                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
+                        BorderThickness="1" CornerRadius="8" Padding="16,10">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="점멸을 어느 키에 두세요? (프리셋 적용 시 점멸을 이 키로 맞춥니다)"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextDim}"
+                                   Margin="0,0,10,0" />
+                        <Button x:Name="FlashKeyD" Content="D 점멸" Style="{StaticResource GhostButton}" />
+                        <Button x:Name="FlashKeyF" Content="F 점멸" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- Active view host -->
+            <ContentControl x:Name="MainContent" Grid.Row="2" Margin="28,20,28,24" />
+
+            <!-- Ad slot host; the AdBanner control is inserted in code-behind (it needs the
+                 AppComposition's AdSlotService). -->
+            <ContentControl x:Name="AdSlot" Grid.Row="3" Margin="28,16,28,24" />
+        </Grid>
+    </Grid>
+</Window>

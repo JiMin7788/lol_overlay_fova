@@ -1,0 +1,73 @@
+{
+  "_note": "Curated. Source: communitydragon/viego.bin.json mSpellCalculations, cross-checked vs live wiki.leagueoflegends.com/en-us/Viego and Template:Data_Viego/Heartbreaker fetches this session (2026-07-10). The auto-picker's Q/R 'TotalDamage' guesses turned out to be UNRESOLVABLE in this engine (see _noteQ/_noteR) -- they were silently producing null damage already; this pass replaces them with what actually resolves. MAJOR CORRECTION (loop 221): the claim that mStat 8/9 'are not in BuildStatResolver's supported set' and that 'this project's rule is not to extend the interpreter' is STALE/WRONG -- re-verified directly against the current SkillDamage.cs source: mStat 8 (crit chance) and 9 (crit damage) ARE mapped, both to a documented 0.0 no-crit floor (the §26 fix, already shipped, no interpreter change needed from this pass). Q's active-cast stab and R's AoE hit, both previously 'genuinely blocked', are fixed -- see _noteQ/_noteR.",
+  "_noteP": "Sovereign's Domination has no damage-dealing GameCalculation anywhere in the BIN (ViegoPassive/ViegoPassiveSoul/ViegoPassiveCasting/ViegoPassiveNotTransformed/ViegoPassiveTransform all carry zero mSpellCalculations) -- consistent with the real mechanic (the execute/possession trigger fires off Viego's OTHER damage sources bringing an enemy below a % HP threshold; it is not itself a separate damage instance). PercentHealthHeal (on ViegoPassive) is a self-heal, not damage. P carries no hits.",
+  "_noteQ": "Blade of the Ruined King: 'TotalDamage' (Damage + StatByNamedDataValue(mStat=2 TOTAL AD, ActiveADRatio=0.7) = wiki's base 'Physical Damage: 25/40/55/70/85 (+70% AD)') is wrapped in an mMultiplier = 1 + StatByNamedDataValue(mStat=8, ActiveCritMod) * (StatByCoefficient(mStat=9)-1) -- a critical-strike-chance-scaling bonus ('increased by 0-60% (+0-18% w/ Infinity Edge) based on crit chance' per wiki). FormulaInterpreter.EvaluateCalculation applies a GameCalculation's mMultiplier UNCONDITIONALLY whenever present (see FormulaInterpreter.cs 'A plain (non-Modified) GameCalculation can also carry mMultiplier ... apply it unconditionally whenever present'), and mStat ids 8/9 (crit chance / crit damage multiplier) are not in BuildStatResolver's supported set (only AP/Armor/AD/MR/MoveSpeed/Health) -- so evaluating calc:'TotalDamage' always throws KeyNotFoundException and silently resolves to null (this was ALREADY true of the pre-curation auto-guess; not a regression). Per this project's rule the interpreter is not extended/patched to add stat ids 8/9, so Q's own active-cast stab damage is genuinely blocked and carries no direct 'hits'. What IS cleanly resolvable (neither references mStat 8/9) are Q's two on-hit procs, modeled as onHit bonusEffects: (1) 'TotalPercentHealthOnHit' = mMultiplier(0.01) x NamedDataValue(PercentHealthOnHit), no crit term -- wiki's passive 'Bonus Physical Damage: 2/3/4/5/6% of target's CURRENT health' on every basic attack (its 'HealthCritDamage' crit-scaled sibling calc DOES reference mStat 9 and is skipped, same reasoning as above; the MinDamageOnHit floor is also skipped, standard floor-omission precedent); (2) 'SecondAttackDamage' = StatByCoefficient(mStat=2 TOTAL AD, coefficient 0.2) + StatByNamedDataValue(no mStat -> AP default, SecondAttackAPRatio=0.15) = wiki's mark-consume second strike '20% AD (+15% AP) physical damage' (its own crit-scaled variant is not exposed as a separate named calc here and is not modeled). CORRECTION (loop 221): Q's own active-cast 'TotalDamage' (Damage + StatByNamedDataValue(mStat=2 total AD, ActiveADRatio=0.7), real ranks 25/40/55/70/85) is now ADDED as a direct hit -- its mMultiplier (1 + mStat8*ActiveCritMod*(mStat9-1)) evaluates to 1 + 0*ActiveCritMod*(0-1) = 1 under the current engine (both crit stats resolve to 0.0), so it resolves cleanly to the wiki's 'Physical Damage: 25/40/55/70/85 (+70% AD)' base value exactly. Physical, count 1, alongside the two existing onHit procs.",
+  "_noteW": "Spectral Maw: TotalDamage = NamedDataValue(Damage) + StatByNamedDataValue(no mStat -> AP default, APRatio=1.0) = wiki's 'Magic Damage: 80/135/190/245/300 (+100% AP)' exactly (Damage DataValues rank1-5 = 80/135/190/245/300). No crit-scaling term on this calc -- fully resolvable as-is.",
+  "_noteR": "Heartbreaker has two wiki-documented damage components. (1) The AOE hit to ALL nearby enemies on arrival ('All targets hit are dealt 120% AD physical damage, increased by 0-70% (+0-21% w/ IE) based on crit chance') maps to BIN 'TotalDamage' = StatByNamedDataValue(mStat=2 TOTAL AD, ADRatio=1.2=120%) wrapped in the SAME crit-scaling mMultiplier pattern as Q (mStat=8 CritMod / mStat=9, unmapped) -- genuinely blocked for the identical reason documented in _noteQ, no hit modeled. (2) The bonus to the single most-wounded enemy champion hit, based on their MISSING health, maps to 'TotalPercentHealth' = NamedDataValue(MaxHealthDamage) + StatByCoefficient(mStat=2, mStatFormula=2 = BONUS AD, coefficient 0.05) -- confirmed against the live Template:Data_Viego/Heartbreaker fetch's rendered tooltip preview 'Physical Damage: 12 / 16 / 20% (+5% per 100 bonus AD) of target's missing health' (matches BIN DataValue MaxHealthDamage rank1-3 = 12/16/20 exactly; R has only 3 ranks). MaxHealthDamage's raw values are percentage-POINTS (12.0, not 0.12) with no mDisplayAsPercent flag on this calc, but SkillDamage.ResolveHpPercentCalc's existing >=1.0-means-whole-percent normalization ('raw >= 1.0 ? raw / 100.0 : raw') already handles this correctly (12 -> 0.12 = 12%; adding 0.05*bonusAD before division correctly folds in the 'per 100 bonus AD' term, e.g. +100 bonus AD -> raw 17 -> 17%), so hpPercentCalc is safe and accurate here without any interpreter change. Modeled hpBasis Missing per the wiki's explicit 'of target's missing health'. CORRECTION (loop 221): R's AoE 'TotalDamage' (pure StatByNamedDataValue(mStat=2 total AD, ADRatio=1.2), no flat base) is now ADDED as a second hit -- same crit-multiplier-resolves-to-1 reasoning as Q above. Matches wiki 'All targets hit are dealt 120% AD physical damage' exactly. Physical, count 1, alongside the existing %missing-health hit on the primary target.",
+  "_noteQ_onhit": "TWO ON-HIT EFFECTS EXPLAINED (loop 477, user reported this as a bug). Both are real and they are different mechanics - the curation just had each one gated the wrong way round. Live wiki (wiki.leagueoflegends.com/en-us/Viego, fetched 2026-08-20): Q passive gives bonus on-hit damage based on the target CURRENT health, and separately his damaging abilities apply a mark whose next basic attack against a marked target is empowered to consume the mark on-hit and STRIKE A SECOND TIME. So (1) TotalPercentHealthOnHit is an always-on passive that fires on every attack, not only after Q is cast - alwaysOn true; (2) SecondAttackDamage is the mark consumption, which happens ONCE per mark - maxProcs 1, where it previously rode every attack after Q. KNOWN APPROXIMATION: any damaging ability applies the mark, but the effect is curated under Q, so the engine gates it on Q having been cast. A W/E/R-only opener therefore misses the second strike. The active itself is a single stab and is already the Q slot hit.",
+  "Q": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "alwaysOn": true,
+        "hits": [
+          {
+            "type": "Physical",
+            "hpPercentCalc": "TotalPercentHealthOnHit",
+            "hpBasis": "Current",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "trigger": "onHit",
+        "maxProcs": 1,
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "SecondAttackDamage",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "hpPercentCalc": "TotalPercentHealth",
+        "hpBasis": "Missing",
+        "count": 1,
+        "tags": [
+          "PercentMissingHp"
+        ]
+      },
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  }
+}

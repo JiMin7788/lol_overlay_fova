@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!--
+    WHY ELEVATED. The overlay must run at the same integrity level as the League game
+    (which runs elevated). Windows UIPI stops a lower-integrity process from receiving
+    keyboard input while a higher-integrity window is in the foreground, so without this
+    the hotkeys work everywhere EXCEPT in game — which is the only place they matter.
+
+    WHAT IT ACTUALLY DOES — corrected 2026-08-21. The earlier text here said this build
+    "does not hook input". That stopped being true when hotkeys moved from RegisterHotKey
+    (whose WM_HOTKEY messages the focused game swallowed, even elevated) to a
+    WH_KEYBOARD_LL hook, and the wording was never updated. Stating it plainly instead:
+
+      * It DOES install a low-level keyboard hook (Hotkeys/LowLevelHotkeyHook.cs).
+      * That hook NEVER swallows a key — HookCallback has exactly one return path,
+        CallNextHookEx, so every keystroke reaches the game untouched.
+      * It NEVER logs, stores, buffers or transmits a keystroke. The only state kept is the
+        set of registered hotkey combos plus which modifier keys are currently held.
+      * It does NOT use GetAsyncKeyState/GetKeyboardState, and sends NO input
+        (no SendInput/keybd_event) — it cannot act on the player's behalf (P4).
+      * It does NOT read game memory or inject code into any process (P3).
+
+    In effect it is RegisterHotKey that also works over the game. If you would rather not
+    run a build that installs a keyboard hook at all, the alternative implementation
+    (Hotkeys/Win32HotkeyHook.cs) is still in the tree — but it loses in-game hotkeys and
+    the click-to-target modifier gate that depends on IsModifierHeld.
+  -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>

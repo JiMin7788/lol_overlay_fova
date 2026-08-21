@@ -1,0 +1,11 @@
+{
+  "_note": "Curated (hand-verified against teemo.bin.json). Q (Blinding Dart) 'CalculatedDamage' = BaseDamage + 0.7 AP, Magic -- matches the auto-picker. E (Toxic Shot) was WRONGLY typed Physical by the auto-picker and used the wrong calc -- Toxic Shot is Riot-documented all-Magic on-hit poison, so RE-TYPED to Magic and modeled as its real two-part shape: 'ImpactCalculatedDamage' (the instant on-hit burst applied by the attack itself, ImpactBaseDamage + 0.3 AP + 0.05x bonus AD) plus 'TickCalculatedDamage' (one representative poison DoT tick, TickBaseDamage + 0.1 AP + 0.025x bonus AD; the real poison lasts 4 ticks over 4s, curated as ONE tick per this project's established conservative DoT convention, e.g. Singed Q/Brand P). R (Noxious Trap) 'TotalDamage' = BaseDamage(75-825) + 0.5 AP, Magic -- matches the auto-picker; the single calc bundles the mushroom's trigger burst (no separate DoT calc exists in the BIN to split out). Tagged Zone (mushrooms are placed traps forming a lingering poison cloud a target can avoid/leave) and BurstCeiling (825 base at max rank dwarfs every other Teemo hit in this file, by far his biggest realistic single contribution). W (Move Quick) has NO mSpellCalculations in the BIN (pure passive/active move-speed buff) -- correctly left with no hits entry.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "CalculatedDamage", "count": 1 } ] },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "ImpactCalculatedDamage", "count": 1 },
+      { "type": "Magic", "calc": "TickCalculatedDamage", "count": 1 }
+    ]
+  },
+  "R": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["Zone", "BurstCeiling", "AoeUltimate"] }
+}

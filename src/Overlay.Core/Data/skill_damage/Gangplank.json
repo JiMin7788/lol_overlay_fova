@@ -1,0 +1,47 @@
+{
+  "_noteRUpgrade": "R DEATHS DAUGHTER (loop 485, closing the sweep-triage row). The triage note called DeathsDaughterBaseDamage a purchased-upgrade state the Live Client API does not expose and left it out - correct then, because there was no way to state an upgrade. ConditionType.Upgraded is that now, and the term is a real calc, not a bare DataValue: DeathsDaughterDamage = DeathsDaughterBaseDamage (120/210/300 at R ranks 1-3) + 30% AP, the centre cannonball the Silver Serpent upgrade adds on top of the barrage. Curated as a second hit with no baseline - an un-upgraded R has no centre cannonball at all - so the floor is the barrage exactly as before and the checkbox adds the upgrade. Which upgrades were bought is a shop decision the API does not report, so it is the users to state.",
+  "_note": "Curated (T3.x passive pass; P damage type corrected M26 stage-4). P (Trial by Fire): basic attacks apply a burning-oil DoT that deals TRUE damage -- wiki verbatim '50 - 250 (based on level) (+ 100% bonus AD) bonus true damage over 2.5 seconds' (damageType True in curation_evidence/Gangplank.json; the earlier 'Magic' pick was an unsourced assumption, the BIN calc carries no type info). TotalDamage = level-interpolated base 50→250 + 1.0x bonus AD (ADRatio DV = 1.0), GangplankPassive.mSpellCalculations -- matches the wiki numbers exactly. Curated as a P bonusEffect trigger onHit (assistive approximation of the per-second burn, applied once per landed hit, same conservative modeling as Warwick/Mordekaiser). Q/R kept as the auto first-pass physical/magic picks.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "True",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "ShotDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "OneWaveDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "conditionType": "Upgraded",
+        "metCalc": "DeathsDaughterDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteE": "E (Powder Keg) investigated loop 219 (flagged missingSlots by the audit). Two champion-facing bonus-damage DataValues exist -- GangplankE's own 'BonusDamageToChampions' (55-175) and GangplankESpellPassive's 'ChampionBonusDamage' (80,80,105,130,155,180,205) -- but NEITHER is referenced by any mSpellCalculations entry (E's own calcs are FinalSlowAmount/BarrelDecayTime only; GangplankEBarrelFuseMissile has no DataValues/calcs at all), and critically there is no discoverable BASE keg-explosion damage number anywhere in this bin at all -- a keg's detonation damage appears to be native/scripted rather than a data-driven GameCalculation. Curating only the champion bonus term without the (unlocatable) base would understate the real hit by an unknown, likely dominant amount, and it's unclear whether BonusDamageToChampions and ChampionBonusDamage are the same mechanic read twice or two distinct triggers (direct keg explosion vs. igniting an already-placed keg) -- both genuinely ambiguous from bin structure alone. Left uncurated rather than ship a partial/misleading number (M26 P2); flagging here so this is a documented decision, not an oversight. M26 stage-4 recheck: wiki verbatim confirms the omission stands -- 'Enemies caught in an explosion are dealt the triggering attack's damage' (the base term IS the detonating basic attack/Q, already counted as that node's own damage in a combo; curating it here would double-count), the champion bonus (BonusDamageToChampions rank1-5 = 75/95/115/135/155, matches wiki '75 / 95 / 115 / 135 / 155', curation_evidence/Gangplank.json) fires only on that player-sequenced attack-detonation (E cast alone deals zero), and 'If an enemy destroys it, it is safely defused'. No schema shape represents 'inherit the triggering attack's damage' without double-counting; omission stands.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R DeathsDaughterBaseDamage(120->570 at R ranks) is the Death's Daughter UPGRADE's center-cannonball - a purchased-upgrade state (Silver Serpents) the Live Client API does not expose; base R barrage stays the conservative floor. Documented."
+}

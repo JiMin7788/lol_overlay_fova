@@ -1,0 +1,41 @@
+{
+  "_note": "Curated (loop 39). Source: communitydragon/twistedfate.bin.json mSpellCalculations, cross-checked vs a live wiki.leagueoflegends.com/en-us/Twisted_Fate fetch (2026-07-10). Slot mapping confirmed via spellNames: Q=WildCardsAbility/WildCards, W=PickACardAbility/PickACard, E=CardmasterStackAbility/CardmasterStack (Stacked Deck), R=DestinyAbility/Destiny, P=SecondSightAbility/SecondSight (Loaded Dice). IMPORTANT CORRECTION from the prior auto-pass: Q and E were mistyped as Physical -- both are actually Magic damage per wiki's own 'Sub-type(s): Magic' classification. MAJOR CORRECTION (loop 221): W's prior 'genuinely unresolvable' verdict was WRONG -- re-verified directly against the current SkillDamage.cs source that mStat=8 (crit chance) IS mapped (to a documented 0.0 no-crit floor, the §26 fix), including inside StatBySubPartCalculationPart (statResolver(8,...) * subpart = 0 * subpart = 0, the crit bonus term vanishes cleanly rather than throwing). See _noteW for the fix.",
+  "_noteP": "Loaded Dice: wiki confirms pure on-kill bonus gold (chance-based, increased by crit chance), no combat damage. Correctly no damage -- omitted.",
+  "_noteQ": "Wild Cards: TotalDamage = BaseDamage (DataValue, 15/60/105/150/195/240/285) + bonus AD * BonusADRatio (mStat 2, mStatFormula 2, ratio 0.5) + AP * APRatio (0.85). Wiki: 'Magic Damage: 60/105/150/195/240 (+50% bonus AD) (+85% AP)' -- matches exactly (BIN rank1 index = 60). Magic (was wrongly Physical in the prior auto-pick), single hit ('enemies can be damaged only once per pass').",
+  "_noteW": "Pick a Card FIXED (loop 221). All three cards' calcs (BlueDamage/RedDamage/GoldDamage) sum a flat base + 100% total AD + a per-card AP ratio, PLUS a StatBySubPartCalculationPart keyed on mStat=8 (crit chance) wrapping the crit-scaling bonus -- that mStat=8 term resolves to 0.0 in the current engine (§26 no-crit floor), so it contributes 0 and each card's base formula resolves cleanly (matching each card's wiki-documented 0%-floor value exactly): Blue 40/60/80/100/120 (+100% AD)(+100% AP), Red 30/45/60/75/90 (+100% AD)(+70% AP), Gold 15/22.5/30/37.5/45 (+100% AD)(+50% AP), all Magic. Since exactly ONE of the three cards lands per W cast (a player choice, mutually exclusive -- summing all three would overcount), only 'BlueDamage' (the highest raw-damage card, the natural pick for an all-in damage combo) is curated as W's hit; Red (slow) and Gold (stun) are situational CC picks with lower raw damage, not modeled here to avoid conflating three exclusive outcomes into one number (documented, not an oversight).",
+  "_noteE": "Stacked Deck: BonusDamage = Damage (DataValue, 40/65/90/115/140/165/190) + bonus AD * BonusADRatio (0.2) + AP * APRatio (0.4). Wiki: 'Bonus Magic Damage: 65/90/115/140/165 (+20% bonus AD) (+40% AP)' -- matches exactly (BIN rank1 index = 65). Magic (was wrongly Physical in the prior auto-pick). Modeled as an onHit bonusEffect: wiki now classifies Stacked Deck's targeting input as 'Passive' (procs once every 3 basic attacks, an always-on on-hit passive that happens to occupy the E slot post-changes) -- same pattern as Warwick P.",
+  "_noteR": "Destiny: wiki confirms pure vision/reveal ultimate (no damage dealt by TF himself). Correctly no damage -- omitted.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "alwaysOn": true,
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "BonusDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BlueDamage",
+        "count": 1
+      }
+    ]
+  }
+}

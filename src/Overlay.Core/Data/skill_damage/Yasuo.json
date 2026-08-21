@@ -1,0 +1,6 @@
+{
+  "_note": "Curated (T2c). E (Sweeping Blade) deals MAGIC damage (auto-picker wrongly tagged Physical). Q and R are physical. W (Wind Wall) has no damage.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "Damage", "count": 1 } ] }
+}

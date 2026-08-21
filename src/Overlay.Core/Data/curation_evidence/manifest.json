@@ -1,0 +1,126 @@
+{
+ "spec": "docs/modules/M32_WEB_EVIDENCE_CURATION_PIPELINE.md",
+ "approvedSourcesOnly": true,
+ "entries": [
+  {
+   "champion": "Aatrox",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Aatrox.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Aatrox",
+    "namu": "https://namu.wiki/w/아트록스(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Aatrox.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/aatrox.bin.json"
+   }
+  },
+  {
+   "champion": "Ahri",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Ahri.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Ahri",
+    "namu": "https://namu.wiki/w/아리(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Ahri.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/ahri.bin.json"
+   }
+  },
+  {
+   "champion": "Akali",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Akali.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Akali",
+    "namu": "https://namu.wiki/w/아칼리(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Akali.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/akali.bin.json"
+   }
+  },
+  {
+   "champion": "Akshan",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Akshan.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Akshan",
+    "namu": "https://namu.wiki/w/아크샨(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Akshan.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/akshan.bin.json"
+   }
+  },
+  {
+   "champion": "Alistar",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Alistar.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Alistar",
+    "namu": "https://namu.wiki/w/알리스타(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Alistar.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/alistar.bin.json"
+   }
+  },
+  {
+   "champion": "Ambessa",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Ambessa.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Ambessa",
+    "namu": "https://namu.wiki/w/암베사(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Ambessa.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/ambessa.bin.json"
+   }
+  },
+  {
+   "champion": "Amumu",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Amumu.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Amumu",
+    "namu": "https://namu.wiki/w/아무무(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Amumu.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/amumu.bin.json"
+   }
+  },
+  {
+   "champion": "Anivia",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Anivia.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Anivia",
+    "namu": "https://namu.wiki/w/애니비아(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Anivia.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/anivia.bin.json"
+   }
+  },
+  {
+   "champion": "Annie",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Annie.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Annie",
+    "namu": "https://namu.wiki/w/애니(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Annie.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/annie.bin.json"
+   }
+  },
+  {
+   "champion": "Aphelios",
+   "score": 0,
+   "focusSlots": "all",
+   "evidencePath": "data/curation_evidence/Aphelios.json",
+   "sources": {
+    "wiki": "https://wiki.leagueoflegends.com/en-us/Aphelios",
+    "namu": "https://namu.wiki/w/아펠리오스(리그 오브 레전드)/스킬",
+    "ddragon": "https://ddragon.leagueoflegends.com/cdn/16.13.1/data/en_US/champion/Aphelios.json",
+    "cdragonLocal": "src/Overlay.Core/Data/communitydragon/aphelios.bin.json"
+   }
+  }
+ ]
+}

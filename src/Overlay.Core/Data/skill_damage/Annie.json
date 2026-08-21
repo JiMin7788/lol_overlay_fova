@@ -1,0 +1,9 @@
+{
+  "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "InitialBurstDamage", "count": 1 }, { "type": "Magic", "perAttackCalc": "TibbersAADamage", "count": 1 } ] },
+  "_noteR_sweep2": "STAGE-4 AUDIT (loop 438, 2026-07-27): sweep tier-B AuraDamage(4->28) IS referenced by the TibbersAuraDamage calc (+0.04AP) - Tibbers' burning aura, an UPTIME-DEPENDENT summon aura tick. Deliberately not curated (same honesty rule as summon attack counts: aura seconds are player-dependent; a per-second knob upgrade is possible later). No calc changes.",
+  "_noteR": "R (Summon: Tibbers). Hit 1 = InitialBurstDamage (the cast's AoE magic burst, always applied). Hit 2 (M22 Phase 3) = Tibbers' auto-attack as a per-attack SUMMON hit: perAttackCalc='TibbersAADamage' (Magic; AnnieR.mSpellCalculations, resolves live from the BIN) x the node's user-entered UserAttackCount ('몇 대'). Unset/0 attacks -> 0 (R shows only the burst) -- honest default since Tibbers' total is player-uptime-dependent, not a fixed cast number. NOT curated: 'TibbersAuraDamage' (per-second burning aura) -- available as a future perSecondCalc DoT hit.",
+  "_noteE": "E (Molten Shield): a shield that REFLECTS a flat amount to attackers (BIN DamageReturn). Reflected damage triggers off incoming attacks, not a proactive cast the combo model can attribute (same class as Mel W reflect, honestly-uncurated per P2). No hits - the E cast deals no direct damage."
+}

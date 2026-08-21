@@ -1,0 +1,115 @@
+{
+ "champion": "Pantheon",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Pantheon"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Comet Spear",
+   "facts": [
+    {
+     "field": "ThrustDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Thrust Physical Damage: 70 / 100 / 130 / 160 / 190 (+ 115% bonus AD)"
+    },
+    {
+     "field": "IncreasedThrustDamage",
+     "kind": "flat",
+     "values": [
+      155,
+      230,
+      305,
+      380,
+      455
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Increased Thrust Damage: 155 / 230 / 305 / 380 / 455 (+ 230% bonus AD)"
+    },
+    {
+     "field": "HurlDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Hurl Physical Damage: 70 / 100 / 130 / 160 / 190 (+ 115% bonus AD) (+ 50% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Shield Vault",
+   "facts": [
+    {
+     "field": "PercentMaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.06,
+      0.065,
+      0.07,
+      0.075,
+      0.08
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 6 / 6.5 / 7 / 7.5 / 8% of target's maximum health (+ 1.5% per 100 AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Aegis Assault",
+   "facts": [
+    {
+     "field": "RecastDamage",
+     "kind": "flat",
+     "values": [
+      55,
+      105,
+      155,
+      205,
+      255
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Recast Physical Damage: 55 / 105 / 155 / 205 / 255 (+ 150% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Grand Starfall",
+   "facts": [
+    {
+     "field": "ShockwaveMagicDamage",
+     "kind": "flat",
+     "values": [
+      300,
+      500,
+      700
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Shockwave Magic Damage: 300 / 500 / 700 (+ 100% AP) or reduced 150 / 250 / 350 (+ 50% AP)"
+    }
+   ]
+  }
+ }
+}

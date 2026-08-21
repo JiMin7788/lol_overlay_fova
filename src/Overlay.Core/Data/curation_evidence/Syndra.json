@@ -1,0 +1,87 @@
+{
+ "champion": "Syndra",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Syndra"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Dark Sphere",
+   "facts": [
+    {
+     "field": "SphereDamage",
+     "kind": "ratio",
+     "values": [
+      90,
+      125,
+      160,
+      195,
+      230
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "90 / 125 / 160 / 195 / 230 (+ 70% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Force of Will",
+   "facts": [
+    {
+     "field": "PrimaryDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 100 / 130 / 160 / 190 (+ 65% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Scatter the Weak",
+   "facts": [
+    {
+     "field": "ScatterDamage",
+     "kind": "ratio",
+     "values": [
+      60,
+      95,
+      130,
+      165,
+      200
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 95 / 130 / 165 / 200 (+ 60% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Unleashed Power",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "ratio",
+     "values": [
+      560,
+      840,
+      1120
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "560 / 840 / 1120 (+ 140% AP)"
+    }
+   ]
+  }
+ }
+}

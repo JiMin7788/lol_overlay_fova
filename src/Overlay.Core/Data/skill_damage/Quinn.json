@@ -1,0 +1,32 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Harrier): attacking a marked target deals bonus PHYSICAL damage (BonusDamage = level-interpolated base 15→120 + 0.4x bonus AD, QuinnPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than only on-mark procs (documented, same style as other on-hit passives). Q/E/R kept as the auto first-pass physical picks.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "BonusDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  }
+}

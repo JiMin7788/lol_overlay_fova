@@ -1,0 +1,33 @@
+{
+ "champion": "Singed",
+ "collectedAt": "2026-07-23",
+ "collector": "Claude Code F4-1 backfill (quote transcribed verbatim from the loop-343 _note in skill_damage/Singed.json; the live wiki WebFetch happened during that loop, not at backfill time)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Singed"
+  }
+ ],
+ "slots": {
+  "E": {
+   "name": "Fling",
+   "facts": [
+    {
+     "field": "MaxHPDamage",
+     "kind": "percentmaxhp",
+     "values": [
+      6.0,
+      6.5,
+      7.0,
+      7.5,
+      8.0
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "The maximum-health bonus damage is capped at 300 against minions and monsters only. This cap does not apply to champion targets, meaning the full percentage-based damage applies when flinging enemy champions.",
+     "note": "Disproves the earlier claim that the %maxHP bonus 'only applies to non-champion targets' — the term is real, guaranteed, UNCAPPED champion combo damage. Added as a second E hit via hpPercentDataValue (whole-percent raw form, auto-normalized), hpBasis Max, tag PercentMaxHp."
+    }
+   ]
+  }
+ }
+}

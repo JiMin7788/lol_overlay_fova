@@ -1,0 +1,13 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: diana.bin.json mSpellCalculations (Q=DianaQAbility/DianaQ, W=DianaOrbsAbility/DianaOrbs i.e. Pale Cascade, E=DianaTeleportAbility/DianaTeleport i.e. Lunar Rush -- internal folder keeps its pre-rework name, R=DianaRAbility/DianaR i.e. Moonfall). Cross-checked vs WebSearch snippets for all four. Numbers drifted slightly (plausible balance tweaks) but formula SHAPE and AP-ratio % matched exactly in every case; R matched exactly once the DataValue index==rank convention (Garen R precedent) was applied. P kept as-is from an earlier pass.",
+  "_noteP": "Moonsilver Blade unchanged: CleaveDamage=ByCharLevelBreakpoints(L1=20,+5/lvl,breaks@7,12,17)+APRatio(0.5). bonusEffect onHit.",
+  "_noteQ": "Crescent Strike: TotalDamage=BaseDamage+APRatio(0.70). WebSearch confirms Magic damage, flat+AP-ratio shape. One hit.",
+  "_noteW": "Pale Cascade: THREE independently-detonating orbs. WebSearch: 'each of the three orbiting spheres deals 18/30/42/54/66(+18%AP), maximum total ... 3x'; matches BIN's separate TotalMaxDamage(=TotalDamage x3) and OrbAPRatio=0.18 exactly. Curated as TotalDamage (per-orb) at count 3, mathematically equal to the 3x total but preserves independent per-hit mitigation (Sett Q precedent). ShieldValue is defensive, not modeled.",
+  "_noteE": "Lunar Rush: TotalDamage=BaseDamage+APRatio(0.60). WebSearch confirms a flat-base+AP-ratio magic dash strike (numbers stale vs this BIN, shape/type match). One hit. CDResetTime is a cooldown-refund mechanic, not damage.",
+  "_noteR": "Moonfall: RExplosionDamage=Damage(index-by-rank)+StatByCoefficient(0.6 AP). WebSearch: 'dealing 200/300/400(+60%AP) magic damage in an area', matches Damage at index==rank (rank1..3->index1..3->200/300/400) and the 0.6 coefficient exactly. RMultiHitAmplification is a CONDITIONAL per-extra-champion-pulled bonus (wiki: 'increased ... for each champion pulled BEYOND THE FIRST') that doesn't apply to a single-target combo -- not curated. MaxDamage(x5) is an unconfirmed theoretical cap, not curated. One hit: RExplosionDamage.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "CleaveDamage", "count": 1 } ] } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 3 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "RExplosionDamage", "count": 1 } ] }
+}

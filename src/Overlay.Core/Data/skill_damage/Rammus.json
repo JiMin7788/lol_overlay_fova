@@ -1,0 +1,25 @@
+{
+  "_note": "FULLY CURATED (loop 39). Q/W/R hand-verified against rammus.bin.json mSpellCalculations/DataValues AND cross-checked live at wiki.leagueoflegends.com/en-us/Rammus (WebFetch) -- every number/ratio matched exactly, so no type/count changes were needed from the auto first-pass. E confirmed genuinely no-damage (PuncturingTaunt's only mSpellCalculations entry, MonsterDamageCalc, is monster-only per its DataValue name and is never referenced by any champion-facing calc) -- omitted rather than forced. 'auto' flag removed: every slot (P/Q/W/R curated, E confirmed no-damage) is resolved.",
+  "_noteP": "P (Spiked Shell): while boosted by Powerball/Defensive Ball Curl, Rammus's next basic attack deals bonus MAGIC on-hit damage (RammusP.mSpellCalculations 'TotalDamage' = StatByNamedDataValueCalculationPart(mStat=1 Armor, mDataValue='ArmorRatio'=0.15) + StatByNamedDataValueCalculationPart(mStat=6 MagicResist, mDataValue='MagicResistRatio'=0.15), both terms summed directly in one GameCalculation's mFormulaParts, no interpolation/level scaling). Hand-traced example: at 100 Armor / 50 MR -> 0.15x100 + 0.15x50 = 15 + 7.5 = 22.5 bonus magic on-hit damage. Curated as a P bonusEffect trigger onHit (approximated as firing on every AA rather than gated on the Powerball/Curl-boosted state, same documented style as Volibear P).",
+  "_noteQ": "Q (Powerball): 'PowerBallDamage' = NamedDataValue(QBaseDamage) + StatByNamedDataValue(APRatio, mStat unset -> AP). Wiki-confirmed Magic Damage 80/120/160/200/240 (+100% AP) at ranks 1-5 -- exact match to BIN's QBaseDamage[40,80,120,160,200,240,280] indices 1-5 (index 0/6 are unused placeholder/cherry-mode padding, per the project's documented rank-index convention) and APRatio=1.0 (=100% AP). Single explosion on unleash, count=1 correct.",
+  "_noteW": "W (Defensive Ball Curl): 'ReturnDamageCalc' = FlatDamageReturn(15) + DamageArmorRatio(0.1)xArmor(stat1) + DamageMRRatio(0.1)xMR(stat6), reflected to an attacker while curled. Wiki confirms Magic damage sub-type. A duplicate 'RecastDamageTooltip' calc with identical formula parts exists but is not used (redundant alias, same number either way). count=1 approximates one reflect application; actually triggers per incoming attack while curled, not once per cast -- documented caveat, not a fabricated number.",
+  "_noteR": "R (Tremors2/Soaring Slam): 'InitialDamageCalc' = NamedDataValue(InitialDamage) + StatByNamedDataValue(APRatio=0.6, mStat unset -> AP). Wiki-confirmed Magic Damage 150/250/350 (+60% AP) at ranks 1-3 (R has only 3 real ranks) -- exact match to BIN's InitialDamage[50,150,250,350,450,550,650] indices 1-3 (indices 0/4-6 are unused padding). Two other calcs in the same spell were deliberately NOT used: 'PulseDamageCalc' references DataValue 'PulseBaseDamage' which has NO values array in the BIN (unresolvable -- throws KeyNotFoundException) confirming it is vestigial/dead tooltip data; 'TooltipMaxDamageCalc' is explicitly tooltipOnly. The wiki's own ability text confirms Soaring Slam's 3 aftershocks only refresh the slow, dealing no additional damage -- so InitialDamageCalc alone is the complete, correct single-hit damage. Tagged BurstCeiling: Rammus's ultimate (AoE knockup + largest single burst number in his kit) is his clearest highest-realistic-burst contribution.",
+  "_noteE": "E (Puncturing Taunt): rammus.bin.json's PuncturingTaunt spell has exactly one mSpellCalculations entry, 'MonsterDamageCalc' (MonsterDamage DataValue + APRatio), which only ever applies to monsters (jungle-camp taunt-and-tank mechanic) -- no champion-facing calculation exists anywhere in the spell block. Legitimately no player-facing damage; entry omitted entirely (not auto:true'd) per the no-damage-utility-skill convention.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "PowerBallDamage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "ReturnDamageCalc", "count": 1 }
+    ]
+  },
+  "R": {
+    "hits": [
+      { "type": "Magic", "calc": "InitialDamageCalc", "count": 1 }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

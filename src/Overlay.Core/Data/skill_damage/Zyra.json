@@ -1,0 +1,15 @@
+{
+  "_note": "Curated. Source: communitydragon/zyra.bin.json mSpellCalculations this pass (2026-07-10). Q and R were entirely missing from the prior stub (their calcs use EffectValueCalculationPart/mEffectAmount rather than NamedDataValue, which the earlier auto-pass apparently couldn't resolve) -- both are added here.",
+  "_noteP": "Garden of Thorns: plants spawned by Zyra's abilities attack for bonus MAGIC damage (ZyraP.mSpellCalculations 'PlantDamage' = level-interpolated base 15->75 + 0.2x AP). Curated as a standalone P hit (plant attacks, not Zyra's own AA) -- add a Passive node per plant attack.",
+  "_noteQ": "Deadly Spines: ADDED this pass. InitialDamage = EffectValueCalculationPart(mEffectIndex=1, mEffectAmount[0].value = 60-260) + StatByCoefficient(0.65 AP). Magic.",
+  "_noteE": "Grasping Roots: TotalDamage = NamedDataValue(BaseDamage, 25-235) + StatByCoefficient(0.6 AP). Magic.",
+  "_noteR": "Stranglethorns: ADDED this pass. TotalDamage = EffectValueCalculationPart(mEffectIndex=3, mEffectAmount[2].value = 200/200/300/400 by rank) + StatByCoefficient(0.7 AP). Magic. Curated as ONE hit (count 1) -- the real ultimate erupts multiple spike bursts across its zone/duration, but the BIN carries no clean 'number of eruptions on one stationary target' DataValue, so a single-instance hit is the honest floor. Tagged Zone (persistent multi-eruption ground AoE the target can walk out of) and BurstCeiling (Zyra's single highest realistic burst tool, especially combined with active plants).",
+  "P": { "hits": [ { "type": "Magic", "calc": "PlantDamage", "count": 1 } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "InitialDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": {
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1, "tags": ["Zone"] } ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R PlantDamageBonus(50) empowers PLANT (pet) attacks during the ult - a pet-actor modifier outside the single-attacker model (plants themselves are uptime-dependent). Documented."
+}

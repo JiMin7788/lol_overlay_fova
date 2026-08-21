@@ -1,0 +1,41 @@
+{
+  "_note": "Q/R hand-verified against sona.bin.json this pass (auto flag removed): both already matched the auto-picker and resolve cleanly. Q (Hymn of Valor) 'TotalDamage' = BaseDamage + 0.4 AP, Magic. R (Crescendo) 'TotalDamage' = BaseDamage(50-650) + 0.5 AP, Magic -- tagged BurstCeiling as Sona's clearly largest single hit (650 flat at max rank, far above Q's 225 and Power Chord's ~240). W (Aria of Perseverance) and E (Song of Celerity) have NO damage calc in the BIN (pure heal/shield and pure move-speed buff) -- correctly left with no hits entry.",
+  "_noteP": "P (Power Chord): after casting 3 spells, Sona's next basic attack deals bonus MAGIC on-hit damage (SonaPassive.mSpellCalculations 'PowerChordDamage' = ByCharLevelBreakpointsCalculationPart(Level1Value=20, InitialBonusPerLevel=10, breakpoint @9->rate15) + StatByCoefficientCalculationPart(mStat absent = AP total, mCoefficient=0.20)). Hand-traced by champion level: level1=20, steps of +10 per level through level8=90, level9 applies the new rate to its own increment per FormulaInterpreter's breakpoint semantics (90+15=105), then +15 per level through level18=105+15x9=240 (plus 20% AP). Curated as a P bonusEffect trigger onHit (real trigger requires a 3-spell-cast charge gate the engine does not model; approximated as firing on every AA, same documented style as Volibear/Rammus P).",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "PowerChordDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "_noteQ": "Hymn of Valor (SonaQAbility/SonaQ): 'TotalDamage' (BaseDamage 50/85/120/155/190 + 0.4 AP, curated) is confirmed via live wiki fetch to be the main aura-cast hit to the two nearest enemies. Two OTHER calcs in this same spell object are intentionally NOT curated: 'TotalOnHitDamage' (BaseOnHitDamage + 0.10 AP) is the 'Melody' bonus applied to Sona's ALLY's next basic attack, not Sona's own damage -- out of scope for a personal-combo damage model. 'TotalStaccatoDamage' (ByCharLevelBreakpoints 30->405 + 0.3 AP) is the Q-specific enhanced Power Chord variant (when Power Chord triggers right after casting Q rather than W/E) -- P's bonusEffect already models Power Chord as one flat generic value ('PowerChordDamage', 0.2 AP) applied on every hit as a documented approximation; modeling three separate per-spell Power Chord variants would require restructuring that existing approximation and is out of scope for this pass, so it stays a documented simplification rather than a fix."
+}

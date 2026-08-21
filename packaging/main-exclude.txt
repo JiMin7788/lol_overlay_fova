@@ -1,0 +1,38 @@
+# Paths kept OUT of the `main` (distribution) branch.
+#
+# `main` exists to be built and shipped; `master` carries the development history. Everything
+# listed here is process material - agent state, the running handoff, module specs, curation
+# tooling, audio sources - none of which a person building the app needs.
+#
+# Applied by packaging/sync-main.ps1. One path per line, relative to the repo root.
+# A trailing / means "the whole directory". Lines starting with # are comments.
+# A line starting with ! is an EXCEPTION: keep it even though a broader rule removed it.
+
+# ── agent / process state ───────────────────────────────────────────────────────────────────────
+.agent-state/
+.claude/
+CLAUDE.md
+CLAUDE_CODE_TODO.md
+info.md
+
+# ── internal documentation ──────────────────────────────────────────────────────────────────────
+# Module specs, review templates, loop reports, the traps file, the 600 KB TODO archive, and the
+# source MP3s the shipped voice WAVs were converted from (the WAVs live in
+# src/Overlay.Client/Assets/voice/enemy and DO ship).
+docs/
+# …except the two the README links to for the P1-P4 policy and the anti-cheat section.
+!docs/00_PROJECT_OVERVIEW.md
+!docs/01_SYSTEM_ARCHITECTURE.md
+
+# ── Riot Developer Portal ownership token ───────────────────────────────────────────────────────
+# Removed at the owner's instruction (2026-08-21). NOTE FOR LATER: this token is PUBLIC BY DESIGN -
+# Riot fetches the URL and compares the value, so it was never a secret, and deleting it can break
+# portal verification. Restore with:
+#     git show <old-commit>:riot.txt > riot.txt      (value also in this repo's history)
+# and drop this rule.
+riot.txt
+
+# ── data-pipeline and curation tooling ──────────────────────────────────────────────────────────
+# Riot match collection, aggregation, BIN drift auditing, curation validators. Needed to REGENERATE
+# the shipped data under src/Overlay.Core/Data, never to build or run the app.
+tools/

@@ -1,0 +1,21 @@
+{
+  "_note": "Curated. Q (Sigil of Malice, LeblancQAbility): Damage=BaseDamage+0.4AP, magic -- matches prior auto-pick, hand-verified. W (Distortion, LeblancWAbility): TotalDamage=BaseDamage+0.8AP, magic -- matches prior auto-pick, hand-verified.",
+  "_noteQ": "Q also carries a MarkDamage calc (BaseMarkDamage+0.4AP) that detonates when a LATER spell (W/E/R) hits the same marked target within MarkDuration (3.5s) -- a cross-ability, single-consume mark mechanic. Not curated as an auto bonusEffect: Self-trigger would incorrectly fire it on Q's OWN cast (the mark hasn't been detonated yet at that moment), and OnAbility would incorrectly apply it to every subsequent W/E/R cast rather than only the first one to touch the marked target. Left undocumented in hits/bonusEffects (schema limitation, not fabricated) -- a real combo that lands Q then W/E on the same target deals more than this file models.",
+  "_noteE": "E (Ethereal Chains, LeblancEAbility) ADDED a second hit -- was only modeling the initial impact. InitialDamage=BaseInitialDamage+0.4AP (cast-time hit) plus DelayedDamage=BaseDelayedDamage+0.85AP (root+bonus damage if the tether holds for its duration) -- both real, separate BIN damage instances; curated together assuming the tether completes (a landed-cleanly assumption consistent with this project's convention elsewhere, e.g. Karma W/Karthus R).",
+  "_noteR": "R (Mimic, LeblancRAbility) ADDED -- was mapping calc 'RQ1Damage' with no companion RQ2Damage, undercounting even its own chosen variant. Mimic has NO independent damage of its own: it recasts whichever of Q/W/E Leblanc last used, at separate (usually higher) BIN numbers keyed per source spell (RQ1/RQ2Damage for mimicked Q, RWDamage for mimicked W, RE1/RE2Damage for mimicked E) -- a real conditional/branching mechanic this schema cannot dynamically select (no 'last cast spell' state). Curated using the MIMIC-Q variant (RQ1Damage the direct hit + RQ2Damage the mark-detonation companion, matching Q's own two-part structure) as the default, since Q is Leblanc's primary poke/combo-starter -- if the user's actual combo ends with W or E instead of Q, real R damage differs (RWDamage or RE1+RE2Damage) and is NOT reflected here. Both magic.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "Damage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "InitialDamage", "count": 1 },
+      { "type": "Magic", "calc": "DelayedDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "RQ1Damage", "count": 1 },
+      { "type": "Magic", "calc": "RQ2Damage", "count": 1 }
+    ]
+  }
+}

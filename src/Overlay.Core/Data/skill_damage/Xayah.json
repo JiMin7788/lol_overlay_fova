@@ -1,0 +1,43 @@
+{
+  "_note": "Curated. Source: communitydragon/xayah.bin.json mSpellCalculations this pass (2026-07-10). MAJOR CORRECTION (loop 221): re-audit found the engine's SkillDamage.BuildStatResolver DOES map mStat ids 8 (crit chance) and 9 (crit damage) -- both resolve to a documented 0.0 'model as no crit' floor (see the §26 fix in SkillDamage.cs, StatCritChance=>0.0/StatCritDamage=>0.0) -- they are NOT unmapped/throwing as several champions' notes (written before or without checking this) claimed. E is fixed accordingly; see _noteE.",
+  "_noteQ": "Double Daggers: TotalDamage = BaseDamage(30-120) + 0.5x total AD (mStat=2, no mStatFormula). MultiHitDamage = TotalDamage x MultiHitRatio(0.5) -- the BIN's own name for the second dagger that also lands when the target is within melee range (both daggers hit the same target point-blank). Curated as two hits (count 1 each) representing the point-blank both-daggers-land case; at range only TotalDamage lands.",
+  "_noteE": "Deadly Plumage/Bladecaller CORRECTED (loop 221) -- the prior 'GENUINELY BLOCKED' verdict was WRONG. FeatherDamage = NamedDataValue(BaseDamage, real ranks 50/65/80/95/110) + StatByNamedDataValue(mStat=2 bonus AD, ratio 0.4) x mMultiplier SumOfSubParts{1 + ProductOfSubParts[StatByNamedDataValue(mStat=8), SumOfSubParts[StatByCoefficient(mStat=9), -1]]}. Re-verified directly against the CURRENT SkillDamage.cs source: StatCritChance(8) and StatCritDamage(9) ARE mapped, both to a documented 0.0 floor (the §26 'model ability crit as NO crit, conservative' fix) -- they do NOT throw KeyNotFoundException. Evaluating the multiplier with both terms at 0.0 gives 1 + (0 * (0-1)) = 1, i.e. FeatherDamage cleanly resolves to BaseDamage + 0.4x bonus AD (matches wiki 'Base damage per feather: 50/65/80/95/110 (+40% bonus AD)' exactly, Physical). Curated as ONE hit (count 1, one feather on the primary target; the real ability fires multiple feathers in a fan but the BIN carries no clean single-target feather-count DataValue, matching the same single-instance-floor precedent used for R). MinionDamage (=FeatherDamage x0.5) is out of scope (champion-target combo). The wiki's own crit-scaling note ('increases 0-50% based on crit chance') is NOT modeled beyond the 0%-floor baseline, consistent with this engine's global no-live-crit-input convention.",
+  "_noteR": "Featherstorm: Damage = NamedDataValue(RBaseDamage, 100-700) + StatByCoefficient(mStat=2, mStatFormula=2 -> 100% BONUS AD). Curated as ONE hit (count 1) representing a single feather landing on the primary target; the real ability throws several feather waves in an expanding ring while untargetable, but the BIN carries no clean 'number of feathers landing on one stationary target' DataValue, so a single-instance hit is the honest floor. Tagged BurstCeiling as Xayah's largest realistic single-target burst tool.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "MultiHitDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "FeatherDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW": "W (Deadly Plumage): an attack-speed / bonus-attack-damage steroid (and feather-shove) - no cast damage of its own (Xayah's burst comes from Q feathers + E detonation, both curated). No hits."
+}

@@ -1,0 +1,61 @@
+{
+  "_noteRUpgrade": "R THE SKIES DESCEND (loop 485, closing the sweep-triage row). The triage note pointed at the R2 family as stack-gated and left it; the stack gate is exactly what ConditionType.Upgraded is for, and both terms are real calcs. Live wiki (wiki.leagueoflegends.com/en-us/Aurelion_Sol, fetched 2026-08-21): 75 Stardust transforms the next Falling Star into The Skies Descend, whose star impact is 25% larger (187.5/312.5/437.5 (+93.75% AP) against the base 150/250/350 (+75% AP)) and which ADDS a shockwave for 135/225/315 (+67.5% AP). The BIN matches exactly - R2Damage = MaxDamageTooltip x R2DamageRatio 1.25 and ShockwaveDamage = MaxDamageTooltip x ShockwaveDamageRatio 0.9. Shaped as the two things they are: the impact hit REPLACES its base when upgraded (calc MaxDamageTooltip, metCalc R2Damage), and the shockwave is a second hit with no baseline because an un-upgraded cast has no shockwave. Untouched, R resolves to precisely what it did before.",
+  "_note": "Re-verified this session (loop 39), auto flag removed for Q/E/R (all three cleanly resolvable); P stays uncurated (genuinely blocked, see below -- this is the exact 'AurelionSol-class buff-stack-tracking-only' champion the project's own convention calls out). Q (Starfire, AurelionSolQAbility/AurelionSolQ) is now TWO hits: BurstDamage (the one-time burst dealt to the first enemy the channel hits, NDV(RankBurstDamage)+StatByNDV(AP,BurstAPRatio)) plus DamagePerSecond (the ongoing channel-beam tick, NDV(RankDamagePerSecond)+StatByNDV(AP,APPerSecond)), tagged Zone on the DoT tick since a target can move out of the beam. A third Q calc, BurstBonusTrueDamageToChamps, is a BuffCounterByNamedDataValueCalculationPart (stacking bonus true damage per stat/mark stack) -- genuinely infeasible, no live buff-stack feed, left out (not force-computed). R (AurelionSolRAbility/AurelionSolR, the object CharacterRecord.spellNames[3] actually maps to Skills['R']) FIXED from the auto-picker's wrong pick 'R2Damage' to 'MaxDamageTooltip': R2Damage = MaxDamageTooltip * NDV(R2DamageRatio)=1.25, which the BIN documents as a TOOLTIP PREVIEW of what the RECAST would deal -- but the actual recast executes via a completely SEPARATE spell object, AurelionSolRAbility/AurelionSolR2 (its own MaxDamageTooltip/MinDamageTooltip/Calamity calcs), which is NOT reachable from Skills['R'] at all (same one-slot-one-spell-object structural gap documented in Aphelios.json this session). Curating 'R2Damage' would have overstated a single R cast by 25% for damage that belongs to an unreachable recast. MaxDamageTooltip (NDV(BaseDamage)+StatByNDV(AP,APRatio=0.75), BIN BaseDamage=[50,150,250,350,450,550,650]) is the real, undiminished first-cast impact damage and was only excluded by the auto-picker's NonPrimaryMarkers 'tooltip' substring filter -- a false positive (the calc has no tooltipOnly:true flag, it just has 'Tooltip' in its own name). Tagged BurstCeiling: with Q/P's stack mechanics unresolvable, R.MaxDamageTooltip is this champion's only cleanly-computable and clearly single-biggest realistic burst hit. R's ShockwaveDamage (a secondary knockback pulse, ratio 0.9) was NOT added as a second hit -- could not confirm via a live source whether it lands additively on the same primary target or is an exclusive alternate-target mechanic, so left uncurated rather than guess (P1/P2). E (Nova, AurelionSolEAbility/AurelionSolE) DamagePerSecond (NDV(BaseDamagePerSecond)+StatByNDV(AP)) is an expanding black-hole zone -- tagged Zone (escapable DoT) and Execute (the BIN's own CurrentExecutionThreshold/BaseExecutionThreshold DataValue confirms E has a real hard-threshold execute mechanic on low-HP targets, even though the threshold's growth is BuffCounter-driven and not itself computed here).",
+  "_noteP": "P (Falling Star) re-confirmed GENUINELY BLOCKED: AurelionSolPassiveAbility/AurelionSolPassive.mSpellCalculations has exactly two entries, QPassiveScaling and EPassiveScalingExecute, both single BuffCounterByNamedDataValueCalculationParts (stack-count-driven, no live buff-stack feed in this pipeline) -- the canonical 'AurelionSol-class' infeasible passive this project's conventions already anticipate. No P block, correctly not forced.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BurstDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "DamagePerSecond",
+        "count": 1,
+        "tags": [
+          "Zone"
+        ]
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "DamagePerSecond",
+        "count": 1,
+        "tags": [
+          "Zone",
+          "Execute"
+        ]
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MaxDamageTooltip",
+        "conditionType": "Upgraded",
+        "metCalc": "R2Damage",
+        "count": 1,
+        "tags": [
+          "BurstCeiling"
+        ]
+      },
+      {
+        "type": "Magic",
+        "conditionType": "Upgraded",
+        "metCalc": "ShockwaveDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW": "W (AurelionSolWAbility/AurelionSolW, current live display name may differ from this internal spell key) carries a DataValue named TrueDamageBonus = 0.07/0.08/0.09/0.10/0.11/0.12/0.13 -- a damage-shaped name, but it is NOT referenced by any mSpellCalculations entry anywhere in the bin (W.mSpellCalculations = DashSpeed + two internal MS-recompute helpers + a ByCharLevelInterpolation utility only -- no calc reads TrueDamageBonus at all). Same shape as this champion's own P (BuffCounter/stack-state-driven, not exposed as a computable GameCalculation) and Sett W's Grit-conversion precedent: a live-state-gated bonus (most plausibly a next-attack-or-ability true damage proc keyed to the dash, i.e. a 7-13 percent health-percent bonus) whose trigger and hpBasis semantics cannot be confirmed from the bin alone, and a same-session wiki fetch attempted for confirmation returned numbers inconsistent with every other bin-verified value on this champion (Q/E/R), so it was not trusted as a source. Left uncurated rather than guess the hpBasis or fabricate a trigger (M26 P2) -- flagged here so the missingSlots audit signal is a documented decision, not a silent gap.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R BaseDamageCenter / MinDamageAtEdge(0.35) are the POSITIONAL falloff table of the impact (center full -> edge 35%) - script-side; the curated MaxDamageTooltip is the center/full value, the standard kill-check anchor, and the R2 (Skies Descend) variant resolves through the R2Damage MODIFIES chain. Documented positional attenuation.",
+  "_noteSweepTriage2": "SWEEP TRIAGE 2 (loop 442): Q QMaxHealthTrueDamagePerStack(0.031%/stack) is the per-passive-stack true-damage term (live buff-counter state); R CalamityBaseDamage/ShockwaveDamageRatio are the stack-gated R2 (Skies Descend) family resolving through the R2Damage MODIFIES chain. Stack state is not API-visible - documented."
+}

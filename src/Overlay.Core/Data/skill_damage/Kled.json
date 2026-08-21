@@ -1,0 +1,64 @@
+{
+  "_note": "Curated/fixed. All hits below are the MOUNTED (on Skaarl) forms of Kled's kit, KledQAbility/KledWAbility/KledEAbility/KledRAbility -- the default and by far the more common state. Dismounted-form spells (KledRiderQAbility etc, used only after Skaarl dies) are structurally separate BIN spell objects with their own DataValues and are NOT modeled (no live signal for mount state) -- left uncurated, a real known gap for the minority dismounted-Kled case.",
+  "_noteQ": "Q (Bear Trap on a Rope, KledQAbility) ADDED a second hit -- was only modeling the initial throw. TotalDamage = FirstHitBaseDamage + 0.6 bonusAD, physical (first hit, matches prior auto-pick). TotalYankDamage = TotalDamage x2 (GameCalculationModified, real BIN multiplier) -- Kled's real Q also lets him recast within TetherPopTime to yank the tethered target for a SECOND, larger hit ('Pop the tether'); curated as a second, separate hit representing a full throw+yank usage (a realistic completed-Q assumption, matching this project's general convention of modeling the successful/completed cast).",
+  "_noteW": "W (Violent Tendencies, KledWAbility) FIXED a real bug and added: the calc 'PercentDamage' (0.01x(4HitMaxHealthDamage[4-7] + 0.02 bonusAD-coeff + 0.004 bonusHP-coeff), mDisplayAsPercent) is a %MAX-HP FRACTION, not flat damage -- treating it as a literal flat number (as the prior curation's structure would if calc'd directly) would be wrong by roughly 2 orders of magnitude; correctly wired via hpPercentCalc/hpBasis Max. The real mechanic only triggers this bonus every 4th consecutive attack against the same target (a toggle-style ability) -- curated as a single direct hit on W's own cast node (one 4th-hit proc), a documented conservative collapse rather than auto-firing on every AA (which would overcount by ~4x). A separate flat BaseFlatDamage on-hit term exists in the DataValues but has no exposed GameCalculation referencing it in this BIN dump -- not fabricated, left out.",
+  "_noteR": "R (Chaaaaaaaarge!!!, KledRAbility) FIXED a real bug: MaximumChargeDamage is ALSO a %MAX-HP fraction (0.03x(PercentHPBase[2-14] + 0.03 bonusAD-coeff), mDisplayAsPercent) that the prior curation used as flat literal damage -- same class of bug as W, now fixed via hpPercentCalc/hpBasis Max. Uses the FULLY-CHARGED (3s charge-up, SecondsToMaxPower) value rather than the lesser MinimumDamageTooltip floor, matching this project's convention of modeling an intentional/well-executed cast (an engaging Kled player charges before impact).",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "TotalYankDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "tags": [
+      "PercentMaxHp"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "flatDataValue": "BaseFlatDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "hpPercentCalc": "PercentDamage",
+        "hpBasis": "Max",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "PercentMaxHp",
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "hpPercentCalc": "MaximumChargeDamage",
+        "hpBasis": "Max",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW_sweep": "SWEEP §41 (2026-07-20): found by tools/sweep_unreferenced_damage.py (Zac-W risk class: a damage term whose DataValue no GameCalculation references is invisible to calc-name-driven curation). Wiki-verified against the live tooltip; the BIN array matches the tooltip digit-for-digit once the rank-0 placeholder at index 0 is dropped, which is the corroboration that it is live, not vestigial. Curated as a BIN-sourced dynamic reference -- no patch-dependent number is hardcoded. Kled W: the prior _noteW explicitly saw BaseFlatDamage and left it out because 'no exposed GameCalculation references it'. That premise is what this sweep disproves -- the wiki tooltip carries 'Additional Physical Damage: 20/30/40/50/60' matching BaseFlatDamage[1..5] exactly. Added as a flat physical term on the same one-proc-per-cast collapse the %maxHP hit already uses.",
+  "QDismounted": { "hits": [ { "type": "Physical", "calc": "DismountedQDamage", "binSpell": "Q", "count": 1 } ] },
+  "_noteQ_sweep2": "STAGE-4 AUDIT addition (loop 442, 2026-07-27): DISMOUNTED-form Q (Pocket Pistol) exists as its own BIN calc (DismountedQDamage, fed by the sweep-flagged DismountedBaseDamage 35->95 at ranks) and was unrepresented - added as the selectable QDismounted form slot (dismount state is not API-visible; multiform convention). Mounted kit unchanged."
+}

@@ -1,0 +1,153 @@
+{
+ "champion": "Poppy",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Poppy"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Iron Ambassador",
+   "facts": [
+    {
+     "field": "BonusMagicDamage",
+     "kind": "other",
+     "values": [
+      20,
+      198.82
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "20 - 198.82 (based on level) bonus magic damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Hammer Shock",
+   "facts": [
+    {
+     "field": "FirstHitDamage",
+     "kind": "ratio",
+     "values": [
+      30,
+      55,
+      80,
+      105,
+      130
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "30 / 55 / 80 / 105 / 130 (+ 100% bonus AD) (+ 9% of target's maximum health)"
+    },
+    {
+     "field": "FirstHitPercentMaxHP",
+     "kind": "percentMaxHP",
+     "values": [
+      0.09
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "30 / 55 / 80 / 105 / 130 (+ 100% bonus AD) (+ 9% of target's maximum health)"
+    },
+    {
+     "field": "TotalDamageBothHits",
+     "kind": "ratio",
+     "values": [
+      60,
+      110,
+      160,
+      210,
+      260
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "60 / 110 / 160 / 210 / 260 (+ 200% bonus AD) (+ 18% of target's maximum health)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Steadfast Presence",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      70,
+      110,
+      150,
+      190,
+      230
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 110 / 150 / 190 / 230 (+ 70% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Heroic Charge",
+   "facts": [
+    {
+     "field": "DamagePerHit",
+     "kind": "ratio",
+     "values": [
+      40,
+      60,
+      80,
+      100,
+      120
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "40 / 60 / 80 / 100 / 120 (+ 60% bonus AD)"
+    },
+    {
+     "field": "TotalDamageWithWallStun",
+     "kind": "ratio",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 120% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Keeper's Verdict",
+   "facts": [
+    {
+     "field": "UnchargedDamage",
+     "kind": "ratio",
+     "values": [
+      100,
+      150,
+      200
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "100 / 150 / 200 (+ 45% bonus AD)"
+    },
+    {
+     "field": "ChargedDamage",
+     "kind": "ratio",
+     "values": [
+      200,
+      300,
+      400
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "200 / 300 / 400 (+ 90% bonus AD)"
+    }
+   ]
+  }
+ }
+}

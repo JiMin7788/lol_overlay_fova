@@ -1,0 +1,25 @@
+﻿node_modules/
+bin/
+obj/
+.env
+.agent-state/state.json
+
+# Local secrets (never committed)
+.secrets/
+# Local staging DB for the Riot API collector
+data-pipeline/*.sqlite*
+data-pipeline/collector_status.json
+data-pipeline/collector.lock
+data-pipeline/pipeline.lock
+# Weekly cdragon drift audit run outputs (machine-local, regenerated each run)
+data-pipeline/drift_audit_status.json
+data-pipeline/drift_audit_latest.txt
+data-pipeline/rec/
+data-pipeline/liveclient_items.jsonl
+# DDragon item catalog cache fetched by aggregate_items.py (regenerated per patch)
+data-pipeline/ddragon_items/
+# Python bytecode cache (tools/ scripts)
+__pycache__/
+
+# Packaging output (packaging/build-release.ps1)
+dist/

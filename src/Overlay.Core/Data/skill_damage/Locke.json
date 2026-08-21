@@ -1,0 +1,44 @@
+{
+  "_note": "Locke is a real live champion (released 24.06.2026, internal BIN id 'Locke' -- confirmed via a live fetch of wiki.leagueoflegends.com/en-us/Locke, not a placeholder/typo). Curated (loop 39) against Locke's own bin.json + that same live wiki fetch. P kept from a prior session (see _noteP). Q 'Ritual Nails': the primary nail hit (MissileDamage) is castCount=3 (Locke can recast up to twice more at no cost, mirroring Ahri R's castCount precedent) -- the separate stack-consumption bonus on Locke's next basic attack/Ashen Pursuit (calc 'NailDamage', triggers at 1-3 Soul Nail stacks, BIN formula only resolves the 1-STACK base tier since no live stack-count feed exists to pick the 2/3-stack multiplier -- same documented limitation as BuffCounter-style mechanics) is curated as an onHit bonusEffect at that 1-stack floor value; real damage against a fully-stacked (3x) target is understated by design (never overstated, per P2). W 'Soul Ignition' is pure self-buff/grey-health/heal (no enemy damage) -- correctly has no hits (omitted, not auto:true, per the no-damage-utility-skill convention). E 'Ashen Pursuit' hits with two independent magic hits: the blink-arrival AoE (OnHitDamage) and the empowered-attack dash-arrival AoE (DashDamage) -- matches the wiki's 'Blink Magic Damage' + 'Dash Magic Damage' = 'Total Magic Damage' breakdown. R 'Purgatory': the totem's initial magic AoE hit (Damage, BaseDamage 150/225/300+60%AP) is curated; its hard EXECUTE mechanic (kills marked champions below 10-12%(+0.5%/stack) of max HP, calc 'ExecuteBonusCalc' + a hashed calc '{6c540a3a}') is a THRESHOLD kill condition, not a bonus damage number -- not modeled as a hit to avoid fabricating a number for a mechanic this schema has no Threshold-kill representation for; tagged Execute/BurstCeiling to document the real mechanic regardless.",
+  "_notePTier": "P LOW-HEALTH TIER CURATED, AND THE TAG CORRECTED (loop 488). The _noteP below records that Silver Stake has two calcs - MinOnHitDamage above 30% target health and MaxOnHitDamage at or below it - and that the branch could not be modelled, so only the floor was curated and the hit was TAGGED PercentMissingHp to document the gap. Both halves of that are now wrong. The branch is a plain threshold, which the conditional shape has expressed since M25: HpBelow 0.3 with metCalc MaxOnHitDamage, default unmet so the resolved number is unchanged and the range now reaches the execute-range tier. And the tag was a lie about the hits SHAPE - this is a flat calc with a tier, not a percentage of missing health - which mattered because a corpus scan for hits tagged as percentages that do not resolve as percentages is exactly what caught Trundles R this loop. Tag removed; the mechanic is described here instead.",
+  "_noteP": "P (Silver Stake, verified via leagueoflegends.com/en-us/champions/locke/): Locke's basic attacks deal additional magic damage on-hit, increased based on the target's missing health. LockePassive (hashed key {7531bb00}) defines two calcs: 'MinOnHitDamage' (ByCharLevelInterpolationCalculationPart(5..40) + StatByCoefficientCalculationPart(0.1)) applied when target is ABOVE 30% HP, and 'MaxOnHitDamage' (ByCharLevelInterpolationCalculationPart(10..80) + StatByCoefficientCalculationPart(0.2)) applied at/below 30% HP (gated by AboveHealthPercentCastRequirement/mCurrentPercentHealth=0.3, mInvertResult). Both CalculationPart kinds used are fully supported by FormulaInterpreter. The HP-threshold branch itself is not modeled (no engine support for conditional calc selection), so this is curated as a flat P bonusEffect trigger onHit using the baseline MinOnHitDamage (the common case, target above 30% HP); the higher MaxOnHitDamage tier near execute range is NOT captured -- flag if precision near low-HP targets matters. Tagged PercentMissingHp: real damage continuously ramps up to 2x based on the target's missing health; this curation is the floor (0% missing-HP) value only.",
+  "_noteRefresh1616": "16.16 BIN REFRESH (loop 495). Q BaseMissileDamage [40..100] became [32..80] and MarkDamage [10..70] became [10..58], so a rank-5 nail cast went 98 to 80 and one consumed nail 74 to 64 at the fixture stats. THE TIER MULTIPLIERS DID NOT MOVE: TwoMarkBonusPercent 20 and ThreeMarkBonusPercent 40 are unchanged, so the 1x / 2.4x / 4.2x table still holds - which is exactly the argument for curating them as count-times-percentage in loop 484 rather than writing 2.4 and 4.2 into the file, where this refresh would have left them silently wrong. LockeComboTests re-derived its BIN-sourced fixtures from the new values; they are arithmetic checks, not measured goldens.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "MinOnHitDamage", "conditionType": "HpBelow", "conditionValue": 0.3, "metCalc": "MaxOnHitDamage", "count": 1 } ] } ] },
+  "_noteQSplit": "Q SPLIT INTO Q / Q2 / Q3 (loop 483, user request). Ritual Nails is one cast recast twice more within 4 seconds, and castCount 3 folded all three into one node - so a Q node always claimed three nails and there was no way to say one or two landed. Each is its own slot now, all resolving MissileDamage against LockeQ through binSpell, and castCount is gone. The nail-mark consumption rider stays on Q; see the note below for what it can and cannot say. ⚠️ A saved combo whose Q node stood for all three nails now scores ONE; add Q2 and Q3 beside it.",
+  "_noteQStacks": "Q NAIL CONSUMPTION, TIERED (loop 484 - the user supplied the shape: base, then (base x 2) x 1.2 at two nails and (base x 3) x 1.4 at three). Loop 483 left this open because writing 2.4x and 4.2x into a data file means writing DERIVED constants that go silently wrong when a balance patch moves either percentage. Stated as count-times-percentage it needs no constants at all: the count is structural (three nails, and the tier list says so by its own length) and both percentages are BIN DataValues, TwoMarkBonusPercent 20 and ThreeMarkBonusPercent 40. Curated through the new stackTierBonusDataValues field, which lands NailDamage N times and raises it by the Nth tier. Checks against the live wiki (fetched 2026-08-21): 18/26/34/42/50 at one nail, 43.2/62.4/81.6/100.8/120 at two, 75.6/109.2/142.8/176.4/210 at three - exactly 1x, 2.4x and 4.2x. The mechanic itself: Soul Nails stack to 3 on a target for 4 seconds, and Lockes next damaging basic attack OR Ashen Pursuit consumes them ALL at once, which is why this is one rider capped at one proc rather than a per-nail effect. The nail count is the nodes stack knob, bounded to 1-3 by the tier list; leaving it alone resolves ONE nail, which is exactly what this rider scored before the field existed.",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "MissileDamage", "count": 1 }
+    ],
+    "bonusEffects": [
+      { "trigger": "onHit", "appliesTo": ["AA", "E"], "maxProcs": 1, "hits": [
+        { "type": "Magic", "calc": "NailDamage", "stackTierBonusDataValues": ["TwoMarkBonusPercent", "ThreeMarkBonusPercent"], "count": 1, "tags": ["Stacking"] }
+      ] }
+    ]
+  },
+  "Q2": {
+    "icon": "assets/characters/locke/hud/icons2d/locke_q.png",
+    "hits": [
+      { "type": "Magic", "calc": "MissileDamage", "binSpell": "Q", "count": 1 }
+    ]
+  },
+  "Q3": {
+    "icon": "assets/characters/locke/hud/icons2d/locke_q.png",
+    "hits": [
+      { "type": "Magic", "calc": "MissileDamage", "binSpell": "Q", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "OnHitDamage", "count": 1 },
+      { "type": "Magic", "calc": "DashDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "hits": [
+      { "type": "Magic", "calc": "Damage", "count": 1 }
+    ],
+    "tags": ["Execute", "BurstCeiling", "AoeUltimate"]
+  },
+  "_noteW": "W: the BIN's only 'Damage'-named calc here is DamageRestoreAmount - a HEAL (damage-to-restore conversion), not damage dealt. No offensive hits on the W cast."
+}

@@ -1,0 +1,49 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Deadly Venom): basic attacks/abilities apply a stacking poison DoT dealing MAGIC damage per second (DamagePerSecond = level-breakpoint base [1@1,+1@5/9/13/17/21/25/29] + 0.03x AP, TwitchDeadlyVenomMarker.mSpellCalculations \u2014 breakpoints use the flat mAdditionalBonusAtThisLevel field, so they resolve exactly). Curated as a P bonusEffect trigger onHit \u2014 an assistive APPROXIMATION: the real mechanic is a per-second DoT tick that stacks up to 6, not a flat per-hit add (same documented approximation style as Mordekaiser's Darkness Rise aura). E kept as the auto first-pass physical pick.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "DamagePerSecond",
+            "count": 1,
+            "tags": [
+              "Stacking"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "E": {
+    "tags": [
+      "Stacking"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "flatDataValue": "BaseDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "PhysicalDamagePerStack",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "MagicDamagePerStack",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "AoeUltimate"
+    ]
+  },
+  "_noteE": "CORRECTED this pass: E (Contaminate/Expunge) previously curated with ONLY 'PhysicalDamagePerStack' (a single stack's per-stack coefficient alone) as the sole hit -- this omitted the flat guaranteed BaseDamage component entirely AND the Magic-damage-per-stack component entirely, badly understating the real hit. TwitchExpungeAbility/TwitchExpunge's real damage = BaseDamage (flat, DataValues [10,20,30,40,50,60,70]) + PhysicalDamagePerStack x (Deadly Venom stack count on target, 1-6) as Physical, PLUS MagicDamagePerStack x (same stack count) as Magic (APRatioPerStack=0.35, no base AP component of its own). E can only be cast on a target that already carries at least 1 Deadly Venom stack (a hard cast requirement), so the minimum-guaranteed floor is BaseDamage + 1x PhysicalDamagePerStack (physical) + 1x MagicDamagePerStack (magic) -- curated as three hits (flatDataValue BaseDamage + calc PhysicalDamagePerStack + calc MagicDamagePerStack), representing the 1-stack floor, consistent with this project's conservative-floor convention for stack-count-dependent mechanics this engine cannot live-track (same as Locke Q's 1-stack floor). Real damage at higher stack counts (up to the BIN's own MaxPhysicalDamage/MaxMagicDamage 6-stack ceiling) is understated by design (never overstated, per P2).",
+  "_noteR": "R (Spray and Pray): a steroid ult - grants bonus AD and makes basic attacks pierce; the damage is dealt by the empowered auto-attacks (bonus AD, resolved on the AA node), not by the R cast. No direct cast hits."
+}

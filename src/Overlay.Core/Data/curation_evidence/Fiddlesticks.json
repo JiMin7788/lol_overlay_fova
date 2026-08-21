@@ -1,0 +1,30 @@
+{
+ "champion": "Fiddlesticks",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Fiddlesticks.json"
+  }
+ ],
+ "slots": {
+  "R": {
+   "name": "Crowstorm",
+   "facts": [
+    {
+     "field": "DamagePerSecond",
+     "kind": "flat",
+     "values": [
+      125,
+      225,
+      325
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "Effect array: [null,[125,225,325],...]"
+    }
+   ]
+  }
+ }
+}

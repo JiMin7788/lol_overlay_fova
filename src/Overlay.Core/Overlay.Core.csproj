@@ -1,0 +1,101 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- M15: lets Overlay.Core.Tests call EventBus.ResetForTests(), a test-only seam
+         that is intentionally not part of the public API surface described in the
+         M15 spec's Interfaces section. -->
+    <InternalsVisibleTo Include="Overlay.Core.Tests" />
+    <!-- §43-AN: tools/MinimapReplay replays real captured frames through this assembly's own
+         detector. It needs MinimapPixelSampling for the candidate crop so the replay uses the
+         SAME downscale as production rather than a copy that could drift from it. -->
+    <InternalsVisibleTo Include="MinimapReplay" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundle the versioned static-game-data file next to the assembly so
+         StaticGameDataLoader.DefaultDataPath resolves at runtime. -->
+    <None Update="Data\static-game-data.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Bundle recall-config.json for RecallConfigLoader.DefaultConfigPath. -->
+    <None Update="Data\recall-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Bundle objective-config.json for ObjectiveTimerConfigLoader.DefaultConfigPath (DA-004). -->
+    <None Update="Data\objective-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- M08: bundle map_constants.json for MapConstantsLoader.DefaultPath (lane-distance presets). -->
+    <None Update="Data\map_constants.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- M11: bundle Special Property override files (data/special_properties/*.json). -->
+    <None Include="Data\special_properties\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\special_properties\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <!-- M11: bundle the on-disk Data Dragon cache (fetched once, reused across runs). -->
+    <None Include="data\ddragon\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\ddragon\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <!-- M11 v2: bundle the on-disk CommunityDragon BIN cache (AD/AP/other spell
+         coefficients, unavailable from Data Dragon — see M11 Changelog v2.0). -->
+    <None Include="Data\communitydragon\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\communitydragon\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <!-- T3.2: bundle the item proc-damage map (ItemEffectDb), generated from the items BIN.
+         Linked lowercase to match ItemEffectDb.DefaultPath (data/item_effects.json). -->
+    <None Include="Data\item_effects.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\item_effects.json</Link>
+    </None>
+    <!-- Combo-damage model: bundle the curated per-skill damage map (SkillDamageDb).
+         Links to data/skill_damage/*.json alongside the ddragon/communitydragon caches. -->
+    <None Include="Data\skill_damage\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\skill_damage\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </None>
+    <!-- M06 extension: bundle the manual-rune damage-formula map (RuneEffectDb), hand-authored
+         from live wiki fetches (see rune_effects.json's own "_note"). Linked lowercase to match
+         RuneEffectDb.DefaultPath (data/rune_effects.json), same convention as item_effects.json. -->
+    <None Include="Data\rune_effects.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\rune_effects.json</Link>
+    </None>
+    <!-- Summoner-spell damage map (Ignite) — hand-authored from official, same precedent as
+         rune_effects.json (DDragon/CommunityDragon expose no numeric value). Linked lowercase to
+         match SummonerEffectDb.DefaultPath (data/summoner_effects.json). -->
+    <None Include="Data\summoner_effects.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\summoner_effects.json</Link>
+    </None>
+    <!-- M24 P9: bundle the curated hard-execute roster (ExecuteEffectsDb). Linked lowercase to
+         match ExecuteEffectsDb.DefaultPath (data/execute_effects.json), same convention as above. -->
+    <None Include="Data\execute_effects.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\execute_effects.json</Link>
+    </None>
+    <!-- M31 P3: bundle the minimap zone-name grid (MapZoneLookup). Linked lowercase to match
+         MapZoneLookup.DefaultPath (data/map_regions.json), same convention as above. -->
+    <None Include="Data\map_regions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\map_regions.json</Link>
+    </None>
+    <!-- M31 detail-mode voice: camp/objective anchors for the nearest-camp lookup. Point data,
+         unlike map_regions.json's region grid (which drives simple mode). Same link convention.
+         Cross-checked against the grid by tools/validate_jungle_camps.py. -->
+    <None Include="Data\jungle_camps.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\jungle_camps.json</Link>
+    </None>
+  </ItemGroup>
+
+</Project>

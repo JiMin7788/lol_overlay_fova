@@ -1,0 +1,51 @@
+{
+  "_note": "Curated (T3.1). P (Eternal Hunger): every basic attack deals bonus MAGIC on-hit damage (OnHitDamage = level-interpolated base + 0.15 bonus AD + 0.10 AP). Curated as a P bonusEffect with trigger onHit so it is added to every auto-attack in a combo (\uae30\ubcf8\uacf5\uaca9\uc5d0 \ucd94\uac00\ub370\ubbf8\uc9c0). Q/R kept as the auto first-pass physical picks.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "OnHitDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "tags": [
+      "PercentMaxHp"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BaseBiteDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentDataValue": "TargetPercentHPDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageCumulative",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQ": "CORRECTED this pass: Q (Jaws of the Beast) had TWO problems. (1) It was typed Physical, but two independent live sources (fandom mirror + mobafire, fetched 2026-07-20) both describe the ability as dealing MAGIC damage: '120% of his attack (+90% AP) plus 6/7/8/9/10% max health as magic damage' -- all one damage instance, magic type. Changed type from Physical to Magic. (2) The %max-HP component was missing entirely -- WarwickQAbility/WarwickQ's 'TargetPercentHPDamage' DataValue ([5,6,7,8,9,10,11]) has NO GameCalculation referencing it anywhere in the BIN (a bare DataValue-only term, same calc-invisible class found this session for Skarner Q and Kled W). Added as a second Magic hit via hpPercentDataValue. Both hits together (BaseBiteDamage = 1.2xAD + 1.0x-default-AP, plus the %maxHP term) represent the single combined tooltip line the wiki shows as one number."
+}

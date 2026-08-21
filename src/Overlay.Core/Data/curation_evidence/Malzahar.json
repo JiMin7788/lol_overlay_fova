@@ -1,0 +1,32 @@
+{
+ "champion": "Malzahar",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Malzahar.json"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Call of the Void",
+   "facts": [
+    {
+     "field": "CallOfTheVoidDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 70/105/140/175/210, ratio 0.4"
+    }
+   ]
+  }
+ }
+}

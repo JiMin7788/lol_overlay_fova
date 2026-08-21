@@ -1,0 +1,59 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Dirty Fighting): every 3rd consecutive attack against the same target deals bonus MAGIC damage (PassiveProcDamage = level-breakpoint base [15@1,+25@6,+40@11,+70@16] + 0.6x AP, AkshanPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than strictly every 3rd (documented, same style as other on-hit passives). Q/W/E/R kept as the auto first-pass physical picks. CORRECTION (loop 221): E's 'DamageToDeal' auto-pick is BROKEN in production (was never actually hand-verified before this pass) -- see _noteE.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "PassiveProcDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "FinalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "SecondAutoDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageToDeal",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamagePerBulletWithCrit",
+        "count": 1
+      }
+    ]
+  },
+  "_noteE": "E (Heroic Swing) FIXED (loop 221) -- the auto-picked 'DamageToDeal' calc SILENTLY COMPUTES TO ZERO in the live engine, a real undetected bug. DamageToDeal = NamedDataValue(BaseDamage, real ranks 8/16/24/32/40) + StatByNamedDataValue(mStat=2, ADRatio=0.25), wrapped in an mMultiplier = 1 + StatByNamedDataValue(mStat=4, mStatFormula=2, AttackSpeedCoefficient) -- mStat=4 is BONUS ATTACK SPEED, which is NOT one of SkillDamage.BuildStatResolver's mapped ids (0=AP,1=Armor,2=AD,6=MR,7=MS,8=CritChance->0,9=CritDamage->0,12=Health; 4 is absent from all of them, unlike 8/9 which DO resolve to a documented 0.0 floor -- this is a genuinely different, still-unmapped id). FormulaInterpreter.EvaluateCalculation applies mMultiplier UNCONDITIONALLY, so evaluating 'DamageToDeal' throws KeyNotFoundException at every rank, which SkillDamage.ComputeNodeDamage catches and returns null for -- E has been silently dealing 0 damage in this overlay's combo calculator this entire time despite being 'curated'. No calc on this BIN node avoids the AS-multiplier (CriticalCalc wraps DamageToDeal too, so it inherits the same throw). Genuinely blocked with the CURRENT engine -- E now carries no hits (honest, matches the null it was already silently producing) rather than a fake healthy-looking JSON entry. FUTURE FIX (engine, not data): add StatAttackSpeed=4 to BuildStatResolver (bonus AS = stats.AttackSpeed total minus champion base AS, mirroring the existing bonusAd/bonusArmor/etc. pattern) -- this would also fix any OTHER champion whose curated calc references mStat=4 (not audited yet, flagged in CLAUDE_CODE_TODO for a follow-up grep across all champions). RESOLVED (2026-07-23, TODO#48 follow-up): StatAttackSpeed=4 is now mapped in BuildStatResolver -- TOTAL = live attacks/sec (new ActivePlayerStats.AttackSpeed, parsed from championStats.attackSpeed), BONUS = the RATIO total/base - 1 (NOT the minus-delta the earlier note guessed: the coefficient pairs with a fraction, wiki 'increased by 30% per 100% bonus attack speed'). E's hit is restored above: DamageToDeal = (BaseDamage + 0.25xAD) x (1 + 0.3 x bonusAS). Full-BIN audit: 12 champions reference mStat=4 (akshan, aphelios, belveth, garen, jhin, kaisa, kalista, katarina, monkeyking, varus, viego, volibear); the only two CURATED consumers were this E and Aphelios QSeverum (also un-deadened, see Aphelios.json).",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W RecentlyDamagedWindow(3.0s) is the mark-eligibility TIMING window, not a damage term. Benign.",
+  "_noteSweepTriage2": "SWEEP TRIAGE 2 (loop 442): E CritDamageMod(0.5) is the M27 expected-crit scalar class. Benign."
+}

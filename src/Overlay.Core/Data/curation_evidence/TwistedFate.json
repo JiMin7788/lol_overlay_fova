@@ -1,0 +1,70 @@
+{
+ "champion": "TwistedFate",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Twisted_Fate"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Wild Cards",
+   "facts": [
+    {
+     "field": "CardDamage",
+     "kind": "ratio",
+     "values": [
+      60,
+      105,
+      150,
+      195,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 105 / 150 / 195 / 240 (+ 50% bonus AD) (+ 85% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Pick a Card",
+   "facts": [
+    {
+     "field": "BlueCardDamage",
+     "kind": "ratio",
+     "values": [
+      40,
+      60,
+      80,
+      100,
+      120
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "40 / 60 / 80 / 100 / 120 (+ 100% AD) (+ 100% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Stacked Deck",
+   "facts": [
+    {
+     "field": "BonusOnHitDamage",
+     "kind": "ratio",
+     "values": [
+      65,
+      90,
+      115,
+      140,
+      165
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "65 / 90 / 115 / 140 / 165 (+ 20% bonus AD) (+ 40% AP)"
+    }
+   ]
+  }
+ }
+}

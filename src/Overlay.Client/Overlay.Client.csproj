@@ -1,0 +1,85 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\BuildStamp.targets" />
+
+  <!-- LIGHT BUILD (`dotnet build LolOverlay.sln -c Release -p:LightMode=true`).
+       A distribution build with the minimap screen-capture stack compiled out: no
+       Windows.Graphics.Capture, no DXGI Desktop Duplication, and none of the six
+       Vortice/SharpGen DLLs in the output. Everything else is unchanged — in particular the
+       enemy-jungler alerts survive, because they read the Live Client API
+       (EnemyJunglerSpottedDetector subscribes to GAME.ITEM_CHANGED / CS_CHANGED /
+       PLAYER_LEVEL_UP, and EnemyJunglerIdentifier reads the scoreboard) and never touched
+       capture. Deliberately a property, not a new solution Configuration, so it composes with
+       Debug/Release instead of needing its own copy of their settings. -->
+  <PropertyGroup Condition="'$(LightMode)' == 'true'">
+    <DefineConstants>$(DefineConstants);LIGHT</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Bumped from net8.0-windows to consume Overlay.Capture (M31). A consumer's TargetFramework
+         platform version must be >= the referenced project's, so this tracks Overlay.Capture's
+         (net8.0-windows10.0.22621.0, compiled against the Win11 WGC projection surface —
+         TargetPlatformMinVersion below keeps the actual runtime floor at Win10 2004).
+         Core stays pure net8.0; Vortice stays a transitive dep of Capture only. -->
+    <!-- LightMode drops Overlay.Capture, and WGC was the ONLY reason this project needed the
+         Windows-SDK TFM. Falling back to plain net8.0-windows there removes the CsWinRT
+         projection from the package: Microsoft.Windows.SDK.NET.dll is 25 MB and WinRT.Runtime.dll
+         another 0.5 MB, on a 43 MB payload. Nothing else in this project uses WinRT. -->
+    <TargetFramework Condition="'$(LightMode)' == 'true'">net8.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(LightMode)' != 'true'">net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion Condition="'$(LightMode)' != 'true'">10.0.19041.0</TargetPlatformMinVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Run elevated so global RegisterHotKey hotkeys fire while the (elevated) game is
+         focused — see app.manifest. Fixes hotkeys not working over the League window. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- fova branding: exe name (fova.exe), exe file icon, product name. -->
+    <AssemblyName>fova</AssemblyName>
+    <ApplicationIcon>fova.ico</ApplicationIcon>
+    <Product>Fova</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Bundle overlay-config.json next to the assembly so
+         OverlayConfigLoader.DefaultConfigPath resolves at runtime.
+         Pattern mirrors Overlay.Core.csproj <None Update> entries. -->
+    <None Update="Config\overlay-config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- §40: bundled stat icons (armor/MR/etc., extracted transparent PNGs) copied next to the
+         assembly so OverlayHost can load them by absolute path at runtime. -->
+    <Content Include="Assets\stats\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- M31 §B: prerecorded enemy-presence voice pieces (22.05kHz/16-bit/mono WAV, 34 files,
+         ~1.2MB). An alert is assembled from role + location + event pieces, so these are
+         loaded once into PCM and kept in memory — opening a clip per alert costs 263ms vs
+         0.02ms preloaded. WAV (not the source MP3) so the client needs no MP3 decoder.
+         Regenerate from TTS output via the tools/VoiceConvert project. -->
+    <Content Include="Assets\voice\enemy\*.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- fova window/taskbar icon at runtime (Window Icon="fova.ico"). -->
+    <Resource Include="fova.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference Overlay.Core for ObjectiveTimerResult, RecallEvent,
+         and related types consumed by the client. -->
+    <ProjectReference Include="..\Overlay.Core\Overlay.Core.csproj" />
+    <!-- M31: native minimap capture (WGC/DXGI). AppComposition.WireMinimapCapture instantiates
+         MinimapCaptureSource from here. Pulls Vortice.Direct3D11 in transitively. -->
+    <!-- M31 native capture (WGC + DXGI Desktop Duplication, and the Vortice/SharpGen
+         dependency chain it drags in). Dropped entirely in a LightMode build — see the
+         LightMode PropertyGroup above. -->
+    <ProjectReference Include="..\Overlay.Capture\Overlay.Capture.csproj"
+                      Condition="'$(LightMode)' != 'true'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Speech" Version="10.0.9" />
+  </ItemGroup>
+
+</Project>

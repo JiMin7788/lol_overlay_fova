@@ -1,0 +1,76 @@
+{
+ "champion": "Rengar",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Rengar"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Savagery",
+   "facts": [
+    {
+     "field": "SavageryEmpoweredDamage",
+     "kind": "ratio",
+     "values": [
+      30,
+      235
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "30 - 235 (based on level) (+ 30% AD) bonus physical damage"
+    }
+   ]
+  },
+  "W": {
+   "name": "Battle Roar",
+   "facts": [
+    {
+     "field": "BattleRoarEmpoweredDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      220
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "50 - 220 (based on level) (+ 80% AP) magic damage"
+    }
+   ]
+  },
+  "E": {
+   "name": "Bola Strike",
+   "facts": [
+    {
+     "field": "BolaStrikeEmpoweredDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      305
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "50 - 305 (based on level) (+ 80% bonus AD) physical damage"
+    }
+   ]
+  },
+  "R": {
+   "name": "Thrill of the Hunt",
+   "facts": [
+    {
+     "field": "ThrillBonusDamage",
+     "kind": "ratio",
+     "values": [
+      1.0
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "100% AD bonus physical damage"
+    }
+   ]
+  }
+ }
+}

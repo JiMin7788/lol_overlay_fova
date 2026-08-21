@@ -1,0 +1,8 @@
+[
+  {
+    "championId": "Annie",
+    "key": "PyromaniaStunGate",
+    "valueFormula": "stack",
+    "description": "Pyromania (Annie's innate): Annie generates a stack per spell cast; at 4 stacks (flat threshold, NOT level-scaled — confirmed by BIN DataValue 'MaxStacks'=4.0 for all levels 1-18) her next Disintegrate/Incinerate/Summon: Tibbers consumes all stacks and stuns for 1.25s (levels 1-5) / 1.5s (levels 6-10) / 1.75s (levels 11-18) (BIN StunBaseDuration=1.25 + StunDurationPerTier=0.25 at breakpoints level 6 and level 11 — Characters/Annie/Spells/AnniePassiveAbility/AnniePassive in Data/communitydragon/annie.bin.json, cached patch 16.13.1). Pyromania itself deals NO bonus magic damage on live servers — confirmed against League of Legends Wiki, Annie page, Innate: Pyromania (https://wiki.leagueoflegends.com/en-us/Annie, checked 2026-07-10; no Pyromania damage/duration change appears in Annie/Patch_history since this kit's current form, so the cached patch-16.13.1 BIN numbers above remain current). valueFormula is therefore the raw stack count (identity, no level/AP scaling) since the real StackGte gate is a flat 4-stack threshold, not a damage formula. Replaces the earlier placeholder 'PassiveStackDamage' entry, which fabricated a non-existent bonus-damage number; pending Reviewer verdict per the standard M11 loop."
+  }
+]

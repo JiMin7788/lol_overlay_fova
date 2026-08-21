@@ -1,0 +1,27 @@
+{
+  "_note": "Curated (loop 39). P kept from prior session (_noteP). IMPORTANT slot-mapping note: Naafiri's BIN internal ability names do NOT match live slot letters 1:1 -- spellNames[] is positionally Q/W/E/R per the client (ChampionBinParser reads it that way, which is authoritative), but the internal path at the W position is 'NaafiriRAbility/NaafiriR' and the internal path at the R position is 'NaafiriWAbility/NaafiriW' (note also a real casing mismatch in the BIN's own spellNames pointer -- 'Naafiriw' vs the actual key 'NaafiriW', resolved via case-insensitive lookup). Cross-checked against a live wiki fetch (wiki.leagueoflegends.com/en-us/Naafiri) to confirm: Q='Darkin Daggers', W='The Call of the Pack' (buff/summon only, zero damage calcs -- correctly has no hits), E='Eviscerate', R='Hounds' Pursuit'. Q 'Darkin Daggers': curated the guaranteed first-cast hits only (TotalDamageFirstCast initial + TotalBleedDamage full bleed) -- the RECAST finisher against an already-bleeding target (calcs 'TotalMinDamageSecondCast'/'TotalMaxDamageSecondCast', missing-HP-scaled up to 240% bonus AD) is conditional/branchy (requires the target already bleeding) and NOT curated, to avoid double-counting with the base bleed or fabricating which branch fires. E 'Eviscerate': two guaranteed hits, dash (TotalDamageFirstSlash) + arrival flurry (TotalDamageSecondSlash), matches the wiki's combined 'Total Physical Damage'. R 'Hounds' Pursuit': curated Naafiri's own hit only (TotalDamage, 150/225/300+120%bonusAD); the packmate follow-up hits (calc 'PackmateDamage') are NOT curated since packmate count varies with level/buffs and isn't guaranteed at any fixed value. A BIN calc 'ArmorShred' exists on this same ability but is NOT corroborated by any text in the live wiki fetch (no armor-reduction effect is mentioned for Hounds' Pursuit) -- left uncited/uncurated rather than fabricated. Tagged BurstCeiling: R is Naafiri's single highest guaranteed-hit burst tool.",
+  "_noteP": "P (Hound's Pursuit): Naafiri's summoned packmates deal bonus PHYSICAL damage (NaafiriP.mSpellCalculations 'PackmateTotalDamage' = level-interpolated base 10->20 + 0.04x bonus AD). Curated as a standalone P hit (packmate damage, not Naafiri's own action) — add a Passive node per packmate hit.",
+  "P": { "hits": [ { "type": "Physical", "calc": "PackmateTotalDamage", "count": 1 } ] },
+  "_noteQ2_rename": "SLOT RENAMED QSecond -> Q2 (loop 478, user request for one naming convention). Every other numbered recast in the curation is Q2/Q3, and the palette now renders a numeric qualifier as Q2 rather than Q (2). NOTE: the slot key appears in saved combo node ids, so a combo saved with the old QSecond node loses that node and must be rebuilt.",
+  "Q": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamageFirstCast", "count": 1 },
+      { "type": "Physical", "calc": "TotalBleedDamage", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamageFirstSlash", "count": 1 },
+      { "type": "Physical", "calc": "TotalDamageSecondSlash", "count": 1 }
+    ]
+  },
+  "R": {
+    "_noteR_regression": "SILENT-ZERO REGRESSION fixed 2026-07-26 (slot-shell sweep + guard pin): the BIN's spellNames R-slot entry is the lowercase object 'Naafiriw' (mid-scope leftover shell with no damage calcs); the real 'TotalDamage' lives on the capital-W object 'NaafiriW'. The parser is case-sensitive, so the slot resolved the empty shell and the hit evaluated null->0. Routed via binSpell to the object that carries the calc.",
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamage", "binSpell": "NaafiriW", "count": 1, "tags": ["BurstCeiling"] }
+    ]
+  },
+  "Q2": { "hits": [ { "type": "Physical", "calc": "TotalMinDamageSecondCast", "minCalc": "TotalMinDamageSecondCast", "maxCalc": "TotalMaxDamageSecondCast", "binSpell": "Q", "count": 1 } ] },
+  "_noteQ_sweep2": "STAGE-4 AUDIT addition (loop 442, 2026-07-27): the Q SECOND CAST (sweep-flagged BaseDamageSecondCast family) has its own BIN calcs - TotalMinDamageSecondCast (non-bleeding) -> TotalMaxDamageSecondCast (vs a bleeding target, the standard Q1->Q2 sequence) - added as the selectable QSecond slot with the [min, max] range on the bleed condition (anchor = conservative min). First cast + bleed unchanged.",
+  "_noteW": "W (The Call of the Pack): untargetable hunt + a bonus-AD/move-speed steroid and packmate refresh - NO damage (wiki-confirmed). NOTE ON THE NAMING SCRAMBLE: Naafiri's spellNames are index-scrambled, so the BIN object literally named 'NaafiriW' is actually the R ability's damage (Hounds' Pursuit: BaseDamage 150/225/300 at index1-3 + 120% bonus AD = wiki R exactly), which the R slot correctly reaches via binSpell=NaafiriW (see _noteR_regression). The real W ability object carries no damage. No hits here."
+}

@@ -1,0 +1,12 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: nami.bin.json mSpellCalculations (Q/W/E/R spell objects per CharacterRecord.spellNames), cross-checked vs a live wiki.leagueoflegends.com/en-us/Template:Data_Nami/Aqua_Prison fetch and WebSearch snippets for W/E/R. Flat numbers on W/E/R drifted slightly from a stale wiki mirror but TYPE (all Magic) and formula SHAPE matched the BIN exactly in every case; live BIN value always resolves at runtime, never a note literal.",
+  "_noteP": "Surging Tides has zero damage calcs in the BIN -- only TotalMSBonus (a movement-speed buff). No hits.",
+  "_noteQ": "Aqua Prison: TotalDamageTT=BaseDamage+APRatio(0.5). Wiki: Magic Damage 90/145/200/255/310(+50%AP), matches exactly, damagetype=Magic confirmed. One hit.",
+  "_noteW": "Ebb and Flow: TotalDamage=BaseDamage+DamageAPRatio (the damage side of the heal/damage bounce; TotalHeal is the separate ally-heal calc, not modeled). WebSearch confirms Magic type, flat+AP-ratio shape. One hit on the enemy the bounce lands on; the -20%(+15%/100AP) BounceScaling falloff across a 3-target chain is out of scope (single-primary-target combo model).",
+  "_noteE": "Tidecaller's Blessing: TotalDamage=BaseDamage+DamageRatio(0.2 AP), empowers next 3 attacks/hits within 6s. WebSearch confirms 'bonus magic damage' on 'next 3 basic attacks or abilities'. Curated as bonusEffect trigger onHit (approximated as firing on every AA, same style as Diana P/Volibear P).",
+  "_noteR": "Tidal Wave: TotalDamage=BaseDamage+StatByCoefficient(0.6, AP default). WebSearch confirms 'magic damage' with '(+60% of ability power)', matches BIN coefficient exactly. One hit per target swept.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTT", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] }
+}

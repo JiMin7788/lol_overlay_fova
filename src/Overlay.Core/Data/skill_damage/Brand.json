@@ -1,0 +1,9 @@
+{
+  "_note": "Re-verified this session (loop 39), auto flag removed. All of Q (BrandQAbility/BrandQ.TotalDamage), W (BrandWAbility/BrandW.TotalDamage, tooltipOnly but evaluable), E (BrandEAbility/BrandE.EDamageCalc), R (BrandRAbility/BrandR.TotalDamage) confirmed correct via full BIN dump -- each is a single NDV(BaseDamage)+AP-ratio formula for one landed instance, no multi-hit/type corrections needed. W's 'EmpoweredDamage' (x1.25 vs an already-Ablaze target) is a conditional variant, not curated separately (conservative baseline precedent, same as every other champion's proc-state variants in this file set). R tagged BurstCeiling: Pyroclasm is Brand's highest single-cast AoE magic nuke and the clearest biggest-burst contribution in his kit.",
+  "_noteP": "Curated (T7). P (Blaze) burns the target for MAGIC damage equal to a % of their MAX HP per second for 4s. Modeled as a %HP hit (hpBasis Max) whose fraction resolves LIVE from the BIN DataValue 'PercentHealthDamage' (BrandPassive) = [2.0,2.0,...] — a WHOLE-percent encoding, so ResolveHpPercent divides it by 100 -> 0.02 (2% max HP per tick). No baked number. Curated conservatively as ONE tick (count 1) so it never over-states; the full 4s burn would be count 4.",
+  "P": { "hits": [ { "type": "Magic", "hpPercentDataValue": "PercentHealthDamage", "hpBasis": "Max", "count": 1 } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "EDamageCalc", "count": 1 } ] },
+  "R": { "tags": ["AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1, "tags": ["BurstCeiling"] } ] }
+}

@@ -1,0 +1,87 @@
+{
+ "champion": "Irelia",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Irelia"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Bladesurge",
+   "facts": [
+    {
+     "field": "BladesurgeDamage",
+     "kind": "ratio",
+     "values": [
+      5,
+      25,
+      45,
+      65,
+      85
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "5 / 25 / 45 / 65 / 85 (+ 70% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Defiant Dance",
+   "facts": [
+    {
+     "field": "DefiantDanceMaxDamage",
+     "kind": "ratio",
+     "values": [
+      30,
+      60,
+      90,
+      120,
+      150
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Maximum: 30 / 60 / 90 / 120 / 150 (+ 120% AD) (+ 150% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Flawless Duet",
+   "facts": [
+    {
+     "field": "FlawlessDuetDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      110,
+      150,
+      190,
+      230
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 110 / 150 / 190 / 230 (+ 100% AP) magic damage upon convergence"
+    }
+   ]
+  },
+  "R": {
+   "name": "Vanguard's Edge",
+   "facts": [
+    {
+     "field": "VanguardsEdgeDamage",
+     "kind": "ratio",
+     "values": [
+      125,
+      200,
+      275
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Initial barrage: 125 / 200 / 275 (+ 70% AP) magic damage"
+    }
+   ]
+  }
+ }
+}

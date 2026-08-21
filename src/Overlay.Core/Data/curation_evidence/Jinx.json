@@ -1,0 +1,68 @@
+{
+ "champion": "Jinx",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Jinx"
+  }
+ ],
+ "slots": {
+  "W": {
+   "name": "Zap!",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      10,
+      60,
+      110,
+      160,
+      210
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 10 / 60 / 110 / 160 / 210 (+ 140% AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Flame Chompers!",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      70,
+      120,
+      170,
+      220,
+      270
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 70 / 120 / 170 / 220 / 270 (+ 100% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Super Mega Death Rocket!",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "flat",
+     "values": [
+      300,
+      450,
+      600
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "300 / 450 / 600 (+ 155% bonus AD) (+ 25 / 30 / 35% of target's missing health)"
+    }
+   ]
+  }
+ }
+}

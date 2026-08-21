@@ -1,0 +1,33 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Absolution): basic attacks deal bonus PHYSICAL on-hit damage flat-scaled off total AD (BonusOnHitDamage = 0.2x total AD, SennaPassive.mSpellCalculations) — no level interpolation or breakpoints, always-on, so this is an exact (not approximated) proc. Curated as a P bonusEffect trigger onHit. Q/W/R kept as the auto first-pass physical picks.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "BonusOnHitDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling"],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): P CritDamageMod(0.85) is the crit-damage modifier consumed by the M27 expected-crit scalar path. Benign."
+}

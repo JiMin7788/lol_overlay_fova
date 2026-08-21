@@ -1,0 +1,7 @@
+{
+  "_note": "Curated (T2c + T3.x passive pass). Types verified: Q (Piercing Light) physical, W (Ardent Blaze) magic, R (The Culling) physical. R 'DamagePerBullet' is the per-shot value; the total shot count is variable so it is kept as a single modeled hit. P (Lightslinger): every other basic attack fires a second, weaker shot dealing bonus PHYSICAL damage (PassiveTotalDamage = flat base 15 + 0.2x total AD, LucianPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than strictly every other attack (documented, same style as other on-hit passives).",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "PassiveTotalDamage", "count": 1 } ] } ] },
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "DamagePerBullet", "count": 1 } ] }
+}

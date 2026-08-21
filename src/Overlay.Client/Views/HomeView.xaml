@@ -1,0 +1,71 @@
+<UserControl x:Class="Overlay.Client.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600">
+    <ScrollViewer Style="{StaticResource HiddenScroll}">
+        <StackPanel Margin="4">
+            <!-- M33 champ-select assistant lives at the TOP of the Home dashboard content
+                 (2026-07-26: moved out of the fixed shell row so it scrolls with the page). -->
+            <ContentControl x:Name="ChampSelectHomeSlot" Margin="0,0,0,12" />
+
+            <TextBlock x:Name="TitleLabel" Text="대시보드" Style="{StaticResource TitleText}" />
+            <TextBlock x:Name="SubtitleLabel" Text="게임 상태와 저장된 설정을 한눈에 확인하세요." Style="{StaticResource BodyText}"
+                       Foreground="{StaticResource TextDim}" Margin="0,6,0,20" />
+
+            <!-- Base stat cards -->
+            <WrapPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Card}" Width="220" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock x:Name="GameStateCaption" Text="게임 상태" Style="{StaticResource CaptionText}" />
+                        <TextBlock x:Name="GameStateValue" Text="대기 중" Style="{StaticResource ValueText}" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="220" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock x:Name="SavedCombosCaption" Text="저장된 콤보" Style="{StaticResource CaptionText}" />
+                        <TextBlock x:Name="ComboCountValue" Text="0" Style="{StaticResource ValueText}" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- Live section -->
+            <TextBlock x:Name="LiveStatsCaption" Text="실시간 통계" Style="{StaticResource SectionHeader}" Margin="0,12,0,12" />
+
+            <!-- Empty state (not in game) -->
+            <Border x:Name="EmptyState" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="&#xE7FC;" FontFamily="Segoe MDL2 Assets" FontSize="28"
+                               Foreground="{StaticResource TextDim}" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="EmptyStateLabel" Text="게임에 입장하면 실시간 통계가 표시됩니다." Style="{StaticResource BodyText}"
+                               Foreground="{StaticResource TextDim}" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- In-game player cards -->
+            <WrapPanel x:Name="InGamePanel" Orientation="Horizontal" Visibility="Collapsed">
+                <Border Style="{StaticResource Card}" Width="220" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock x:Name="ChampionCaption" Text="챔피언" Style="{StaticResource CaptionText}" />
+                        <TextBlock x:Name="ChampionValue" Text="-" Style="{StaticResource ValueText}" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="150" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock x:Name="LevelCaption" Text="레벨" Style="{StaticResource CaptionText}" />
+                        <TextBlock x:Name="LevelValue" Text="-" Style="{StaticResource ValueText}" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Width="180" Margin="0,0,16,16">
+                    <StackPanel>
+                        <TextBlock x:Name="GoldCaption" Text="보유 골드" Style="{StaticResource CaptionText}" />
+                        <TextBlock x:Name="GoldValue" Text="-" Style="{StaticResource ValueText}" Margin="0,10,0,0"
+                                   Foreground="{StaticResource Accent}" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

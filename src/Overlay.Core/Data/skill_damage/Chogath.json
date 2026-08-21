@@ -1,0 +1,7 @@
+{
+  "_note": "Curated from Rupture/FeralScream/VorpalSpikes/Feast BIN. Q (Rupture) and W (Feral Scream) both use calcs named '...Tooltip' -- excluded by the auto-generator's NonPrimaryMarkers heuristic but tooltipOnly is metadata only, doesn't block resolution (Thresh R precedent); Q=TotalDamageTooltip (BaseDamage+1.0 AP), W=TotalDamageTooltip (EffectValue idx1 + 0.7 AP). E (Vorpal Spikes) FlatDamageCalc = BaseDamage+0.3 AP; the companion MaxHealthPercentCalc is a monster-only %HP term (BuffCounterByNamedDataValueCalculationPart, also an unsupported CalculationPart kind) so is correctly skipped. R (Feast) TYPE CORRECTED Magic->True: Feast deals TRUE damage in-game (auto-gen mistagged it Magic); RDamage = RBaseDamage + 0.5 AP + 0.10*bonus Health (mStat12/mStatFormula2, now resolvable since loop 37's stat-12 mapping); tagged Execute (the ability instantly kills sufficiently-low-health non-champion/low-threshold targets) + BurstCeiling. RMonsterDamage (a separate monster-only calc) correctly skipped. P (Carnivore) is heal+mana only, no damage.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "FlatDamageCalc", "count": 1 } ] },
+  "R": { "hits": [ { "type": "True", "calc": "RDamage", "count": 1 } ], "tags": ["Execute", "BurstCeiling"] }
+}

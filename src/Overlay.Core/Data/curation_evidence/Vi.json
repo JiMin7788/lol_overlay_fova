@@ -1,0 +1,87 @@
+{
+ "champion": "Vi",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Vi"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Vault Breaker",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "flat",
+     "values": [
+      100,
+      150,
+      200,
+      250,
+      300
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Maximum Physical Damage: 100 / 150 / 200 / 250 / 300 (+ 150% bonus AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Denting Blows",
+   "facts": [
+    {
+     "field": "BonusMaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.04,
+      0.05,
+      0.06,
+      0.07,
+      0.08
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Physical Damage: 4 / 5 / 6 / 7 / 8% (+ 3.5% per 100 bonus AD) of target's maximum health"
+    }
+   ]
+  },
+  "E": {
+   "name": "Relentless Force",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      10,
+      30,
+      50,
+      70,
+      90
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 10 / 30 / 50 / 70 / 90 (+ 110% AD) (+ 100% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Cease and Desist",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 150 / 250 / 350 (+ 90% bonus AD)"
+    }
+   ]
+  }
+ }
+}

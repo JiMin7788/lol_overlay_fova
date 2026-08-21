@@ -1,0 +1,70 @@
+{
+  "_note": "Loop 39: Q/W/E/R curated against gwen.bin.json + wiki.leagueoflegends.com/en-us/Gwen. 'auto' flag removed: P was already hand-curated, and Q/W/E/R are now each either fully resolved or a confirmed damage-less/on-hit case (see per-slot notes).",
+  "_noteP": "P (Thousand Cuts) curated this session (first real trace). GwenP.mSpellCalculations '{540bce84}' = NumberCalculationPart(1.0) + StatByCoefficientCalculationPart(mCoefficient=0.006, no mStat -> defaults to AP), mDisplayAsPercent:true (result is percent-POINTS, e.g. 1+0.006*AP). 'PercentHealth1000Cuts' = GameCalculationModified referencing '{540bce84}' with mMultiplier=NumberCalculationPart(0.01), converting percent-points to a fraction -- same GameCalculationModified+Multiplier shape as Lillia P this session, fully supported. Used 'PercentHealth1000Cuts' as hpPercentCalc. NOTE ON BASIS: the BIN calc/DataValue names carry no explicit current-vs-max-HP marker (unlike Vayne W's 'MaxHealthRatio'); grepped every calc in Gwen's passive/Q/W/E/R for a 'health'-named entry and 'PercentHealth1000Cuts' is the ONLY one in the whole file, so there is no sibling calc to cross-reference the basis against. Curated with hpBasis=Max. CONFIRMED loop 219 via a fresh wiki.leagueoflegends.com/en-us/Gwen fetch: 'deal bonus magic damage equal to 1% (+ 0.6% per 100 AP) of the target's maximum health' -- exact match to this calc's 0.01 base + 0.006-per-AP-point term (0.6%/100AP). The prior ASSUMPTION flag is resolved; hpBasis=Max is correct, no change needed. There is also 'ExecuteDamage' (ByCharLevelInterpolation 8->30, an execute-threshold true-damage finisher gated by 'ExecuteThreshold'=0.4 current-HP%) and '{5bade13c}' (BuffCounterByCoefficientCalculationPart -- unsupported, needs live buff-stack count) -- neither curated, out of scope for this pass (the execute mechanic's damage number itself resolves via a supported ByCharLevelInterpolation and could be a follow-up, but its trigger condition -- target below threshold -- has no schema representation here). Modeled as a DIRECT P hit (SkillHit.hpPercentCalc under 'P':{'hits':[...]}), the same shape as every other %HP passive already curated in this codebase (Skarner P, Brand P, Sejuani P) -- NOT bonusEffects, since a bonusEffects trigger onHit/onAbility only fires when attached to an AA/ability node, not when 'P' is run as its own combo node; the direct-hit shape is both the established convention and the only one ComboRunner actually resolves for a standalone P SkillNode. Damage type Magic per live tooltip (hand-curated, no BIN type field). Left unchanged this loop (no error found).",
+  "_noteQ": "Q (Snip Snip!) curated. GwenQ.mSpellCalculations: 'MiniSwipeDamage' (BaseDamage + StatByNamedDataValue APRatio, no mStat -> AP) and 'FinalSwipeDamage' (SwipeDamageBase + APRatio, same shape) are both plain, fully-supported GameCalculations. Wiki confirms Q always fires AT LEAST 2 snips (one mini snip + one final snip, matching the tooltip's 'Minimum Damage' = MiniSwipe(1)+FinalSwipe(1)) and consumes up to 4 'Snippy' stacks (from prior basic attacks/Q casts) to fire up to 4 EXTRA mini snips before the final one (tooltip 'Maximum Damage' = MiniSwipe*5+FinalSwipe, matching the BIN's own 'MaxDamage' aggregate calc, which sums MiniSwipeDamage*5+FinalSwipeDamage -- confirms the read but is a display aggregate, not curated as its own hit to avoid double-counting). Curated the GUARANTEED baseline only: MiniSwipeDamage(count 1) + FinalSwipeDamage(count 1) -- the extra 0-4 mini snips are Snippy-stack-count-dependent (a live buff-stack quantity this combo-damage model has no way to read), same category of omission as other stack-dependent variable-count skills in this codebase. NOT modeled: the wiki-documented 'center of each snip converts 50% of the damage to true damage' split (Physical/Magic/True mixing within one snip depending on hit position) -- no separate BIN calc exists for the true-damage portion (it's a script-side split of the same calc, not a distinct SpellCalculation name), so both hits are curated as pure Magic (the tooltip's non-center number) rather than force an invented True-damage hit.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MiniSwipeDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "FinalSwipeDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW": "W (Hallowed Mist) confirmed damage-less. GwenW's only mSpellCalculation is 'TotalResists' (BaseResists + 0.07x-coefficient stat part) -- a self-only bonus-resistance grant for the zone Gwen stands in (matches wiki: summons a mist at her location that grants bonus armor/MR and immunity to attacks/damage from outside it; zero enemy-facing damage). Genuinely damage-less utility/self-buff skill -- slot omitted entirely per convention (not auto:true+reason).",
+  "E": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "OnHitDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "_noteE": "E (Skip 'n Slash) itself (the dash) deals no direct damage -- confirmed via wiki: 'Gwen dashes to the target location, then empowers her basic attacks within the next 4 seconds to deal 15 (+20% AP) bonus magic damage on-hit'. GwenE.mSpellCalculations 'OnHitDamage' = BaseDamage + StatByCoefficient(0.20, no mStat -> AP), matching the 15(+20%AP) tooltip exactly; 'BonusAttackSpeed' is a stat grant, not damage. Curated as a bonusEffects trigger:'onHit' (same shape as Warwick P Eternal Hunger) rather than a direct E hit, since the damage only lands via subsequent basic attacks, not the E cast itself.",
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "TotalDamage3",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "TotalDamage5",
+        "count": 1
+      }
+    ]
+  },
+  "_noteR": "R (Needlework) is a 3-charge recast skill (initial cast = 1 needle, 1st recast = 3 needles, 2nd recast = 5 needles; wiki-confirmed '30/50/70(+10%AP)' per needle, second-cast/third-cast TOTALS match TotalDamage*3/TotalDamage*5). GwenR.mSpellCalculations: 'TotalDamage' (BaseDamage + StatByCoefficient 0.10 AP) is the single-needle formula; 'TotalDamage3'/'TotalDamage5' are GameCalculationModified referencing 'TotalDamage' with mMultiplier 3.0/5.0 (pre-multiplied per-cast TOTALS, not per-needle); 'MaxDamage' = TotalDamage x9 = 1+3+5 confirms these three sum to the full aggregate, so it is NOT curated as a 4th hit (would double-count). Modeled as three hits (one per real cast's already-totaled damage) inside a SINGLE R node rather than using 'castCount' (castCount assumes N IDENTICAL repeats of the same hit set, but Gwen's 3 casts are non-identical 1/3/5-needle bursts) -- functionally the same 'one node = full recast sequence' intent as Ahri R's castCount usage, just expressed as three distinct hits since the per-cast damage differs. Tagged 'BurstCeiling' (only slot tagged) as Gwen's single highest realistic combo-damage contribution across her kit.",
+  "P": {
+    "hits": [
+      {
+        "type": "Magic",
+        "hpPercentCalc": "PercentHealth1000Cuts",
+        "hpBasis": "Max",
+        "count": 1
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): Q MiniDamageRatio(0.2) is a snip composition parameter and TrueDamageConversion(0.5) is the CENTER-hit true-damage conversion - positional (treating center hits as Magic full-value is the conservative direction vs the MR-ignoring true split). Snip COUNT scales with needle stacks (live buff state) - the curated 1-mini + final floor stands. Documented."
+}

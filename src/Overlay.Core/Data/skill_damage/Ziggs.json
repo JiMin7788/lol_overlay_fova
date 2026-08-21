@@ -1,0 +1,16 @@
+{
+  "_note": "Curated. Source: communitydragon/ziggs.bin.json mSpellCalculations this pass (2026-07-10) -- P/Q/W/E/R calc picks from the prior pass all verified correct against the current BIN; only tags/notes are new.",
+  "_noteP": "Short Fuse curated from mCharacterPassiveSpell -> ZiggsPassiveBuffAbility/ZiggsPassiveBuff (the actual damage-delivering missile ZiggsPassiveAttack borrows this spell's tooltip/calc via mUseTooltipFromAnotherSpell, no calc of its own). ZiggsPassiveBuff.mSpellCalculations.TotalDamage = ByCharLevelBreakpointsCalculationPart(Level1Value=20, InitialBonusPerLevel=4, breakpoints @7->rate8, @13->rate12) + StatByNamedDataValueCalculationPart(APRatio=0.5). Hand-traced: L1=20, L7=48, L13=100, L18=160 (+50% AP). StructureDamage (GameCalculationModified x StructureDamageRatio=1.75) is turret-only and skipped. Curated as a P bonusEffect trigger onHit (bonus magic damage on next basic attack after passive is off cooldown).",
+  "_noteQ": "Bouncing Bomb: TotalDamage = NamedDataValue(BaseDamage, 30-330) + StatByNamedDataValue(APRatio 0.55-0.85 by rank). Magic.",
+  "_noteW": "Satchel Charge: TotalDamage = NamedDataValue(BaseDamage, 35-245) + StatByCoefficient(0.5 AP). Magic.",
+  "_noteE": "Hexplosive Minefield: TotalDamage = NamedDataValue(DamagePerMine, -10 to 230) + StatByNamedDataValue(APRatioPerMine 0.2-0.5). Magic. 'ReducedDamage' (=TotalDamage x0.4 SubsequentMineDamageMod) exists for a second mine hitting the same target within the mine field but is conditional on stacking multiple mines, so only a single mine's TotalDamage is curated.",
+  "_noteR": "Mega Inferno Bomb: EmpoweredDamage = NamedDataValue(BaseDamage, 100-1300) + StatByNamedDataValue(APRatio=1.0 AP) -- the center-of-blast max hit. 'BlastDamage' (=EmpoweredDamage x0.65 OuterRingModifier) is the reduced outer-ring hit, not curated (guaranteed-best-case convention). Magic. Tagged BurstCeiling: Ziggs' global-range mega-nuke is the game's textbook single-target burst-ceiling ability.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": {
+    "hits": [ { "type": "Magic", "calc": "EmpoweredDamage", "count": 1 } ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

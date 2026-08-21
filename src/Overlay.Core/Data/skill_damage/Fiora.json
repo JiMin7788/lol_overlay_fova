@@ -1,0 +1,11 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: fiora.bin.json mSpellCalculations (Q=FioraQAbility/FioraQ, W=FioraWAbility/FioraW), cross-checked vs wiki.leagueoflegends.com/en-us/Template:Data_Fiora/{Riposte,Grand_Challenge} and a WebSearch Duelist's Dance snippet. Adds Q (was missing). Corrects P type Physical->True and W type Physical->Magic. E/R remain undamaged, documented.",
+  "_noteP": "Duelist's Dance: PassiveDamageTotal=PassiveDamageBase(0.03)+PassiveDamageADRatio(0.0004, bonus AD). WebSearch: 'bonus TRUE damage equal to 3%(+4%/100 bonus AD) of target's max health' -- 0.0004*100=0.04=4%, confirms ratio AND that type is True not Physical. hpPercentCalc, hpBasis Max.",
+  "_noteQ": "Lunge: TotalDamage=Damage(flat)+StatBySubPart(bonus AD, per-rank bADRatio 90-110%). Wiki: Physical Damage 70/80/90/100/110(+90-110% bonus AD), matches exactly. Was entirely missing from the file; added.",
+  "_noteW": "Riposte: StabDamage=BaseDamage+StatByCoefficient(1.0, AP default). Wiki: Magic Damage 110/150/190/230/270(+100%AP), matches exactly. Type corrected Physical->Magic.",
+  "_noteE": "Bladework has ZERO mSpellCalculations in the BIN (only attack-speed/on-hit-conversion DataValues, no discrete damage calc) -- no hits, matches pre-existing omission.",
+  "_noteR": "Grand Challenge's own tooltip has no damage classification (only heal leveling) -- it reveals Vitals for P to trigger on, deals no damage itself. A calc 'RDamageTotal' (=PassiveDamageTotal x4) exists but lives inside the PASSIVE's own spell block, not R's, and no wiki text confirms its trigger condition -- left uncurated rather than guessed.",
+  "P": { "hits": [ { "type": "True", "hpPercentCalc": "PassiveDamageTotal", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] },
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "StabDamage", "count": 1 } ] }
+}

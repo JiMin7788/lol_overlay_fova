@@ -1,0 +1,67 @@
+{
+ "champion": "Renata",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Renata"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Leverage",
+   "facts": [
+    {
+     "field": "MarkDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.01,
+      0.02
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "1% - 2% (based on level) (+ 2% per 100 AP) of the target's maximum health"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Handshake",
+   "facts": [
+    {
+     "field": "HookDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      125,
+      170,
+      215,
+      260
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 125 / 170 / 215 / 260 (+ 80% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Loyalty Program",
+   "facts": [
+    {
+     "field": "MissileDamage",
+     "kind": "flat",
+     "values": [
+      65,
+      95,
+      125,
+      155,
+      185
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "65 / 95 / 125 / 155 / 185 (+ 55% AP)"
+    }
+   ]
+  }
+ }
+}

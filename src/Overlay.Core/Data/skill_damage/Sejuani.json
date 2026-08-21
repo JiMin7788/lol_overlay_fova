@@ -1,0 +1,24 @@
+{
+  "_note": "Re-curated (T3.x-ext pass). P unchanged from prior hand-curation (verified still consistent with sejuani.bin.json). Q/W/R fully curated (all three were entirely missing from the auto-generated first pass); E unchanged (already correct). 'auto' flag removed -- every slot now has at least its guaranteed hit correctly curated.",
+  "_noteP": "Curated (T3.x-ext passive pass). P (Fresh Meat): the next attack/ability that crowd-controls an enemy deals bonus MAGIC damage equal to a flat % of their MAX HP (SejuaniPassive.mSpellCalculations 'PercentHPDamage' = NamedDataValue('PercentHPDamageBase') only, no other terms -> the DataValue IS the whole formula, no interpolation/stat scaling). Curated as a %HP hit (hpBasis Max) resolving LIVE from DataValue 'PercentHPDamageBase' = [0.1,...] (a fraction, <1, so ResolveHpPercent uses it as-is = 10% max HP) — same mechanism as Brand/Vayne. count=1 for one CC-proc instance; add a Passive node when a CC lands in the combo.",
+  "_noteQWR": "Q (Arctic Assault): SejuaniQAbility/SejuaniQ's TotalDamageTooltip = NamedDataValue(BaseDamage=[40,90,140,190,240,290,340]) + StatByNamedDataValue(no mStat = AP, APRatio=0.75) -- matches wiki 'Magic Damage: 90/140/190/240/290 (+75% AP)' exactly at idx1-5. Slot was absent from the auto-pass; added as Magic, count 1. W (Winter's Wrath): SejuaniWAbility/SejuaniW has TWO real, separately-named calcs the auto-pass never picked up -- FirstHitDamageTooltip = BaseDamageOne([-5,5,15,25,35,45,55]) + APRatioOne(0.3, AP) + HPRatioOne(mStat=12, Sejuani's OWN total health, 0.04); SecondHitDamageTooltip = BaseDamageTwo([-15,5,25,45,65,85,105]) + APRatioTwo(0.6, AP) + HPRatioTwo(mStat=12, 0.08). These match the wiki's own two-part description exactly: swing 'Physical Damage: 5/15/25/35/45 (+30% AP) (+4% of her maximum health)' then lash 'Physical Damage: 5/25/45/65/85 (+60% AP) (+8% of her maximum health)', summing to the wiki's own 'Total Physical Damage: 10/40/70/100/130 (+90% AP) (+12% of her maximum health)' line. The mStat=12 HP terms scale off SEJUANI'S OWN max health (a caster-side stat ratio, like an AD/AP ratio, resolved natively by StatByNamedDataValue) -- NOT a target-%HP debuff, so no hpPercent* fields are needed; both hits are plain flat/ratio calcs. Curated as two Physical hits (count 1 each); slot was entirely absent from the auto-pass (this project's earlier assumption that W might be 'genuinely damage-less' was wrong -- both swings deal real, guaranteed physical damage). Tagged W 'BurstCeiling': both hits land reliably within one cast and together represent Sejuani's largest guaranteed single-cast damage total (contrast with R's empowered variant below, which is range/position-conditional). E (Permafrost) unchanged -- already correctly curated (TotalDamage, Magic, matches wiki 'Magic Damage: 55/105/155/205/255 (+70% AP)'). R (Glacial Prison): SejuaniRAbility/SejuaniR has MinorDamageTooltip (EffectValue mEffectIndex=1 x StatByCoefficient(0.4, AP)) matching the wiki's GUARANTEED base bola hit 'Magic Damage: 125/150/175 (+40% AP)', and TotalDamageTooltip (EffectValue mEffectIndex=7 x StatByCoefficient(0.8, AP)) matching the EMPOWERED detonation+shatter 'Increased Damage: 200/300/400 (+80% AP)'. The empowered variant only triggers if the bola travels >=425 units before hitting, and its 2nd (shatter) application additionally requires the target to remain in the frost-storm zone for ~2s -- both are positional/timing conditions this combo model cannot guarantee. Consistent with this project's established Volibear-W conditional-empowerment precedent (batch3), only the GUARANTEED MinorDamageTooltip base hit is curated; TotalDamageTooltip is deliberately left uncurated, documented here rather than silently dropped.",
+  "P": { "hits": [ { "type": "Magic", "hpPercentDataValue": "PercentHPDamageBase", "hpBasis": "Max", "count": 1 } ] },
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "W": {
+    "hits": [
+      { "type": "Physical", "calc": "FirstHitDamageTooltip", "count": 1 },
+      { "type": "Physical", "calc": "SecondHitDamageTooltip", "count": 1 }
+    ],
+    "tags": ["BurstCeiling"]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": { "hits": [ { "type": "Magic", "calc": "MinorDamageTooltip", "count": 1 } ], "tags": ["AoeUltimate"] }
+}

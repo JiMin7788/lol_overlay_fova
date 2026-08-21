@@ -1,0 +1,50 @@
+{
+  // overlay-config.json — LoL Overlay shell + widget configuration
+  // Hard Rule #4: all window geometry / visual / click-through / widget settings live
+  // here, never hardcoded in MainWindow or widget code-behind.
+  //
+  // schemaVersion: increment when adding breaking changes to this schema.
+  "_comment_schemaVersion": "Config schema version for forward-compat guards.",
+  "schemaVersion": 1,
+
+  // 0 = primary monitor. Increase for secondary/tertiary monitors.
+  "_comment_targetMonitorIndex": "Index of the monitor to cover (0 = primary).",
+  "targetMonitorIndex": 0,
+
+  // Overall WPF Window.Opacity. 1.0 = fully opaque non-transparent regions.
+  // The shell background is always Transparent regardless of this value.
+  "_comment_windowOpacity": "Window opacity [0.0, 1.0]. Affects widget regions; background stays transparent.",
+  "windowOpacity": 1.0,
+
+  // true = start in click-through mode (default for in-game use).
+  // false = start interactive (useful for overlay settings/dashboard mode).
+  "_comment_clickThroughByDefault": "When true, WS_EX_TRANSPARENT|WS_EX_LAYERED applied on startup.",
+  "clickThroughByDefault": true,
+
+  // ── Widget layout — Hard Rule #4 ─────────────────────────────────────────────
+  // Each widget entry controls one panel on the overlay Canvas.
+  //   anchorX / anchorY : Canvas.Left / Canvas.Top in WPF DIPs (device-independent pixels).
+  //   fontSize           : font size (WPF points) for all text inside the widget.
+  //   visible            : false collapses the widget entirely (Visibility.Collapsed).
+  "_comment_widgets": "Per-widget position, font size, and visibility. Never hardcode these in XAML.",
+  "widgets": {
+
+    // Objective-timers widget — Dragon, Baron, Rift Herald, etc.
+    "_comment_objectiveTimers": "Objective spawn/respawn countdown panel. Top-left anchor by default.",
+    "objectiveTimers": {
+      "visible":  true,
+      "anchorX":  20,
+      "anchorY":  20,
+      "fontSize": 13
+    },
+
+    // Recall widget — per-player return-to-lane ETA.
+    "_comment_recall": "Recall / return-countdown panel. Positioned below objective timers.",
+    "recall": {
+      "visible":  true,
+      "anchorX":  20,
+      "anchorY":  200,
+      "fontSize": 13
+    }
+  }
+}

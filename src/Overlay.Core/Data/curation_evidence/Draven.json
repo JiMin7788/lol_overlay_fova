@@ -1,0 +1,68 @@
+{
+ "champion": "Draven",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Draven/LoL"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Spinning Axe",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      40,
+      45,
+      50,
+      55,
+      60
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Physical Damage: 40 / 45 / 50 / 55 / 60 (+ 75 / 85 / 95 / 105 / 115% bonus AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Stand Aside",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      75,
+      110,
+      145,
+      180,
+      215
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 75 / 110 / 145 / 180 / 215 (+ 50% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Whirling Death",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "flat",
+     "values": [
+      400,
+      600,
+      800
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Total Physical Damage: 400 / 600 / 800 (+ 220 / 260 / 300% bonus AD)"
+    }
+   ]
+  }
+ }
+}

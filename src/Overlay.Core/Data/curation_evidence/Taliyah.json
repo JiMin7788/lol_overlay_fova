@@ -1,0 +1,79 @@
+{
+ "champion": "Taliyah",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Taliyah"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Threaded Volley",
+   "facts": [
+    {
+     "field": "NormalDamage",
+     "kind": "flat",
+     "values": [
+      55,
+      72.5,
+      90,
+      107.5,
+      125
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Normal cast: 55 / 72.5 / 90 / 107.5 / 125 (+ 50% AP) magic damage per stone shard"
+    },
+    {
+     "field": "EmpoweredBoulderPrimary",
+     "kind": "flat",
+     "values": [
+      99,
+      130.5,
+      162,
+      193.5,
+      225
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Empowered boulder: 99 / 130.5 / 162 / 193.5 / 225 (+ 90% AP) to primary target"
+    }
+   ]
+  },
+  "E": {
+   "name": "Unraveled Earth",
+   "facts": [
+    {
+     "field": "InitialScatter",
+     "kind": "flat",
+     "values": [
+      60,
+      105,
+      150,
+      195,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Initial scatter: 60 / 105 / 150 / 195 / 240 (+ 60% AP) magic damage"
+    },
+    {
+     "field": "DetonationMax",
+     "kind": "flat",
+     "values": [
+      62.5,
+      100,
+      137.5,
+      175,
+      212.5
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Detonation: 25 / 40 / 55 / 70 / 85 (+ 30% AP) per stone, max 62.5 / 100 / 137.5 / 175 / 212.5 (+ 75% AP)"
+    }
+   ]
+  }
+ }
+}

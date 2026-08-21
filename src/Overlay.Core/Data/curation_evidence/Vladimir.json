@@ -1,0 +1,68 @@
+{
+ "champion": "Vladimir",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Vladimir.json"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Transfusion",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      80,
+      100,
+      120,
+      140,
+      160
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 80/100/120/140/160"
+    }
+   ]
+  },
+  "E": {
+   "name": "Tides of Blood",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "flat",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 60/90/120/150/180 (max damage)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Hemoplague",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      150,
+      250,
+      350
+     ],
+     "damageType": "Magic",
+     "source": "ddragon",
+     "quote": "effectBurn: 150/250/350 damage, 10% increased damage taken"
+    }
+   ]
+  }
+ }
+}

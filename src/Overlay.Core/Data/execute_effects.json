@@ -1,0 +1,64 @@
+{
+  "_comment": "M24 P9 hard-execute roster (kill-line, NOT damage scaling). Seed curation from wiki (loop 87, Cowork). Threshold terms: raw = base + perLevel*(level-1) + perRank*(rank-1) + perStack*stacks + perAp*AP + perBonusAd*bonusAD + perLethality*lethality; PercentMaxHp multiplies raw by target maxHP, FlatHp is absolute. needsConfirm rows have approximate numbers pending BIN/M11 dynamic sourcing (Hard Rule #4). NON-executes deliberately excluded: Garen R / Mel P / Cho'Gath R (damage/scaling, folded into combo total).",
+  "version": "16.13.1-seed",
+  "rules": [
+    {
+      "id": "collector", "label": "징수의 총", "source": "Item", "itemId": 6676,
+      "kind": "PercentMaxHp", "base": 0.05, "piercesShield": true,
+      "note": "combo that leaves target below 5% maxHP executes"
+    },
+    {
+      "id": "elder", "label": "장로용 버프", "source": "Buff",
+      "kind": "PercentMaxHp", "base": 0.20, "piercesShield": true,
+      "note": "Elder Immolation, true dmg, ignores shields; threshold computed post-mitigation"
+    },
+    {
+      "id": "pyke_r", "label": "파이크 R", "source": "Ability", "champion": "Pyke",
+      "kind": "FlatHp", "base": 250.0,
+      "baseByLevel": [250, 250, 250, 250, 250, 250, 290, 330, 370, 400, 430, 450, 470, 490, 510, 530, 540, 550],
+      "perBonusAd": 0.8, "perLethality": 1.5,
+      "piercesShield": true,
+      "note": "(loop 104 BIN-EXACT vs pyke.bin.json PykeR 'RDamage' ByCharLevelBreakpoints) L1Value=250 + mBonusPerLevelAtAndAfter +40@L7 / +30@L10 / +20@L12 / +10@L17 -> exact per-level base table [250(L1)..550(L18)] (L6=250, L9=370). This REPLACES the loop-95 linear perLevel=17.647, which over-estimated the L6-9 ult window by up to +88HP (R opens at L6 but the real base is flat 250 through L6). +0.8 bonusAD (mStat=2/formula=2) + 1.5 lethality (mStat=29) unchanged, added on top of the table. needsConfirm REMOVED -- baseByLevel is the exact piecewise curve (no FormulaInterpreter needed)."
+    },
+    {
+      "id": "urgot_r", "label": "우르곳 R", "source": "Ability", "champion": "Urgot",
+      "kind": "PercentMaxHp", "base": 0.25, "piercesShield": true,
+      "note": "(loop 95 BIN-confirmed vs urgot.bin.json 'RHealthThreshold'=25.0, all ranks) executes below exactly 25% max HP, rank-invariant."
+    },
+    {
+      "id": "syndra_r", "label": "신드라 R", "source": "Ability", "champion": "Syndra",
+      "kind": "PercentMaxHp", "base": 0.15, "piercesShield": true,
+      "gateStacks": 100, "gateNote": "100 Splinters of Wrath",
+      "note": "at 100 stacks, executes below 15% maxHP"
+    },
+    {
+      "id": "draven_r", "label": "드레이븐 R", "source": "Ability", "champion": "Draven",
+      "kind": "FlatHp", "base": 0.0, "perStack": 1.0, "piercesShield": true,
+      "gateNote": "threshold in HP equals current Adoration stack count (live value)",
+      "note": "Whirling Death executes at/below flatHp == Adoration stacks"
+    },
+    {
+      "id": "aurelionsol_center", "label": "아우솔 특이점 중심", "source": "Ability", "champion": "AurelionSol",
+      "kind": "PercentMaxHp", "base": 0.05, "perStack": 0.026, "piercesShield": true,
+      "gateNote": "center of Singularity only; stacks = Stardust",
+      "note": "5% + 2.6% per Stardust maxHP"
+    },
+    {
+      "id": "zeri_p", "label": "제리 P(일반샷)", "source": "Passive", "champion": "Zeri",
+      "kind": "FlatHp", "base": 70.0, "perLevel": 5.294, "perAp": 0.20, "piercesShield": true,
+      "note": "(loop 95 BIN-confirmed vs zeri.bin.json 'PassiveExecuteThreshold') = ByCharLevelInterpolation(70->160) + 0.20 AP. perLevel = (160-70)/17 = 5.294 -- the EXACT linear interpolation the BIN uses, not an approximation. CORRECTS the prior 5.918/170.6 (BIN endValue is 160 at L18, not 170.6)."
+    },
+    {
+      "id": "smolder_p", "label": "스몰더 P", "source": "Passive", "champion": "Smolder",
+      "kind": "PercentMaxHp", "base": 0.065, "piercesShield": true,
+      "gateStacks": 225, "gateNote": "Dragon Practice tier 3 (StackTier3=225); target must be burning",
+      "note": "(loop 104 BIN-confirmed vs smolder.bin.json) SmolderQ DataValue Tier3_ExecuteThreshold = mMultiplier(0.01) x Tier3_ExecuteThresholdStart(6.5) = exactly 6.5% FIXED, no stack growth. The 'Tier3_Burn_Stack_Mult'(0.00005) that loop-95 suspected of growing the line is a BURN-damage coefficient (feeds the Tier3_Burn calc), NOT the execute threshold -- confirmed distinct. tier-3 gate StackTier3=225. needsConfirm REMOVED (base 0.065 is the exact value)."
+    },
+    {
+      "id": "locke_r", "label": "로크 R(연옥)", "source": "Ability", "champion": "Locke",
+      "kind": "PercentMaxHp", "base": 0.10, "perRank": 0.01, "perStack": 0.005, "piercesShield": true,
+      "gateNote": "marked targets; stacks = Sealed Champion (uncapped)",
+      "note": "10/11/12% by rank + 0.5% per seal stack"
+    }
+  ]
+}

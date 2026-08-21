@@ -1,0 +1,35 @@
+{
+  "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "RCalculatedDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteP": "P (Contempt for the Weak) confirmed GENUINELY BLOCKED this pass (previously undocumented): ZedPassiveAbility/ZedPassive's damage chain uses 'FinalDamage', a GameCalculationConditional node (not a plain GameCalculation/GameCalculationModified) gated by HasBuffCastRequirement + AboveHealthPercentCastRequirement (the target-below-50%-HP condition that defines this passive's whole mechanic). Verified via grep across all ChampionDb .cs files: neither GameCalculationConditional, HasBuffCastRequirement, nor AboveHealthPercentCastRequirement is referenced anywhere in the parser/interpreter -- this node type is entirely unsupported, not just a stat-mapping gap. Correctly left uncurated (no P key); documenting the reason explicitly since it wasn't previously stated.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R RBaseDamage is an EMPTY/valueless leftover (the live R initial hit = 100% AD = the curated RCalculatedDamage; the mark pop scales off damage DEALT during the mark - post-hoc state, honestly unmodelable). Benign."
+}

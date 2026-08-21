@@ -1,0 +1,68 @@
+{
+ "champion": "Yone",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Yone"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Mortal Steel",
+   "facts": [
+    {
+     "field": "ThrustDamage",
+     "kind": "ratio",
+     "values": [
+      25,
+      50,
+      75,
+      100,
+      125
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "25 / 50 / 75 / 100 / 125 (+ 110% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Spirit Cleave",
+   "facts": [
+    {
+     "field": "MaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [
+      0.08,
+      0.09,
+      0.1,
+      0.11,
+      0.12
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "10 / 20 / 30 / 40 / 50 (+ 8 / 9 / 10 / 11 / 12% of target's maximum health)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Fate Sealed",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "ratio",
+     "values": [
+      200,
+      400,
+      600
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "200 / 400 / 600 (+ 80% bonus AD)"
+    }
+   ]
+  }
+ }
+}

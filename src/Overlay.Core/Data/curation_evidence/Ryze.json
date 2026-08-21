@@ -1,0 +1,70 @@
+{
+ "champion": "Ryze",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Ryze"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Overload",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      75,
+      95,
+      115,
+      135,
+      155
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 75 / 95 / 115 / 135 / 155 (+ 55% AP) (+ 2% bonus mana)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Rune Prison",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 60 / 90 / 120 / 150 / 180 (+ 60% AP) (+ 3% bonus mana)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Spell Flux",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 60 / 90 / 120 / 150 / 180 (+ 50% AP) (+ 2% bonus mana)"
+    }
+   ]
+  }
+ }
+}

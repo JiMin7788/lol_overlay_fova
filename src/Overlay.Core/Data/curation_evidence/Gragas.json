@@ -1,0 +1,83 @@
+{
+ "champion": "Gragas",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Gragas"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Barrel Roll",
+   "facts": [
+    {
+     "field": "MaxDamage",
+     "kind": "ratio",
+     "values": [
+      120,
+      180,
+      240,
+      300,
+      360
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "120 / 180 / 240 / 300 / 360 (+ 120% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Drunken Rage",
+   "facts": [
+    {
+     "field": "PercentMaxHP",
+     "kind": "percentMaxHP",
+     "values": [
+      0.07
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "20 / 50 / 80 / 110 / 140 (+ 7% of target's maximum health) (+ 70% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Body Slam",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      80,
+      125,
+      170,
+      215,
+      260
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 125 / 170 / 215 / 260 (+ 60% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Explosive Cask",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      200,
+      300,
+      400
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "200 / 300 / 400 (+ 80% AP)"
+    }
+   ]
+  }
+ }
+}

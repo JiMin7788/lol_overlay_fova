@@ -1,0 +1,51 @@
+{
+ "champion": "TahmKench",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/TahmKench"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Tongue Lash",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      75,
+      120,
+      165,
+      210,
+      255
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 75 / 120 / 165 / 210 / 255 (+ 100% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Abyssal Dive",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      100,
+      135,
+      170,
+      205,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 100 / 135 / 170 / 205 / 240 (+ 150% AP)"
+    }
+   ]
+  }
+ }
+}

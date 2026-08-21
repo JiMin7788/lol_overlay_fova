@@ -1,0 +1,70 @@
+{
+  "_noteEBackstab": "E MAXIMUM DAMAGE, CORRECTED (loop 486, user: the maximum is (E damage x1.5 vs a low target) PLUS (backstab dagger x1.5 vs a low target)). Loop 485 got this half right and half wrong, and the half it got wrong was an omission I never even saw. TWO amplifications exist, not one, and they share the same gate. (1) TwoShivPoison carries TotalExecuteDamage = TotalDamage x ExecuteDamagePercent 1.5, gated by its own ExecuteHealthThreshold 0.3 - the DAGGER ITSELF hits 50% harder against a target below 30% maximum health, and that was never curated at all; E was a flat TotalDamage. (2) ShacoPassives ShivDamageExecute = ShivDamage x ShivExecuteDamagePercent 1.5 is the backstab payload at the same threshold. So the ceiling is TotalExecuteDamage + ShivDamageExecute, which is exactly what the user stated. WHAT LOOP 485 GOT WRONG: it argued the two tiers could not be layered because a node carries one condition flag and two conditional hits would both fire off one checkbox. Both halves of that are true and the conclusion did not follow - firing together is CORRECT here, because both amplifications are the same 30% threshold. One click, both tiers, and the number that comes out is the real maximum. Each hit still DECLARES its own primary gate (HpBelow 0.3 on the dagger, FromBehind on the payload) so the file says what each one actually needs; they resolve off the one node flag, so ticking it asserts the whole best case - behind the target and below the threshold - which is what a maximum-damage checkbox means. Unticked is the plain dagger from the front, byte-identical to the curation before loop 485. Wiki cross-check (wiki.leagueoflegends.com/en-us/Shaco, 2026-08-21): the backstab payload reads 15-54.12 (+10% AP) rising to 22.5-81.18 (+15% AP) below 30% health, and 22.5/15 = 1.5 confirms the multiplier from the other direction.",
+  "_note": "Curated (T3.x passive pass). P (Backstab): basic attacks from behind the target deal bonus PHYSICAL damage (BasicAttackDamage = level-interpolated base 20\u219235 + 0.2x bonus AD, ShacoPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit \u2014 an assistive APPROXIMATION applied to every hit rather than only from-behind attacks (documented, same style as other on-hit passives). Q/W/E/R kept as the auto first-pass picks.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Physical",
+            "calc": "BasicAttackDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "AoEDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "conditionType": "HpBelow",
+        "conditionValue": 0.3,
+        "metCalc": "TotalExecuteDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "conditionType": "FromBehind",
+        "metCalc": "ShivDamageExecute",
+        "binSpell": "P",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "ExplosionTotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteR": "Hallucinate (HallucinateFullAbility/HallucinateFull): FIXED a real bug this pass -- the prior curation used 'STDamage' (STBaseDamage[25,50,75 at ranks1-3] + 0.15 AP), which is confirmed via live wiki fetch (wiki.leagueoflegends.com/en-us/Shaco, 2026-07-20) to be only the SINGLE-TARGET mini-box damage -- the SMALLEST of R's three real damage components. The actual primary R damage is 'ExplosionTotalDamage' (ExplosionBaseDamage[150,225,300 at ranks1-3] + 0.7 AP, BIN indices 1-3 matching the project's rank-index convention), the clone's death/expiry explosion, wiki-confirmed '150/225/300 (+70% AP) magic damage' to nearby enemies -- automatic and guaranteed once the clone dies or its duration ends, not conditional on box placement. Switched R's hit to ExplosionTotalDamage. 'AoEDamage' in this same spell object (AoEBaseDamage[10,20,30]+0.10AP) is the mini-boxes' multi-target damage -- both mini-box components (STDamage/AoEDamage) are smaller, positional, player-choice-dependent add-ons from up to 3 spawned boxes and are NOT curated as additional hits here (would require a separate box-placement/hit-count model); the guaranteed explosion alone is Hallucinate's single largest and only unconditional damage source, matching this project's BurstCeiling convention.",
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): P ShivExecuteDamagePercent(1.5) is the backstab missing-health execute amp - positional (behind-target) state; the curated P stands as the conservative front floor. Documented."
+}

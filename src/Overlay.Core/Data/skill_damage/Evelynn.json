@@ -1,0 +1,69 @@
+{
+  "_note": "Q (Hate Spike): base MissileDamage (HateSpikeBaseDamage+0.25AP) curated; TotalBonusDamage (the 'every 3rd cast' stacking bonus, QStackCount=3) is skipped -- the schema's Count/bonusEffect triggers don't model an every-Nth-cast counter, and always-adding it would overcount 2 of every 3 casts (tagged Stacking on the slot instead of fabricating a number). W (Allure): the ONLY resolvable calc (MonsterDamageTotalTOOLTIP) is explicitly monster-only (jungle-camp damage); matches Allure's real kit (pure charm/stun utility vs champions, no direct champion damage) -- correctly left with no hits. W does carry a real MR-shred debuff (MRShred DataValue 32.5%->47.5%) but since W would then have zero direct/bonus hits the whole slot is dropped by SkillDamageDb's loader (hits.Length==0 && bonus.Length==0 -> slot discarded), so this is documented here instead of as a structurally-inert tag. E (Whiplash) has two tiers -- base vs 'Empowered' (target below a health threshold, exact % not present in E's own DataValues); curated the Empowered/execute-condition tier (PercentHealthEmpoweredTOOLTIP, %maxHP) as the primary hit (Darius-R 'assume the intended/finishing use' precedent) -- the lower base tier is skipped to avoid double-counting. R (Last Caress): base Damage vs CritDamage (=Damage*2.4, the empowered value against low-health targets, Evelynn's real 'crit' mechanic); curated CritDamage as primary (same execute-condition precedent as E), tagged BurstCeiling. P (Demon Shade) is a stealth/self-heal passive only, no damage.",
+  "_noteQ_appliesTo": "APPLIES-TO CURATED (loop 476). The user read this rider as spurious, but the wiki confirms it is real and BROADER than the new onHit default: Evelynn next 3 basic attacks on-hit OR abilities against the marked target deal the bonus (wiki.leagueoflegends.com/en-us/Evelynn, fetched 2026-08-20, 15/25/35/45/55 +25% AP per proc). Left at the trigger default it would have been restricted to attacks and UNDERSTATED - this entry prevents a regression rather than fixing an over-count. The 3-proc cap is still unmodelled; the existing note records that.",
+  "_noteQ_procs": "MAX-PROCS 3 (loop 477). The pre-existing sweep note already recorded this exact defect - the live cap is 3 procs and a combo with 4+ post-Q attacks would overcount - but there was no way to express it until now. Wiki: Evelynn next 3 basic attacks on-hit or abilities against the marked target deal the bonus.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MissileDamage",
+        "count": 1
+      }
+    ],
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "appliesTo": ["AA", "Q", "W", "E", "R"],
+        "maxProcs": 3,
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "TotalBonusDamage",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "tags": [
+      "Stacking"
+    ]
+  },
+  "_noteQ_sweep2": "STAGE-4 AUDIT additions (loop 442, 2026-07-27), wiki+BIN agreed: (1) the Q MARK rider - next 3 attacks/abilities vs the marked target deal TotalBonusDamage (wiki 15->55 +25%AP per proc) - added as an onHit bonusEffect (empowered-AA-after-cast rule; NOTE the live cap is 3 procs, a combo with 4+ post-Q AAs would overcount - same accepted approximation as the Hwei-W duration cap); (2) the LINE-SPIKE RECASTS (up to 3, each the same MissileDamage the sweep flagged as MissileBaseDamage) - added as the selectable QRecast slot below, one node per recast.",
+  "QRecast": { "icon": "assets/characters/evelynn/hud/icons2d/evelynn_q2.png", "hits": [ { "type": "Magic", "calc": "MissileDamage", "binSpell": "Q", "count": 1 } ] },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "flatDataValue": "EmpoweredDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentCalc": "PercentHealthEmpoweredTOOLTIP",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp",
+          "Execute"
+        ]
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "CritDamage",
+        "count": 1,
+        "tags": [
+          "Execute"
+        ]
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "_noteE_sweep": "SWEEP §41 (2026-07-20): found by tools/sweep_unreferenced_damage.py (Zac-W risk class: a damage term whose DataValue no GameCalculation references is invisible to calc-name-driven curation). Wiki-verified against the live tooltip; the BIN array matches the tooltip digit-for-digit once the rank-0 placeholder at index 0 is dropped, which is the corroboration that it is live, not vestigial. Curated as a BIN-sourced dynamic reference -- no patch-dependent number is hardcoded. Evelynn E (Whiplash) is flat + %maxHP. The flat term (EmpoweredDamage, 40/80/120/160/200/240/280 per rank) was originally dropped, curating only PercentHealthEmpoweredTOOLTIP -- FIXED in CLAUDE_CODE_TODO #41's undercount sweep (flatDataValue 'EmpoweredDamage' added, count 1, alongside the existing %maxHP hit); this note text is retained for history but the flat term IS now present in the E hits array below (verified loop 219, both entries correct against the BIN). EmpoweredDamage is paired with the EMPOWERED %maxHP already curated -- the empowered cast REPLACES the base cast (Demon Shade resets the CD and empowers the next one), so base and empowered are alternatives, never additive; curating the empowered pair matches this project's model-the-fully-realized-version convention."
+}

@@ -1,0 +1,51 @@
+{
+ "champion": "Akshan",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Akshan"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Avengerang",
+   "facts": [
+    {
+     "field": "TotalDamageBothPasses",
+     "kind": "ratio",
+     "values": [
+      10,
+      50,
+      90,
+      130,
+      170
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Total Physical Damage: 10 / 50 / 90 / 130 / 170 (+ 160% AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Heroic Swing",
+   "facts": [
+    {
+     "field": "DamagePerShot",
+     "kind": "ratio",
+     "values": [
+      15,
+      30,
+      45,
+      60,
+      75
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "15 / 30 / 45 / 60 / 75 (+ 15% AD)"
+    }
+   ]
+  }
+ }
+}

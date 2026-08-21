@@ -1,0 +1,68 @@
+{
+ "champion": "Thresh",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Thresh"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Death Sentence",
+   "facts": [
+    {
+     "field": "HookDamage",
+     "kind": "ratio",
+     "values": [
+      100,
+      150,
+      200,
+      250,
+      300
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "100 / 150 / 200 / 250 / 300 (+ 90% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Flay",
+   "facts": [
+    {
+     "field": "ActiveDamage",
+     "kind": "ratio",
+     "values": [
+      75,
+      120,
+      165,
+      210,
+      255
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "75 / 120 / 165 / 210 / 255 (+ 70% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "The Box",
+   "facts": [
+    {
+     "field": "WallBreakDamage",
+     "kind": "ratio",
+     "values": [
+      100,
+      150,
+      200
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "100 / 150 / 200 (+ 60% AP)"
+    }
+   ]
+  }
+ }
+}

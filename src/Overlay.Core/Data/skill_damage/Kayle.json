@@ -1,0 +1,18 @@
+{
+  "_note": "Curated/fixed. Cross-checked against the live LoL wiki ability page (leagueoflegends.fandom.com/wiki/Kayle/LoL) for mechanic + damage-type ground truth; exact numbers still resolve live from the BIN per-patch. TWO real damage-TYPE bugs fixed: Q (Radiant Blast) and R (Divine Judgment) were both mistagged Physical by the auto-generator despite the wiki explicitly stating 'Magic Damage' for both (Kayle's kit is a hybrid AP+bonusAD SCALING gimmick, but the damage TYPE itself is magic for these two) -- BIN's TotalDamage formula structure (flat+APcoefficient+bonusAD-coefficient) matches the wiki's hybrid ratio exactly, only the type tag was wrong.",
+  "_noteP": "P (Divine Ascent wave splash, unchanged from prior curation): KaylePassive.mSpellCalculations 'PassiveWaveDamage' = ByCharLevelBreakpointsCalculationPart(Level1Value=20, breakpoint @12->rate3) + AP 0.25 ratio + bonusAD 0.10 ratio. Curated as a P bonusEffect trigger onHit (the small-AoE wave her upgraded ranged attacks send to nearby enemies at level 11+/Aflame).",
+  "_noteE": "E (Starfire Spellblade, KayleEAbility) restructured. Its PASSIVE half (EPassiveTotalDamage = PassiveDamage flat + 0.2 AP + 0.10 bonusAD, magic) is an always-on on-hit proc with no consumption/gating -- curated as a bonusEffect trigger onHit (safe to auto-apply every AA, matches real behavior). Its ACTIVE half (empowers the NEXT single basic attack within 6s) is a %MISSING-HEALTH magic proc: ActiveTotalExecuteDamage is a GameCalculation whose evaluated result IS the percent fraction itself (ActiveExecutePercent*0.01 + 0.015*AP-coefficient, mDisplayAsPercent), matching this schema's hpPercentCalc mechanism (hpBasis Missing, per the wiki's 'of target's missing health'). Since it is a single-charge consumable (only the next AA), it is curated as a DIRECT hit on E's own node (not an auto-fired onHit bonus, which would incorrectly apply it to every future AA in the combo) -- a documented one-time collapse of 'cast E, then land the empowered AA' onto E's own cast.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveWaveDamage", "count": 1 } ] } ] },
+  "Q": {
+    "tags": ["ArmorShred", "MagicResistShred"],
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  },
+  "E": {
+    "hits": [ { "type": "Magic", "hpPercentCalc": "ActiveTotalExecuteDamage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"] } ],
+    "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "hits": [ { "type": "Magic", "calc": "EPassiveTotalDamage", "count": 1 } ] } ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  }
+}

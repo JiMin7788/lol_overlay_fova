@@ -1,0 +1,162 @@
+{
+ "champion": "Twitch",
+ "collectedAt": "2026-07-24",
+ "collector": "Claude Code local re-collection (Cowork 403 backfill); merged over the 2026-07-23 F4-1 BIN backfill (E's bin-sourced facts preserved verbatim below)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Twitch/LoL"
+  },
+  {
+   "id": "bin",
+   "url": "src/Overlay.Core/Data/communitydragon/twitch.bin.json"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Deadly Venom",
+   "facts": [
+    {
+     "field": "TrueDamagePerSecondPerStack",
+     "kind": "flat",
+     "values": [1, 2, 3, 4, 5],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "For each stack, the target is dealt 1 / 2 / 3 / 4 / 5 (based on level) (+ 3% AP) true damage per second over the duration"
+    },
+    {
+     "field": "APRatioPerSecondPerStack",
+     "kind": "ratio",
+     "values": [0.03],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "For each stack, the target is dealt 1 / 2 / 3 / 4 / 5 (based on level) (+ 3% AP) true damage per second over the duration"
+    },
+    {
+     "field": "TotalTrueDamagePerStack",
+     "kind": "flat",
+     "values": [6, 12, 18, 24, 30],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "6 / 12 / 18 / 24 / 30 (based on level) (+ 18% AP) total true damage over the duration"
+    },
+    {
+     "field": "APRatioTotalPerStack",
+     "kind": "ratio",
+     "values": [0.18],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "6 / 12 / 18 / 24 / 30 (based on level) (+ 18% AP) total true damage over the duration"
+    },
+    {
+     "field": "TotalTrueDamageAtMaxStacks",
+     "kind": "flat",
+     "values": [36, 72, 108, 144, 180],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "36 / 72 / 108 / 144 / 180 (based on level) (+ 108% AP) total true damage over the duration"
+    }
+   ]
+  },
+  "E": {
+   "name": "Contaminate (Expunge)",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      20,
+      30,
+      40,
+      50,
+      60
+     ],
+     "damageType": "Physical",
+     "source": "bin",
+     "quote": "TwitchExpungeAbility/TwitchExpunge DataValues BaseDamage = [10,20,30,40,50,60,70], index = rank (ranks 1-5 shown). The guaranteed flat component the prior curation omitted entirely.",
+     "note": "Curated via flatDataValue."
+    },
+    {
+     "field": "PhysicalDamagePerStack",
+     "kind": "flat+bonusadratio",
+     "values": [
+      15,
+      20,
+      25,
+      30,
+      35
+     ],
+     "damageType": "Physical",
+     "source": "bin",
+     "quote": "PhysicalDamagePerStack = NamedDataValue(BasePhysicalDamagePerStack = [10,15,20,25,30,35,40], index = rank) + StatByNamedDataValue(mStat=2, mStatFormula=2, bADRatioPerStack = 0.35 bonus AD), per Deadly Venom stack.",
+     "note": "Curated at the 1-stack floor (E requires >=1 stack to cast) — conservative-floor convention for stack-count mechanics the engine cannot live-track."
+    },
+    {
+     "field": "MagicDamagePerStack",
+     "kind": "apratio",
+     "values": [
+      0.35
+     ],
+     "damageType": "Magic",
+     "source": "bin",
+     "quote": "MagicDamagePerStack = StatByNamedDataValue(APRatioPerStack = 0.35 AP, no flat base of its own), per Deadly Venom stack; MaxMagicDamage = MagicDamagePerStack x MaxStacks confirms the per-stack reading.",
+     "note": "Curated at the 1-stack floor alongside the physical per-stack hit."
+    },
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [20, 30, 40, 50, 60],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Base Physical Damage: 20 / 30 / 40 / 50 / 60"
+    },
+    {
+     "field": "DamagePerStack",
+     "kind": "flat",
+     "values": [15, 20, 25, 30, 35],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage Per Stack: 15 / 20 / 25 / 30 / 35 (+ 35% bonus AD)"
+    },
+    {
+     "field": "BonusADRatioPerStack",
+     "kind": "ratio",
+     "values": [0.35],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage Per Stack: 15 / 20 / 25 / 30 / 35 (+ 35% bonus AD)"
+    },
+    {
+     "field": "APRatioPerStack",
+     "kind": "ratio",
+     "values": [0.35],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Contaminate deals additional physical damage and 35% AP magic damage for each stack of Deadly Venom on the target."
+    }
+   ]
+  },
+  "R": {
+   "name": "Spray and Pray",
+   "facts": [
+    {
+     "field": "BonusAttackDamage",
+     "kind": "flat",
+     "values": [30, 45, 60],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Attack Damage: 30 / 45 / 60"
+    },
+    {
+     "field": "BoltDamageModifier",
+     "kind": "other",
+     "values": null,
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "The bolts deal 100% - 60% (based on enemies hit) of the triggering attack's damage"
+    }
+   ]
+  }
+ },
+ "note": "P/E/R damage captured from wiki (Twitch/LoL URL worked; earlier 'no wiki page' report was wrong). Wiki E facts corroborate the 2026-07-23 bin-sourced E facts, which are preserved unchanged. Deadly Venom per-rank arrays are level-scaled ('based on level'), not ability-rank. Q (Ambush) deals no damage (stealth/attack-speed steroid: Bonus Attack Speed 40/45/50/55/60%). W (Venom Cask) deals no direct damage (applies Deadly Venom stacks and slows 30/35/40/45/50% (+6% per 100 AP)). Contaminate min/max mixed-damage aggregate lines on the wiki are derived from the base + per-stack components recorded here."
+}

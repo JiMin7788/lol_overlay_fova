@@ -1,0 +1,9 @@
+{
+  "_note": "Hand-curated (loop 39). Source: communitydragon/olaf.bin.json mSpellCalculations, hand-traced against DataValue/coefficient shapes (standard NamedDataValue + StatByCoefficient forms; Olaf is a pure-physical AD juggernaut with no true/magic damage abilities, consistent with all 4 skills scaling only on AD).",
+  "_noteQ": "Undertow (OlafAxeThrowCastAbility): TotalDamage = BaseDamage + 1.0x bonus AD (mStat 2, mStatFormula 2). The thrown axe also applies a slow AND a real armor-reduction debuff (DataValues ShredAmount=0.20 for DebuffDuration=4s) -- tagged ArmorShred.",
+  "_noteW": "Vicious Strikes (OlafFrenziedStrikesAbility): attack-speed steroid + a missing-HP-scaled shield (ShieldCalc/MaxShieldCalc) -- no damage calc anywhere in this spell, correctly omitted.",
+  "_noteE": "Reckless Swing (OlafRecklessStrikeAbility): TotalDamage = BaseDamage + 0.5x TOTAL AD (mStat 2, no mStatFormula). Also costs Olaf his own health (HealthCostCalc, a self-cost not target damage) -- irrelevant to combo output, not curated.",
+  "_noteR": "Ragnarok (OlafRagnarokAbility): pure self-buff (tenacity + flat/percent AD gain, AD calc scales Olaf's OWN attack damage) -- no damage dealt to a target, correctly omitted.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1, "tags": ["ArmorShred"] } ] },
+  "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] }
+}

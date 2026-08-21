@@ -1,0 +1,68 @@
+{
+ "champion": "Yunara",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Yunara"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Cultivation of Spirit",
+   "facts": [
+    {
+     "field": "OnHitBonusDamage",
+     "kind": "ratio",
+     "values": [
+      5,
+      10,
+      15,
+      20,
+      25
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "5 / 10 / 15 / 20 / 25 (+ 20% AP) bonus magic damage"
+    }
+   ]
+  },
+  "W": {
+   "name": "Arc of Judgment",
+   "facts": [
+    {
+     "field": "InitialHitDamage",
+     "kind": "ratio",
+     "values": [
+      55,
+      95,
+      135,
+      175,
+      215
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "55 / 95 / 135 / 175 / 215 (+ 85% bonus AD) (+ 50% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Transcend One's Self (Arc of Ruin)",
+   "facts": [
+    {
+     "field": "ArcOfRuinDamage",
+     "kind": "ratio",
+     "values": [
+      160,
+      320,
+      480
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "160 / 320 / 480 (based on rank) (+ 120% bonus AD) (+ 75% AP)"
+    }
+   ]
+  }
+ }
+}

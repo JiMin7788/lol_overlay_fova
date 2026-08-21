@@ -1,0 +1,50 @@
+{
+  "_note": "Curated (T2c). All Syndra abilities deal magic damage (verified). R (Unleashed Power) DamageCalc is per-sphere; MinDamageCalc is the guaranteed 3-sphere total on one target, so it is used with count 1 instead of the per-sphere line.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "ThrowDamage",
+        "count": 1
+      },
+      {
+        "type": "True",
+        "conditionType": "Upgraded",
+        "metCalc": "PassiveBonusDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MinDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "_noteWUpgrade": "W TRANSCENDENT TOGGLE (loop 479). The prior note called PassiveBonusDamage a genuine ~12% undercount that could not be curated because nothing carried the stack gate. The Upgraded condition is that missing piece. Live wiki (wiki.leagueoflegends.com/en-us/Syndra, fetched 2026-08-21) walks the four thresholds: Q at 40 splinters gains a second charge, E at 80 widens the scatter and adds a slow, R at 100 gains a below-15%-health execute, and 120 grants a flat 15% AP. NONE of those adds damage to a hit. W at 60 is the only one that does: it adds 12% (+2% per 100 AP) bonus TRUE damage, which is exactly the BIN pair TOOLTIPONLYPassiveBonusPercent (0.12 + 0.0002 per AP) and PassiveBonusDamage (ThrowDamage multiplied by it). Curated as a second True hit gated on Upgraded, so an un-upgraded W is unchanged and the toggle adds the true-damage half. Everything else on this champion correctly stays as it was.",
+  "_noteW": "Scatter the Weak (SyndraWAbility/SyndraW): 'ThrowDamage' (curated, BaseDamage + 0.65 AD-coefficient... actually AP coefficient per StatByCoefficient with no mStat -> AP) matches the direct throw hit. A second calc, 'PassiveBonusDamage' (GameCalculationModified: ThrowDamage x (0.12 + a small AP-scaled term)), exists in the BIN -- a modest ~12%+ damage amplifier tied to Syndra's passive orb-stack mechanic (mirrors the P-slot's stack/threshold DataValues). Not curated: it is a small passive-stack- gated damage AMPLIFIER (not a separate hit) and this project's stack-count knobs are not wired to W's curation; documented here as a genuine, modest (~12%) undercount rather than silently unmentioned."
+}

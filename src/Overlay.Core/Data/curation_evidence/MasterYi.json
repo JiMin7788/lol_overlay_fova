@@ -1,0 +1,51 @@
+{
+ "champion": "MasterYi",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Master_Yi"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Alpha Strike",
+   "facts": [
+    {
+     "field": "MaxSingleTargetDamage",
+     "kind": "flat",
+     "values": [
+      35,
+      70,
+      105,
+      140,
+      175
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "35 / 70 / 105 / 140 / 175 (+ 122.5% AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Wuju Style",
+   "facts": [
+    {
+     "field": "BonusTrueDamage",
+     "kind": "flat",
+     "values": [
+      20,
+      25,
+      30,
+      35,
+      40
+     ],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "Bonus true damage: 20 / 25 / 30 / 35 / 40 (+ 35% bonus AD)"
+    }
+   ]
+  }
+ }
+}

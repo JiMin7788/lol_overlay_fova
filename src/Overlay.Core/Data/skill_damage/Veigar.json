@@ -1,0 +1,33 @@
+{
+  "_note": "Curated (T2c); note corrected loop 351 (doc-only, no data change). All Veigar abilities deal magic damage (verified). R (Primordial Burst) MinDamage is the base, full-health-target hit (curated as the guaranteed floor) -- the R.MaxDamage variant (BIN: GameCalculationModified, x2 multiplier on MinDamage) is NOT a bonus vs high-AP targets (the old note text was WRONG); wiki confirms it actually scales continuously 0%->100% bonus based on the TARGETS OWN MISSING HEALTH (full damage only near-death), a continuous execute-style scale this schema cannot represent as a simple threshold -- so MinDamage (the safe, full-health floor) remains the correct conservative single hit. E (Event Horizon) is a stun with no damage.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MinDamage",
+        "count": 1
+      }
+    ]
+  }
+}

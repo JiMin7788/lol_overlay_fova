@@ -1,0 +1,12 @@
+{
+  "_note": "Curated. Source: communitydragon/yuumi.bin.json mSpellCalculations this pass (2026-07-10).",
+  "_noteQ": "Prowling Projectile: TotalMissileDamage = NamedDataValue(MissileDamage, 25-235) + 0.2 AP. Magic. A stronger 'TotalMissileDamageEmpowered' calc exists for the afterburners version (missile empowers after traveling ~1.35s) but is the SAME missile, not an additive second hit, so only the base (guaranteed) value is curated. 'OnHitDamageCalc' grants an ally's basic attacks bonus on-hit magic damage while Yuumi is attached -- that is an ALLY's hit, not Yuumi's own, and the schema has no representation for granting damage to another unit, so it is not curated.",
+  "_noteR": "Final Chapter: FIXED this pass -- the prior stub used 'TotalMissileDamage' (one wave only). The better curated hit is 'TotalSingleTargetDamage' = TotalMissileDamage x SumOfSubParts{1 + ProductOfSubParts[(NumberOfWaves-1), MultiMissileReduction]} = TotalMissileDamage x (1 + 4x0.25) = TotalMissileDamage x2.0 with NumberOfWaves=5/MultiMissileReduction=0.25 -- this is the BIN's own pre-summed total across all 5 waves hitting ONE stationary target for the whole ult duration, a much more accurate 'fully landed R' number than a single wave. Magic. Tagged BurstCeiling as Yuumi's only real damage tool.",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalMissileDamage", "count": 1 } ] },
+  "R": {
+    "hits": [ { "type": "Magic", "calc": "TotalSingleTargetDamage", "count": 1 } ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  },
+  "QEmpowered": { "icon": "assets/characters/yuumi/hud/icons2d/yuumiq2.png", "hits": [ { "type": "Magic", "calc": "TotalMissileDamageEmpowered", "binSpell": "Q", "count": 1 } ] },
+  "_noteQ_sweep2": "STAGE-4 AUDIT addition (loop 442, 2026-07-27): the EMPOWERED missile (attached-steering, the standard play pattern) exists as its own BIN calc (TotalMissileDamageEmpowered = EmpoweredMissileDamage 25->355 + ratio) and was unrepresented - added as the selectable QEmpowered slot (binSpell=Q keeps Q rank). Base Q unchanged."
+}

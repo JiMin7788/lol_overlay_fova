@@ -1,0 +1,46 @@
+{
+  "_note": "Elise is a dual-form champion (Human/Spider); only Human-form Q/W/E (+ base R) are in mAbilities/spellNames and thus parsed into SkillData -- Spider-form calcs (EliseSpiderQ/W/E) exist in the BIN but are out of scope, matching the project's Elise/Gnar-class dual-form precedent (curate the base playable slots only). Q (Neurotoxin) HumanPercentHealth is a %CURRENT-HP formula (TargetHPDamage=4 * 0.01 + 0.03%*AP, wrapped in an mMultiplier(0.01) tree) -- confirmed against the real tooltip ('4% + 0.03% per AP of target's current Health, no flat component'); MonsterDamageCapCalc is monster-only, skipped. W (Volatile Spiderling) TotalDamage = BaseDamage + 0.75 AP, tagged BurstCeiling. E (Cocoon) has only a stun-duration calc, no damage -- correctly no hits. R (base EliseR object, the Human->Spider transform) carries PassiveTotalDamage = PassiveBonusDamage + 0.15 AP, the bonus magic on-hit damage Elise's basic attacks deal WHILE in Spider Form -- curated as a bonusEffect(onHit) on slot R since it's granted by the R cast. SpiderlingTotalDamage (each spawned spiderling's own attack) is pet/summon damage with no live spiderling-count tracking in this engine -- skipped (AurelionSol/Kindred-class exclusion). The buff-conditional variants ({84a53877}/{e5407a95}/{60195651}, GameCalculationConditional-wrapped boosts to PassiveTotalDamage) are unsupported (conditional wrapper, not a plain GameCalculation) -- the unconditional default (PassiveTotalDamage) is used instead. Passive ('{38943004}', spiderling ability-haste growth) is non-damage utility. CORRECTION (loop 221): the prior claim 'no flat component' for Q was WRONG -- a fresh wiki fetch confirms Neurotoxin's real tooltip is '40/70/100/130/160 (+4% (+3% per 100 AP) of target's current health)', i.e. TWO damage components, not one. The flat/rank-scaling part (BaseDamage DataValue, real ranks 40/70/100/130/160) has NO named GameCalculation wrapping it in the BIN (only the %hp term, HumanPercentHealth, is a named calc) -- it was being silently dropped entirely. FIXED: added flatDataValue:'BaseDamage' as a second Q hit (same no-calc-needed pattern as Kled W/Camille R/Zac W).",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "flatDataValue": "BaseDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentCalc": "HumanPercentHealth",
+        "hpBasis": "Current",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling"
+    ]
+  },
+  "R": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "PassiveTotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "RSpiderling": { "hits": [ { "type": "Magic", "perAttackCalc": "SpiderlingTotalDamage", "binSpell": "R", "count": 1 } ] },
+  "_noteRSpiderling": "STAGE-4 AUDIT addition (loop 438, 2026-07-27): the sweep flagged the spiderling damage family on EliseR - SpiderlingTotalDamage (= SpiderlingBaseDamage 10->40 by R rank + SpiderlingAPRatio) is a real, previously-unrepresented summon: Spider Form's spiderlings attack autonomously. Added as the M22 Phase-3 summon pattern (perAttackCalc x UserAttackCount, honest 0 unset; binSpell=R keeps R's own rank per the canonical-binSpell rule) - Tibbers/Daisy precedent. Sweep tier-A companions adjudicated: SpiderlingDamageTooltipOnly is a tooltip mirror (name says it), EliseBiteDamage(0,12,22,32,42) is referenced by no calc and no wiki mechanic maps to it cleanly - left alone per P2 (not force-fed)."
+}

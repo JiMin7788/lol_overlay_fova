@@ -1,0 +1,23 @@
+{
+  "_note": "Curated (loop 39). Verified live against graves.bin.json (GravesQLineSpell/GravesSmokeGrenade/GravesChargeShot/GravesMoveAbility/GravesPassiveAbility) + wiki.leagueoflegends.com/en-us/Graves for damage type + mechanic confirmation. 'auto' flag removed: every slot is now either fully resolved (Q/R) or a confirmed, justified non-hit (P/E) -- see _noteP/_noteE.",
+  "_noteP": "P (New Destiny / buckshot AA) intentionally left UNCURATED, confirmed again this loop (matches prior loop's finding). GravesPassive.mSpellCalculations 'SingleBulletDamage' = StatBySubPartCalculationPart(mStat=2 total AD) x ByCharLevelFormulaCalculationPart(per-level multiplier ~0.70 at lvl1 rising to ~1.35 at lvl18) -- this IS Graves' own basic-attack damage formula (New Destiny replaces his normal single-shot AA with 3 pellets fired in a cone; 'MultiBulletDamage' = GameCalculationModified referencing SingleBulletDamage x0.333 for the 2nd/3rd pellet). Curating this as a separate P hit would double-count with the engine's existing basic-attack damage model, so it is deliberately omitted (not a schema/engine limitation -- a structural exclusion to avoid double-counting, distinct from a genuinely damage-less utility skill).",
+  "_noteE": "E (Quickdraw) has NO direct damage calc -- confirmed both from the BIN (GravesMoveAbility/GravesMove's only calc is 'MRGrant', a stat-grant for the True Grit bonus armor/MR buff; GravesEGrit is a mBuff object with no mSpellCalculations at all) and the wiki (dash + bonus armor/MR stacks + basic-attack-timer reset; no damage text). Genuinely damage-less utility skill -- slot omitted entirely per convention (not auto:true+reason).",
+  "Q": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamage", "count": 1 },
+      { "type": "Physical", "calc": "TotalDetonationDamage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "ImpactDamage", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      { "type": "Physical", "calc": "Damage", "count": 1 },
+      { "type": "Physical", "calc": "FalloffDamage", "count": 1 }
+    ]
+  }
+}

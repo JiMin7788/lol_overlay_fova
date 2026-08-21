@@ -1,0 +1,8 @@
+{
+  "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "RocketDamage", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "DamageFloor", "minCalc": "DamageFloor", "maxCalc": "DamageMax", "count": 1 }, { "type": "Physical", "hpPercentDataValue": "PercentDamage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"] } ], "_noteR": "M24 P3 DistanceScaled (loop 102): Super Mega Death Rocket deals 10%->100% by distance travelled. calc:DamageFloor kept as resolved default (near-range = conservative = value identity, zero regression); range [DamageFloor(near), DamageMax(far)] via UserDistanceFraction. NOTE: the rocket also adds %target-missing-HP (Jinx R 'gets stronger the farther it travels' AND scales with the target's missing HP) — the distance ramp is modeled here; the missing-HP bonus is NOT separately curated (would need a compound shape), so this is a documented under-estimate at the far end." },
+  "_noteR_sweep2": "STAGE-4 AUDIT FIX (loop 440, 2026-07-27): sweep tier-A PercentDamage(25/30/35 at R ranks) is the MISSING-HEALTH component of the rocket - wiki-confirmed 25/30/35% of target missing health on the primary target - and it was entirely missing from the loop-102 range curation (a large undercount vs wounded targets, the rocket usage case). Added as an hpPercentDataValue/Missing hit alongside the distance range. AoEDamageMult(0.8) = secondary-target splash, out of single-target scope."
+}

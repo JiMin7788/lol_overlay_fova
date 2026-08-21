@@ -1,0 +1,41 @@
+{
+  "_note": "Curated (loop 39). P corrected this session (see _noteP -- swapped TotalDamage for CombinedDamage after a live wiki fetch confirmed Pix's 3 bolts fire on EVERY basic attack, not periodically, so the single-bolt figure was an unintended 3x understatement). Q 'Glitterlance' verified against Lulu's own bin.json + live wiki fetch (wiki.leagueoflegends.com/en-us/Lulu): base magic hit (TotalDamage, 60-200+50%AP) plus a second hit for the DoubleHitBonus (BonusMissileDamage) when the target is close enough to be struck by both the outgoing and reflected/pierced portions of the missile (wiki's combined 'Total Magic Damage' 90-300+75%AP) -- curated as two independent hits per the established Naafiri/Lillia dual-hit pattern; the bonus hit is range-conditional, not guaranteed. E 'Help, Pix!' curated at its enemy-targeted magic-damage variant (TotalDamage, 70-230+50%AP); the ally-targeted shield variant (calc 'TotalShield') is healing/shielding, not damage, and intentionally not curated. W 'Whimsy' (CC/speed only) and R 'Wild Growth' (bonus health/knockback only) both have zero damage calcs in their own bin.json spellCalculations -- correctly have no hits (omitted, not auto:true, per the no-damage-utility-skill convention).",
+  "_noteP": "P (Pix, Faerie Companion): LuluPassive.mSpellCalculations 'TotalDamage' = level-interpolated base 5->39 + 0.05x AP PER BOLT; 'CombinedDamage' = TotalDamage x DataValue 'NumberOfBolts'(3) via a supported GameCalculationModified (Multiplier). Wiki (wiki.leagueoflegends.com/en-us/Lulu) confirms Pix fires all 3 bolts at the SAME first enemy hit on every one of Lulu's (or her Help-Pix!-target's) basic attacks -- not a periodic/charged proc -- so the 3-bolt total (CombinedDamage, 15-117+15%AP) is the correct guaranteed per-attack figure, not an overstatement. Curated as a P bonusEffect trigger onHit using CombinedDamage (corrects a prior session's use of the single-bolt TotalDamage, which understated real on-hit damage by 3x).",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "CombinedDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "BonusMissileDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  }
+}

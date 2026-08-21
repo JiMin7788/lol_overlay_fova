@@ -1,0 +1,45 @@
+{
+  "_note": "Curated. Source: communitydragon/yorick.bin.json mSpellCalculations this pass (2026-07-10); P/Q/R carried over from a prior curation pass and re-verified, E fixed.",
+  "_noteP": "Shepherd of Souls: summoned ghouls' basic attacks deal bonus PHYSICAL damage (YorickPassive.mSpellCalculations 'YorickPassiveGhoulDamage' = level-interpolated base 15->100 + 0.2x bonus AD; the interpolation part also carries an 'mScaleByStatProgressionMultiplier' flag that this project's FormulaInterpreter does not model -- left unmodeled/undocumented-caveat, consistent with how every other curated ByCharLevelInterpolation passive in this file set already ignores per-champion progression multipliers). Curated as a standalone P hit (ghoul basic attacks, not Yorick's own AA) -- add a Passive node to represent one ghoul attack instance.",
+  "_noteQ": "Last Rites: BonusDamage = NamedDataValue(BaseDamage, 10-130) + StatByNamedDataValue(mStat=2 total AD, BonusDamageAD=0.5). Physical.",
+  "_noteE": "Mourning Mist: FIXED this pass -- the prior stub used 'Calc_MinimumDamage' (MinimumMinionDamage, a minion-only damage cap, wrong for champion combos). The champion-relevant calc is 'Calc_HealthDamage' = (NamedDataValue(HealthDamage, 5.5-8.5) + StatByNamedDataValue(HealthAPRatio=0.03 AP)) x mMultiplier 0.01 -- a %HP FRACTION (5.5%-8.5% + 0.03%/AP), matching the real ability (marks target; Yorick's next hit/ability against the mark deals bonus magic damage = a % of the target's CURRENT health). Curated via hpPercentCalc/hpBasis=Current rather than calc (the multiplier converts it to a fraction, not flat damage). Calc_MonsterCapDamage/Calc_MinimumDamage are minion/monster caps, out of scope for champion combos.",
+  "_noteR": "Eye of the Maiden: YorickBigGhoulDamage = NamedDataValue(RBigGhoulBonusAD, 25-175) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> MaidenADRatio, BIN value 0.3 = 30% bonus AD -- CORRECTED loop 219, prior note text said 50%% but the BIN DataValue is 0.3 for all ranks; the curated JSON only references the calc by name so runtime math was never affected, this was a documentation-only error). This is the summoned Maiden's own attack bonus damage (not Yorick's), curated the same way as the P ghoul -- represents one Maiden basic attack.",
+  "P": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "YorickPassiveGhoulDamage",
+        "count": 1
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BonusDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "hpPercentCalc": "Calc_HealthDamage",
+        "hpBasis": "Current",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "YorickBigGhoulDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): P MeleeAttackDamageModifier(2.0)/ProcDamageModifier(0.5) are GHOUL attack modifiers and R RMarkDamagePercent/RMarkMaxDamage(1.5->4.5%, cap 30) is the Maiden's mark rider - all pet-actor terms (ghoul/Maiden output is summon-uptime state; the summon knob pattern covers pets that are curated). Documented."
+}

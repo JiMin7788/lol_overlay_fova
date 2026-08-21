@@ -1,0 +1,25 @@
+{
+  "_note": "Curated (loop 39). Verified against Malphite's own bin.json spellCalculations + a live wiki fetch (wiki.leagueoflegends.com/en-us/Malphite). P (Granite Shield) is a self-shield only, zero damage calcs -- correctly has no hits. Q 'Seismic Shard' (QDamageCalc, 70-270+60%AP) is a single magic hit. W 'Obduracy' (Thunderclap): the empowered-next-attack primary hit (TotalBonusDamage) and its splash to nearby enemies at reduced damage (ThunderclapSplash) are curated as two independent PHYSICAL hits (matches wiki's 'Additional Physical Damage' / 'Physical Damage' split) -- both use mStat=1 (Armor), a supported stat id (FormulaInterpreter/BuildStatResolver). E 'Landslide' (EDamageCalc, 60-200+60%AP+40%armor) is a single magic hit, also armor-scaled. R 'Unstoppable Force' (TotalDamage, 200-400+90%AP) is a single magic hit -- tagged BurstCeiling as Malphite's single highest-damage ability and the standard AoE knockup combo finisher.",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "QDamageCalc", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Physical", "calc": "TotalBonusDamage", "count": 1 },
+      { "type": "Physical", "calc": "ThunderclapSplash", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "EDamageCalc", "count": 1 }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1, "tags": ["BurstCeiling"] }
+    ]
+  }
+}

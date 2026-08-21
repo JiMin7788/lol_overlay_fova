@@ -1,0 +1,53 @@
+{
+ "champion": "Orianna",
+ "collectedAt": "2026-07-23",
+ "collector": "Claude Code F4-1 backfill (numbers transcribed from the loop-336 _note in skill_damage/Orianna.json, which recorded a live wiki verification; the note preserved the values but not the verbatim tooltip lines, so quote fields carry the note's own recorded phrasing)",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Orianna"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Command: Attack",
+   "facts": [
+    {
+     "field": "TotalDamageTooltip",
+     "kind": "flat+apratio",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "BaseDamage 60/90/120/150/180 + 55% AP (loop-336 wiki-verified; slot mapping confirmed via CharacterRecord.spellNames -> OrianaIzunaCommand)",
+     "note": "Previously skipped by the auto-picker purely for the 'Tooltip' substring in the calc name — the calc carries no tooltipOnly:true flag (same false-positive class as AurelionSol)."
+    }
+   ]
+  },
+  "E": {
+   "name": "Command: Protect",
+   "facts": [
+    {
+     "field": "TotalDamageTooltip",
+     "kind": "flat+apratio",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "BaseDamage 60/90/120/150/180 + 30% AP, ball-transit damage (loop-336 wiki-verified; slot mapping confirmed via CharacterRecord.spellNames -> OrianaRedactCommand)",
+     "note": "TotalShieldTooltip (ally shield 55/90/125/160/195 + 45% AP) is non-damage and correctly left uncurated."
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,19 @@
+{
+  "_note": "Curated. Q (Null Lance): TotalDamage = BaseDamage + 0.7*AP(coefficient), magic -- matches auto-pick, hand-verified. E (Force Pulse): TotalDamage = BaseDamage + 0.7 AP, magic -- matches auto-pick, hand-verified.",
+  "_noteW": "Character passive (Void Stone, VoidStoneAbility) is pure damage-reduction utility (only DataValue is DamageReductionPercent=0.10, no mSpellCalculations) -- no damage to curate there. However W (Nether Blade)'s own spell block defines a second calc besides its active-cast damage: OnHitDamage (NetherBladeAbility/NetherBlade.mSpellCalculations) = NamedDataValue('PassiveBaseDamage', flat 25 at every rank) + StatByCoefficient(coefficient=0.1, no explicit mStat -> defaults to AP id=0 per FormulaInterpreter). This is Kassadin's real 'spell casts empower next basic attack' passive proc (gated by a SpellSlotEqualOrGreaterThanLevelRequirement level>=1 attached-effect entry keyed to 'OnHitDamage'), distinct from the ActiveDamage already curated on W. Hand-traced: with 100 AP, OnHitDamage = 25 + 0.10*100 = 35 (constant across ranks since PassiveBaseDamage is flat). Curated as a W bonusEffect trigger onAbility (approximated as firing on every ability cast rather than strictly gating the next attack, same documented style as Akali P) -- SkillDamageDb's AttachableSlots already covers Q/W/E/R, not just P, so this attaches correctly. ActiveDamage (existing W hit) left untouched.",
+  "_noteR": "R (Riftwalk, RiftWalkAbility) ADDED -- was completely uncurated. BaseDamage = RBaseDamage + 0.5*AP + AbilityResourceByCoefficient(0.02*maxMana), magic -- resolvable now that mana-scaling (AbilityResourceByCoefficient) is supported. Curated using the FIRST-cast value (no stacks). Riftwalk's real 'double/triple jump' combo deals MORE on the 2nd/3rd cast within 15s via a separate BonusDamage calc (StackDamage+0.07AP+0.01*maxMana per stack, up to 4 stacks) -- not modeled (no live per-combo stack-window tracking for a skill re-cast the way item StackThenConsume tracks AAs), a conservative undercount for a multi-riftwalk burst combo.",
+  "Q": {
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  },
+  "W": {
+    "hits": [ { "type": "Magic", "calc": "ActiveDamage", "count": 1 } ],
+    "bonusEffects": [ { "trigger": "onAbility", "hits": [ { "type": "Magic", "calc": "OnHitDamage", "count": 1 } ] } ]
+  },
+  "E": {
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  },
+  "R": {
+    "tags": ["Stacking", "AoeUltimate"],
+    "hits": [ { "type": "Magic", "calc": "BaseDamage", "count": 1 } ]
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "_noteEWall": "E IS WALL-ONLY, AND WAS BEING SCORED UNCONDITIONALLY (loop 483, user request - and the report found a real overcount, not a missing toggle). The live wiki (wiki.leagueoflegends.com/en-us/Skarner, fetched 2026-08-21) is unambiguous: Ixtals Impact has NO initial collision damage. Its single damage instance, 30/60/90/120/150 (+120% bonus AD) (+6% of Skarners maximum health), happens when the grabbed target collides with terrain, and if no terrain is hit during the charge the ability deals nothing at all. PinDamage is therefore the wall damage, and curating it as an unconditional hit meant every E node claimed a slam that may never have happened. It is now gated on HitsWall with no baseline calc, the M28 on/off shape: unmet drops the hit entirely, which is the honest floor for an ability that genuinely does nothing without terrain, and the range still shows the full number as its ceiling. ⚠️ A saved combo with an E node now scores 0 there until the box is ticked - which is the correct reading, and the one the old curation could not give.",
+  "_note": "Q/W/E/R hand-verified against skarner.bin.json this pass (auto flag removed): all four already matched the auto-picker's calc/type choices and all four resolve cleanly with only mapped stat ids. Q 'AbilityDamage' = BaseDamage + 0.9x bonus AD (mStatFormula=2) + 0.03x Skarner's OWN bonus max HP (mStat 12, mStatFormula=2) -- the id-12 health term is the CASTER's bulk (BuildStatResolver's ActivePlayerStats is the attacker), not a target-%HP mechanic, so no PercentMaxHp tag applies. W 'Damage' = BaseDamage + 0.8 AP (Magic). E 'PinDamage' = PinBaseDamage + 1.2x bonus AD (mStatFormula=2) + 0.06x Skarner's OWN TOTAL max HP (mStat 12, no mStatFormula -> total not bonus, same caster-scaling situation as Q, not a target %HP tag) -- Physical. R 'Damage' = BaseDamage(50-650) + 1.0x AP (Magic, mStat omitted defaults to AP per this codebase's established convention, e.g. Singed E/Sivir Q/Sion E) -- tagged BurstCeiling as Skarner's clearly largest single hit (650 flat at max rank before any AP).",
+  "_noteP": "P (Essence Sting) curated (T7 extension) using the new SkillHit.hpPercentCalc field. SkarnerPassive.mSpellCalculations 'PercentHealthDamage' = ByCharLevelInterpolationCalculationPart(5.0->9.0) x mMultiplier NumberCalculationPart(0.01) -- a %maxHP FRACTION that exists only inside a GameCalculation formula tree, with NO matching DataValues array entry (ChampionBinParser keeps DataValues and mSpellCalculations as two disjoint dictionaries), so the pre-existing hpPercentDataValue mechanism (SkillDamage.ResolveHpPercent -> FormulaInterpreter.EvaluateDataValue) could not reach it, and calc:'PercentHealthDamage' alone was wrong because ComputeCalcDamage/TryBuildHitShape used to treat a calc's evaluated number as already-flat damage with no defenderMaxHp multiplication. Fixed additively: hpPercentCalc names the calc, SkillDamage.ResolveHpPercentCalc evaluates it via FormulaInterpreter.Evaluate (the same engine ComputeCalcDamage uses) at rank = champion level (passive), and TryBuildHitShape now multiplies the result by defenderMaxHp exactly like a DataValue-sourced %HP hit -- hpPercentDataValue/literal hpPercent paths (Vayne W, Brand P) are untouched. Evaluates to 0.05 at level 1 rising to 0.09 at level 18 (ByCharLevelInterpolation reaches its end value at rank 18: (rank-1)/17 = 1.0). Curated as ONE tick (count 1, matching Brand P's conservative precedent) even though the passive actually ticks every 0.5s (TickFrequency DataValue) for Duration=4s once StacksToTriggerPassive=3 is reached -- modeling the full DoT as repeated ticks is a combo-sequencing decision out of scope for this %HP-mechanism fix. Damage type Magic is hand-curated (not BIN-derived; the BIN calc itself carries no damage-type field, consistent with every other champion in this file per the project convention documented in SkillDamageDb.cs) -- Essence Sting is Riot-documented as magic damage.",
+  "P": {
+    "hits": [
+      {
+        "type": "Magic",
+        "hpPercentCalc": "PercentHealthDamage",
+        "hpBasis": "Max",
+        "count": 1
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "AbilityDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "hpPercentDataValue": "MaxHPPercent",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ],
+    "tags": [
+      "PercentMaxHp"
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "conditionType": "HitsWall",
+        "metCalc": "PinDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Damage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "_noteQ": "ADDED this pass: Q (Shattered Earth) was missing a real, currently-live %max-HP damage component entirely -- SkarnerQAbility/SkarnerQ's 'MaxHPPercent' DataValue (0.11 constant) has NO GameCalculation referencing it anywhere in the BIN (a flat DataValue-only term, the same 'invisible to calc-name-driven curation' class this file set's own Kled-W sweep tool already documents). Verified via a live wiki fetch this session (2026-07-20): Q is a 3-attack empowered sequence ('10/20/30/40/50 (+90% bonus AD)(+3% bonus health)' per hit), and 'the final empowered attack does deal additional damage: 11% of each target's maximum health physical damage' -- an exact match to MaxHPPercent. AbilityDamage (the existing single-hit curation) already conservatively represents ONE of the 3 attacks, not the full sequence (matches this project's single-representative-attack convention for multi-attack toggle abilities). Added the 11% max-HP term as a second, separate hit via hpPercentDataValue (no calc needed, it's a bare DataValue) -- this represents the 3rd/final attack's execute-style bonus specifically; using it alongside the single AbilityDamage hit is a combined 'completed 3-attack sequence, final hit landed' assumption, consistent with this project's castCount/multi-hit completed-combo convention (e.g. Ahri R, Locke Q)."
+}

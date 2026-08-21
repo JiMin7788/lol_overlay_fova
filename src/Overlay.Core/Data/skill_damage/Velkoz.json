@@ -1,0 +1,70 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Organic Deconstruction): after landing 3 separate spells/attacks on the same champion within a window, they take bonus MAGIC damage (TotalDamage = 0.6x AP + level-interpolated base 35\u2192180, VelkozPassive.mSpellCalculations). Curated as a P bonusEffect trigger onAbility \u2014 an assistive APPROXIMATION applied to every ability cast rather than strictly the 3rd-hit proc (documented, same style as Mordekaiser's Darkness Rise). Q/W/E kept as the auto first-pass magic picks.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onAbility",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "TotalDamage",
+            "count": 1,
+            "tags": [
+              "Stacking"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "InitialDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "SecondaryDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1,
+        "tags": [
+          "Zone"
+        ]
+      }
+    ]
+  },
+  "_noteW": "CORRECTED this pass: W (Void Rift) was missing its second damage instance. BIN VelkozWAbility/VelkozW has TWO real calcs -- InitialDamage (BaseInitialDamage[30,50,70,90,110]+0.2xAP) and SecondaryDamage (BaseSecondaryDamage[45,75,105,135,165]+0.25xAP) -- confirmed against a live mobafire.com/league-of-legends/ability/void-rift-653 fetch this session (2026-07-20): 'Initial Blast Damage: 30/50/70/90/110 (+15% AP)' and 'Secondary Explosion Damage: 45/75/105/135/165 (+25% AP)', matching the BIN's base-damage arrays exactly for both hits (the BIN's 0.2 AP coefficient for Initial vs mobafire's cited 0.15 is a plausible post-fetch balance patch bump -- BIN is authoritative for the live coefficient, the base arrays and Secondary's ratio corroborate this is the correct real ability). Void Rift fires a projectile creating a rift (Initial impact damage), then 0.25s later the rift detonates a second time (Secondary explosion damage) -- both are automatic, guaranteed parts of a single W cast (no player action needed for the second explosion), so both are curated as separate guaranteed hits, not a conditional/optional bonus.",
+  "_noteR": "ADDED this pass: R (Life Form Disintegration Ray) was previously left with NO hits despite a cleanly resolvable calc. BIN VelkozRAbility/VelkozR.TotalDamage = EffectValue(index1, values [0,450,700,925,0,0,0]) + 1.25x AP (default stat) -- a tooltipOnly calc that is ALREADY PRE-SUMMED over the full ~2.6s/13-tick channel, same modeling convention as other pre-summed 'Total' tooltipOnly calcs already curated elsewhere in this file set (e.g. Nilah R DamagePerTickCalcTooltip). Verified via a live mobafire/wiki fetch this session (2026-07-20): 'Total damage over a full channel: 450/700/925 (+125% AP)' -- exact match. Tagged Zone (not a suppress/root -- the target CAN walk out of the beam's path, though Vel'Koz can rotate it within a turn-rate limit to follow), so this is the full-channel ceiling value assuming the target stays in the beam the whole time, consistent with this project's Zone-tag convention for escapable-but-tracked channel damage. The bonus true-damage conversion vs a Researched/marked target is a conditional not modeled here (conservative floor, matches magic-damage baseline). Tagged BurstCeiling: this is Vel'Koz's single highest realistic damage contribution."
+}

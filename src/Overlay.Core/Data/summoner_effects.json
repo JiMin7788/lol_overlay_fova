@@ -1,0 +1,14 @@
+{
+  "_note": "Summoner-spell damage map — hand-authored, same precedent as rune_effects.json (CommunityDragon has no BIN generator path). Verified 2026-07-15 that NEITHER Data Dragon NOR CommunityDragon exposes a numeric Ignite value: DDragon summoner.json SummonerDot tooltip = placeholder '{{ tooltiptruedamagecalculation }}' (effect/vars all 0); CommunityDragon rcp summoner-spells.json = name/description/cooldown only; no per-spell raw BIN for summoner spells. Values FROZEN FROM USER IN-GAME MEASUREMENT (P1/M26 §3 golden, Practice Tool 2026-07-15): L1=70, L2=90, L3=110, L4=130, L5=150, L6=175, L8=225, L11=300, L13=350, L16=425, L18=475, L20=525. This is a TWO-SEGMENT piecewise linear (NOT the old 50+20*level 70-410, and NOT a single-slope line): levels 1-5 rise +20/level (= 50 + 20*level), then level 6+ rise +25/level (= 25 + 25*level). Continuous-ish: L5=150 -> L6=175 (+25 into the second segment). TRUE damage, never mitigated. No cap at 18 (Arena/high-level keeps the level-6+ slope; L20=525 checks out). Ignite's Grievous Wounds (healing reduction) is a non-damage side effect, out of scope. Re-check on any Ignite patch change. Keyed by DDragon spell display name ('Ignite'); SummonerEffectDb resolves a combo node by node.Name. Segment rule: use the first segment whose maxLevel >= level; value = flatBase + perLevelSlope*level.",
+  "summoners": {
+    "Ignite": {
+      "name": "Ignite",
+      "ddragonId": "SummonerDot",
+      "damageType": "True",
+      "segments": [
+        { "maxLevel": 5, "flatBase": 50, "perLevelSlope": 20 },
+        { "maxLevel": 999, "flatBase": 25, "perLevelSlope": 25 }
+      ]
+    }
+  }
+}

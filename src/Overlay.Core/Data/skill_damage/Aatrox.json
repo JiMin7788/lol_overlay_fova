@@ -1,0 +1,73 @@
+{
+  "_noteQSweetSpot": "Q SWEET SPOT (loop 483, the last item on the users combo-editor list). Every Aatrox Q lands harder on its OUTER EDGE, and the BIN says so exactly: QEdgeDamage = QDamage x (1 + QSweetSpotBonus 0.75), i.e. 175%. It was never curated because there was no way to say where the cast landed. ConditionType.SweetSpot is that - UserAssumed and default unmet, so an untouched node spans [ordinary, edge] and the flat hit is unchanged as the floor. Added to all three casts, because all three have the edge: Q2 and Q3 resolve QEdgeDamage against the same BIN object through binSpell, the same routing their base hit already uses. QEdgeDamage is flagged tooltipOnly in the BIN - that marks it as the tooltips display of the real multiplier, which is precisely the number wanted here, and it resolves through the ordinary calc path.",
+  "_note": "Curated per-skill combo-damage map. 'type' is the curated damage type (BIN does not cleanly expose it); 'calc' names a BIN mSpellCalculations GameCalculation evaluated via FormulaInterpreter for single-target damage; 'count' is how many times that hit lands on ONE target when the combo is landed fully. See docs/reports/agent/combo_damage_model_report.md.",
+  "_noteQ": "MULTI-CAST SPLIT (loop 471, user request). The Darkin Blade is three separate casts and the later ones hit HARDER, which a single Q slot could not express. BIN AatroxQ carries QRampBonus 0.25 as a bare DataValue with no calc of its own - mSpellCalculations holds only QDamage/QEdgeDamage/QMinionDamage and there is no Q2/Q3 spell object, so the ramp is applied by script and is invisible to calc-name-driven curation (the Zac-W shape). Live wiki (wiki.leagueoflegends.com/en-us/Aatrox, fetched 2026-08-20) confirms the ramp is ADDITIVE per cast: first 10/25/40/55/70 (+60/67.5/75/82.5/90% AD), second 12.5/31.25/50/68.75/87.5 (x1.25), third 15/37.5/60/82.5/105 (x1.5), stated as 'Each subsequent cast gains 25% more damage'. Those base numbers reconcile exactly with QBaseDamage[1..5] and QTotalADRatio[1..5]. Curated as Q/Q2/Q3 sharing QDamage with rampSteps 0/1/2 against the live QRampBonus DataValue (Hard Rule: never the literal 1.25). NOT curated: QEdgeDamage, the sweet-spot x1.75 (QSweetSpotBonus 0.75) - that is a positional condition and belongs with the conditional pass, not folded into every Q.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "QDamage",
+        "conditionType": "SweetSpot",
+        "metCalc": "QEdgeDamage",
+        "count": 1
+      }
+    ]
+  },
+  "Q2": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "QDamage",
+        "conditionType": "SweetSpot",
+        "metCalc": "QEdgeDamage",
+        "binSpell": "Q",
+        "count": 1,
+        "rampDataValue": "QRampBonus",
+        "rampSteps": 1
+      }
+    ]
+  },
+  "Q3": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "QDamage",
+        "conditionType": "SweetSpot",
+        "metCalc": "QEdgeDamage",
+        "binSpell": "Q",
+        "count": 1,
+        "rampDataValue": "QRampBonus",
+        "rampSteps": 2
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "WDamage",
+        "count": 1
+      }
+    ]
+  },
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "hpPercentCalc": "PDamage",
+            "hpBasis": "Max",
+            "count": 1,
+            "tags": [
+              "PercentMaxHp"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "_noteP": "Deathbringer Stance (AatroxPassiveAbility/AatroxPassive) was ENTIRELY MISSING from curation despite being a real, cleanly resolvable component -- 'PDamage' = ByCharLevelInterpolation(0.04 -> 0.10), a bare percent fraction with no companion NamedDataValue/EffectValue, wired via hpPercentCalc/hpBasis Max (same mechanism as Skarner P/Kled W). Live wiki confirms: Aatrox's empowered next basic attack deals bonus MAGIC damage equal to 4%-10% (by level) of the target's MAXIMUM health, and Aatrox heals for the damage dealt. Curated as a P bonusEffect trigger onHit -- an approximation applied to every attack rather than only the actual cooldown-gated proc (static 22s->10s cooldown, reduced 2-4s per hit against champions/large monsters), the same simplification style as Leona Sunlight/Volibear P/Warwick P elsewhere in this project (an upper-bound assumption, not an exact per-attack guarantee). MonsterDamageCap (100-320, vs-monster-only) is out of scope for player-vs-player combo damage.",
+  "_noteP_sweep2": "STAGE-4 AUDIT (loop 439, 2026-07-27): sweep tier-A PDamageTADBonusLevel1(0.15)/PDamageTADBonusLevel18(0.25) are FALSE POSITIVES - the live wiki confirms Deathbringer Stance deals ONLY 4-10% (by level) of target max health as bonus magic damage (monster-capped), with NO total-AD component; the TAD DVs are referenced by no calc and match no live mechanic (rework leftovers). Curated P (hpPercentCalc=PDamage, 0.04->0.10 by level) is CORRECT and unchanged."
+}

@@ -1,0 +1,113 @@
+{
+ "champion": "Kalista",
+ "collectedAt": "2026-07-24",
+ "collector": "Claude Code local re-collection (Cowork 403 backfill)",
+ "sources": [
+  {
+   "id": "ddragon",
+   "url": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion/Kalista.json"
+  },
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Kalista/LoL"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Pierce",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [10, 75, 140, 205, 270],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 10 / 75 / 140 / 205 / 270 (+ 105% AD)"
+    },
+    {
+     "field": "ADRatio",
+     "kind": "ratio",
+     "values": [1.05],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 10 / 75 / 140 / 205 / 270 (+ 105% AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Sentinel",
+   "facts": [
+    {
+     "field": "PercentMaxHPDamage",
+     "kind": "percentMaxHP",
+     "values": [0.10, 0.12, 0.14, 0.16, 0.18],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Bonus Magic Damage: 10 / 12 / 14 / 16 / 18% of target's maximum health"
+    },
+    {
+     "field": "MaxNonChampionDamage",
+     "kind": "flat",
+     "values": [100, 125, 150, 175, 200],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Maximum Non-Champion Damage: 100 / 125 / 150 / 175 / 200"
+    }
+   ]
+  },
+  "E": {
+   "name": "Rend",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [5, 15, 25, 35, 45],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 5 / 15 / 25 / 35 / 45 (+ 70% AD) (+ 65% AP)"
+    },
+    {
+     "field": "ADRatio",
+     "kind": "ratio",
+     "values": [0.7],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 5 / 15 / 25 / 35 / 45 (+ 70% AD) (+ 65% AP)"
+    },
+    {
+     "field": "APRatio",
+     "kind": "ratio",
+     "values": [0.65],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 5 / 15 / 25 / 35 / 45 (+ 70% AD) (+ 65% AP)"
+    },
+    {
+     "field": "DamagePerAdditionalStack",
+     "kind": "flat",
+     "values": [7, 14, 21, 28, 35],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Damage per Additional Stack: 7 / 14 / 21 / 28 / 35 (+ 20 / 27.5 / 35 / 42.5 / 50% AD) (+ 50% AP)"
+    },
+    {
+     "field": "ADRatioPerAdditionalStack",
+     "kind": "ratio",
+     "values": [0.20, 0.275, 0.35, 0.425, 0.50],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Damage per Additional Stack: 7 / 14 / 21 / 28 / 35 (+ 20 / 27.5 / 35 / 42.5 / 50% AD) (+ 50% AP)"
+    },
+    {
+     "field": "APRatioPerAdditionalStack",
+     "kind": "ratio",
+     "values": [0.5],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Bonus Damage per Additional Stack: 7 / 14 / 21 / 28 / 35 (+ 20 / 27.5 / 35 / 42.5 / 50% AD) (+ 50% AP)"
+    }
+   ]
+  }
+ },
+ "note": "Q/W/E damage captured from wiki (Kalista/LoL URL worked). Passive (Martial Poise) deals no damage (dash mechanic only). R (Fate's Call) deals no damage (utility/CC only; Airborne Duration 1/1.5/2 seconds). W Sentinel damage is the Soulbound proc when Kalista and her bound ally both attack the same target."
+}

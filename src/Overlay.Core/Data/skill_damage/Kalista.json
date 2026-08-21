@@ -1,0 +1,25 @@
+{
+  "_note": "Curated. Q (Pierce, KalistaMysticShotAbility): TotalDamage = BaseDamage + 1.05 total AD, physical, single-target -- matches auto-pick, hand-verified against BIN. E (Rend, KalistaExpungeWrapperAbility/KalistaExpungeWrapper): NormalDamage = BaseDamage + BaseADRatio*totalAD + APRatio*AP, physical -- this is the FIRST spear only; each ADDITIONAL spear stuck in the target uses a separate, smaller 'AdditionalDamage' calc (AdditionalBaseDamage + AdditionalADRatio*totalAD + AdditionalAPRatio*AP) that isn't modeled since the engine has no live count of spears embedded in the target (would require tracking prior Q casts hitting the same target across the whole game) -- curated as a single first-spear hit, a conservative UNDERCOUNT for any Rend after 2+ landed Qs. P (Martial Poise) and W (Sentinel) and R (Fate's Call) confirmed via BIN to carry zero damage calcs (pure utility: attack-speed/move-speed on backspear, vision ally-marker, ally pull+shield) -- correctly no 'hits' entry.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "tags": [
+      "Stacking"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "NormalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW": "W (Sentinel) confirmed GENUINELY BLOCKED this pass (not just previously unflagged): KalistaWAbility/KalistaW's DataValues include MaxHealthDamage (a real %max-HP-based damage fraction, 8-20%) and MaximumMonsterDamage (a flat monster-damage cap), but mSpellCalculations for this spell object is EMPTY -- no GameCalculation of any kind references either DataValue. Sentinel's real damage (a mark that detonates as %max-HP magic damage when an ALLY's attack or ability hits the marked target within the mark's duration) is applied via engine/script logic outside this project's calc-reference system entirely -- there is no calc name to point a hit at. Also structurally out-of-scope regardless: the damage triggers off an ALLY's action, not Kalista's own cast or attack, so even if a calc existed it would need a different attribution model than this schema supports. Left uncurated (no hits)."
+}

@@ -1,0 +1,11 @@
+{
+  "_note": "Hand-verified this session (loop 39), auto flag removed. Q (Flash Frost, FlashFrostAbility/FlashFrost) is TWO separate magic hits when both connect on one target: TotalPassthroughDamage (initial launch, coef 0.25 AP) and TotalExplosionDamage (recast detonation/stun, coef 0.45 AP) -- live wiki.leagueoflegends.com/en-us/Anivia fetch this session confirms 'Magic Damage 50/70/90/110/130 (+25% AP)' (passthrough) + 'Magic Damage 60/95/130/165/200 (+45% AP)' (recast) = 'Total Magic Damage 110/165/220/275/330 (+70% AP)', matching PassthroughBaseDamage/ExplosionBaseDamage DataValues and the two calcs' AP coefficients exactly; curated as both hits since a combo where the target eats the whole Q (travel + detonation) is the realistic case. E (Frostbite, FrostbiteAbility/Frostbite.TotalDamage) curated as the base (non-Chilled) value, consistent with the project's one-representative-number convention -- EmpoweredDamage (x2 vs a Chilled/CC'd target, e.g. after Q's stun) is a real BIN calc but a conditional variant, not curated separately, same precedent as Frostbite/Braum's stun-state variants elsewhere in this file set. R (Glacial Storm, GlacialStormAbility/GlacialStorm.TotalDamagePerSecond, coef 0.125 AP) is a self-following toggled AoE DoT zone with no fixed max duration (channels while mana lasts) -- curated as ONE tick (count 1), tagged Zone since the target can walk out of the radius to avoid further ticks, same conservative single-tick precedent as Brand P. Passive (Rebirth) grants only bonus resists/a death-save, no damage -- correctly no P block (genuine no-damage utility, not auto:true).",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalPassthroughDamage", "count": 1 },
+      { "type": "Magic", "calc": "TotalExplosionDamage", "count": 1 }
+    ]
+  },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "R": { "tags": ["AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamagePerSecond", "count": 1, "tags": ["Zone"] } ] }
+}

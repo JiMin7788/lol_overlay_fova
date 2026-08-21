@@ -1,0 +1,42 @@
+<Project>
+
+  <!--
+    §43-P — stamp every build with its git commit and build time, so a LOG can identify the binary
+    that produced it.
+
+    This exists because of a concrete failure: two rounds of fixes were tested against a binary that
+    had never been rebuilt (the copy step kept failing while the app was running), and two days of
+    log analysis turned out to describe an old build. A rule to "check the dll timestamp" only works
+    while a human remembers it; a stamp the log carries cannot be forgotten.
+
+    Failure here must never break the build — a checkout without git still has to compile, so the
+    Exec is ContinueOnError and an empty hash degrades to "nogit".
+  -->
+  <PropertyGroup>
+    <!-- The SDK otherwise appends SourceRevisionId to InformationalVersion, which duplicates the
+         hash we are already writing and makes the stamp awkward to read in a log header. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <Target Name="StampGitCommit" BeforeTargets="GetAssemblyVersion;CoreCompile">
+    <Exec Command="git rev-parse --short=9 HEAD"
+          ConsoleToMSBuild="true" StandardOutputImportance="low"
+          ContinueOnError="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitHash" />
+    </Exec>
+    <Exec Command="git status --porcelain --untracked-files=no"
+          ConsoleToMSBuild="true" StandardOutputImportance="low"
+          ContinueOnError="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitDirty" />
+    </Exec>
+
+    <PropertyGroup>
+      <_GitHash Condition="'$(_GitHash)' == ''">nogit</_GitHash>
+      <!-- A dirty tree is worth surfacing: a log from uncommitted code cannot be reproduced later. -->
+      <_DirtySuffix Condition="'$(_GitDirty)' != ''">+dirty</_DirtySuffix>
+      <BuildStamp>$(_GitHash)$(_DirtySuffix) $([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss"))</BuildStamp>
+      <InformationalVersion>$(BuildStamp)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,129 @@
+{
+ "champion": "Nunu",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Nunu"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Consume",
+   "facts": [
+    {
+     "field": "NonChampionTrueDamage",
+     "kind": "flat",
+     "values": [
+      400,
+      600,
+      800,
+      1000,
+      1200
+     ],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "Non-Champion True Damage: 400 / 600 / 800 / 1000 / 1200"
+    },
+    {
+     "field": "ChampionMagicDamage",
+     "kind": "flat",
+     "values": [
+      60,
+      100,
+      140,
+      180,
+      220
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Champion Magic Damage: 60 / 100 / 140 / 180 / 220 (+ 65% AP) (+ 5% bonus health)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Biggest Snowball Ever!",
+   "facts": [
+    {
+     "field": "MinimumMagicDamage",
+     "kind": "flat",
+     "values": [
+      36,
+      45,
+      54,
+      63,
+      72
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Minimum Magic Damage: 36 / 45 / 54 / 63 / 72 (+ 30% AP)"
+    },
+    {
+     "field": "MaximumMagicDamage",
+     "kind": "flat",
+     "values": [
+      180,
+      225,
+      270,
+      315,
+      360
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Maximum Magic Damage: 180 / 225 / 270 / 315 / 360 (+ 150% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Snowball Barrage",
+   "facts": [
+    {
+     "field": "PerHitMagicDamage",
+     "kind": "flat",
+     "values": [
+      15,
+      22.5,
+      30,
+      37.5,
+      45
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Per Hit Magic Damage: 15 / 22.5 / 30 / 37.5 / 45 (+ 12% AP)"
+    },
+    {
+     "field": "RootDamage",
+     "kind": "flat",
+     "values": [
+      20,
+      30,
+      40,
+      50,
+      60
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Root damage: 20 / 30 / 40 / 50 / 60 (+ 80% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Absolute Zero",
+   "facts": [
+    {
+     "field": "MaximumMagicDamage",
+     "kind": "flat",
+     "values": [
+      625,
+      950,
+      1275
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Maximum Magic Damage: 625 / 950 / 1275 (+ 300% AP)"
+    }
+   ]
+  }
+ }
+}

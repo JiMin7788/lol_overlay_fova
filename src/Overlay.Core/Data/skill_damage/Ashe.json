@@ -1,0 +1,38 @@
+{
+  "_note": "Curated. Source: communitydragon/ashe.bin.json mSpellCalculations, cross-checked vs a live wiki.leagueoflegends.com/en-us/Template:Data_Ashe/Ranger's_Focus fetch plus known Volley/Enchanted Crystal Arrow values this session (2026-07-10).",
+  "_noteP": "Frost Shot's passive stat-conversion component ('DamageBonus'/'{da9201cc}': Ashe cannot gain critical strike chance -- all sources of it convert into bonus AD instead) is NOT curated as a hit -- NOT because mStat 8/9 are unmapped (CORRECTION, loop 221: they ARE mapped, to a documented 0.0 no-crit floor, the §26 fix -- the earlier 'unmapped-stat' reasoning here was stale/wrong), but because it conceptually is not a discrete damage 'hit' at all: it is a passive stat conversion, and (since ActivePlayerStats.AttackDamage already reflects the live converted value) its effect is already baked into every other calc's AD term, not a separate instance to sum. Curating it as an additional hit would DOUBLE-COUNT the same bonus AD. The slow-application calcs (SlowAmount/EmpoweredSlowAmount) are CC, not damage. P carries no hits (verdict unchanged, reasoning corrected).",
+  "_noteQ": "Ranger's Focus: empowers the next attack (within a champion-target combo, all bonus arrows land on the SAME primary target) to fire bonus arrows. EmpoweredDamage = StatByNamedDataValue(mStat=2 TOTAL AD, mDataValue=DamagePerStrike). Despite its name, DamagePerStrike's values (1.10/1.15/1.20/1.25/1.30 at rank1-5) match the wiki's ALREADY-COMBINED 'Total Damage Per Flurry: 110/115/120/125/130% AD' line exactly, NOT the wiki's separate 'Physical Damage Per Arrow: 22/23/24/25/26% AD' (which would need x5 to reach the same total, i.e. 22*5=110, 26*5=130 -- confirms DamagePerStrike is already the whole-flurry sum despite the misleading per-strike-sounding name). Curated as ONE hit (count 1) representing the full empowered attack's total damage against the primary target -- using ShotsPerStrike (5) as an extra multiplier would 5x-overstate the real number.",
+  "_noteW": "Volley: TotalDamage = NamedDataValue(BaseDamage) + StatByNamedDataValue(mStat=2 AD, mStatFormula=2 = BONUS AD, mDataValue=ADRatio=1.0) -- BaseDamage DataValues rank1-5 = 60/95/130/165/200, i.e. 60/95/130/165/200 (+100% bonus AD) physical damage per arrow to one enemy in the cone.",
+  "_noteR": "Enchanted Crystal Arrow: RMainDamage = NamedDataValue(RBaseDamage) + StatByNamedDataValue(no mStat field -> AP default per FormulaInterpreter's 'part.Stat ?? 0', mDataValue=APRatio=1.2) -- RBaseDamage DataValues rank1-3 = 200/400/600 (R has only 3 ranks), i.e. 200/400/600 (+120% AP) magic damage to the primary (first-hit) target. A second calc ('{6b932875}' = RMainDamage x AoECoefficient, AoECoefficient being a flat constant 1.0) computes the IDENTICAL value for the AoE splash that also hits OTHER nearby enemies -- out of scope here since this schema models single-target combo damage against the primary hit target only, not a separate splash-radius enemy group.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "EmpoweredDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "RMainDamage",
+        "count": 1
+      }
+    ]
+  }
+}

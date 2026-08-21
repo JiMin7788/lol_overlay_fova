@@ -1,0 +1,127 @@
+{
+ "champion": "Evelynn",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Evelynn"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Hate Spike",
+   "facts": [
+    {
+     "field": "InitialDartDamage",
+     "kind": "flat",
+     "values": [
+      25,
+      30,
+      35,
+      40,
+      45
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Initial dart: 25 / 30 / 35 / 40 / 45 (+ 25% AP)"
+    },
+    {
+     "field": "BonusOnHitDamage",
+     "kind": "flat",
+     "values": [
+      15,
+      25,
+      35,
+      45,
+      55
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Bonus on-hit: 15 / 25 / 35 / 45 / 55 (+ 25% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Allure",
+   "facts": [
+    {
+     "field": "MonsterBonusDamage",
+     "kind": "flat",
+     "values": [
+      250,
+      300,
+      350,
+      400,
+      450
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Against monsters: 250 / 300 / 350 / 400 / 450 (+ 60% AP) bonus magic damage"
+    }
+   ]
+  },
+  "E": {
+   "name": "Whiplash",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      60,
+      90,
+      120,
+      150,
+      180
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 90 / 120 / 150 / 180 (+ 3% (+ 1.5% per 100 AP) of target's maximum health) magic damage"
+    },
+    {
+     "field": "EmpoweredDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Empowered Whiplash: 80 / 120 / 160 / 200 / 240 (+ 4% (+ 2.5% per 100 AP) of target's maximum health) magic damage"
+    }
+   ]
+  },
+  "R": {
+   "name": "Last Caress",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      125,
+      250,
+      375
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Base: 125 / 250 / 375 (+ 75% AP) magic damage"
+    },
+    {
+     "field": "EmpoweredDamage",
+     "kind": "flat",
+     "values": [
+      300,
+      600,
+      900
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Empowered (vs. targets below 30% HP): 300 / 600 / 900 (+ 180% AP) magic damage"
+    }
+   ]
+  }
+ }
+}

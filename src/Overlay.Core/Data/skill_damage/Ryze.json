@@ -1,0 +1,31 @@
+{
+  "_note": "CORRECTED this pass: prior note claimed FormulaInterpreter does not evaluate AbilityResourceByCoefficientCalculationPart and that Q/W/E's calcs 'currently resolve to null'. Verified against the actual FormulaInterpreter.cs: there IS a case for CalculationPart.Kind.AbilityResourceByCoefficient (returns part.Coefficient * casterResource, using the caster's MAX mana per the code's own documented convention) -- this claim was simply wrong/stale, same class of stale-unsupported-part reasoning found and fixed elsewhere this session (Nilah Q's mStat-8/9 claim, Caitlyn Q's EffectValueCalculationPart claim). QDamageCalc/WDamageCalc/EDamageCalc each = BaseDamage + fixed-AP-coefficient + (small bonus-mana coefficient x max mana) and ALL resolve correctly, matching wiki's 'Magic Damage: ...(+55%/60%/50% AP)(+2%/3%/2% max mana)' formulas for Q/W/E respectively. No data change needed (the calc references were already correct); this is a documentation-only correction. R (Realm Warp) confirmed genuinely no damage -- pure teleport/overload-buff utility, correctly has no hits.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "QDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "WDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "EDamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "_noteR": "R (Realm Warp): a delayed team teleport zone - pure utility, zero damage calcs. No hits."
+}

@@ -1,0 +1,87 @@
+{
+ "champion": "Maokai",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Maokai"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Bramble Smash",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      75,
+      120,
+      165,
+      210,
+      255
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "75 / 120 / 165 / 210 / 255 (+ 2 / 2.5 / 3 / 3.5 / 4% of the target's maximum health) (+ 40% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Twisted Advance",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      60,
+      85,
+      110,
+      135,
+      160
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "60 / 85 / 110 / 135 / 160 (+ 40% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Sapling Toss",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      50,
+      75,
+      100,
+      125,
+      150
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "50 / 75 / 100 / 125 / 150 (+ 5% bonus health) (+ 25% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Nature's Grasp",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      150,
+      225,
+      300
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 225 / 300 (+ 75% AP)"
+    }
+   ]
+  }
+ }
+}

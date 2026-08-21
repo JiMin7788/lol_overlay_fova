@@ -1,0 +1,66 @@
+{
+ "champion": "Zed",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Zed"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Razor Shuriken",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 80 / 120 / 160 / 200 / 240 (+ 100% bonus AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Shadow Slash",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      92.5,
+      115,
+      137.5,
+      160
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 70 / 92.5 / 115 / 137.5 / 160 (+ 70% bonus AD)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Death Mark",
+   "facts": [
+    {
+     "field": "BaseADRatio",
+     "kind": "ratio",
+     "values": [
+      1.0
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Physical Damage: 100% AD (+ 25 / 40 / 55% of damage stored)"
+    }
+   ]
+  }
+ }
+}

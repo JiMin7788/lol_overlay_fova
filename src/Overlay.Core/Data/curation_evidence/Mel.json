@@ -1,0 +1,103 @@
+{
+ "champion": "Mel",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Mel"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Searing Brilliance",
+   "facts": [
+    {
+     "field": "PerProjectileDamage",
+     "kind": "ratio",
+     "values": [
+      8,
+      30
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Each projectile deals 8 - 30 (based on level) (+ 4% AP) magic damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Radiant Volley",
+   "facts": [
+    {
+     "field": "InitialExplosionDamage",
+     "kind": "ratio",
+     "values": [
+      60,
+      85,
+      110,
+      135,
+      160
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Initial Explosion Magic Damage: 60 / 85 / 110 / 135 / 160 (+ 55% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Rebuttal",
+   "facts": [
+    {
+     "field": "ReplicatedMagicModifier",
+     "kind": "ratio",
+     "values": [
+      0.4,
+      0.45,
+      0.5,
+      0.55,
+      0.6
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Replicated Projectile Magic Damage Modifier: 40 / 45 / 50 / 55 / 60% (+ 5% per 100 AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Solar Snare",
+   "facts": [
+    {
+     "field": "OrbDamage",
+     "kind": "ratio",
+     "values": [
+      60,
+      105,
+      150,
+      195,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Orb Magic Damage: 60 / 105 / 150 / 195 / 240 (+ 70% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Golden Eclipse",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      125,
+      200,
+      275
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 125 / 200 / 275 (+ 30% AP)"
+    }
+   ]
+  }
+ }
+}

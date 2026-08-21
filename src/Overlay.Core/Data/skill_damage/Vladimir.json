@@ -1,0 +1,47 @@
+{
+  "_note": "Hand-curated (loop 39). All BIN mSpellCalculations cross-verified against a live leagueoflegends.fandom.com/wiki/Vladimir/LoL fetch (2026-07-10; wiki.leagueoflegends.com and mobafire.com both returned an empty JS-rendered body for Vladimir this session, so the fandom mirror was used per the fallback rule). P (Crimson Pact) is a pure stat-conversion passive (bonus health <-> AP, 'these two bonuses do not stack with each other') -- its own BIN GameCalculations (ApproximateAPBonusAvoidingRecursion, ApproximateHPBonusAvoidingRecursion) compute VLADIMIR'S OWN stat bonus, not damage against a target, and the wiki confirms no direct-damage component -- omitted entirely (no P key), a genuine no-damage passive. Removed the top-level auto flag: Q/W/R below are hand-verified against both BIN and wiki; E is a documented, justified BIN-structure gap (see _noteE), not an unreviewed slot.",
+  "_noteQ": "Transfusion. BaseDamageTooltip = EffectValue(mEffectIndex=1)[BIN mEffectAmount[0], rank-indexed] + StatByCoefficient(0.6)*AP -- matches wiki 'Magic Damage: 80/100/120/140/160 (+60% AP)' exactly. Curated as the direct hit. Transfusion also has a 'Crimson Rush' mechanic: after 2 casts build a resource, the 3rd cast within the surge window is empowered for +85% damage (BIN EmpoweredDamageTooltip = BaseDamageTooltip x 1.85, matching the wiki's 'Increased Damage: 148/185/222/259/296 (+111% AP)' = base x1.85 exactly) -- NOT curated as the default hit because it requires 2 PRIOR casts' resource state that a single combo node has no way to guarantee, so the always-available base BaseDamageTooltip is used, following the same 'pick the conservative, always-true value over the conditional one' precedent as Darius R using 'Damage' (base) over 'MaximumDamage' (fully-stacked) in this same file set.",
+  "_noteW": "Sanguine Pool. TotalDamage = BaseDamage[rank] + BonusHealthRatio(0.15)*bonusHealth (mStat=12 Health, mStatFormula=2 bonus) -- cross-checked against the wiki and confirmed this BIN calc is already the FULL, pre-summed damage across the whole pool duration ('Total Magic Damage: 80/135/190/245/300 (+15% bonus health)'), not a single 0.5s tick ('Magic Damage Per Tick: 20/33.75/47.5/61.25/75 (+3.75% bonus health)' x roughly 4 ticks/effective ticks over the 2s duration reproduces the same total) -- so the pre-existing single count-1 TotalDamage hit was already correct and needed no structural change, only this verification note.",
+  "_noteE": "CORRECTED this pass: prior note claimed BOTH of Vladimir's E BIN spell objects have mSpellCalculations=null and DataValues=null, concluding the ability is a genuine BIN-structure gap with no calc name to reference (same category as Darius Q/W). This is FALSE -- VladimirEAbility/VladimirE actually HAS two real named calcs: MinDamageTooltip (EffectValue(index3) + 0.015x bonus health + 0.35x AP) and MaxDamageTooltip (EffectValue(index10) + 0.06x bonus health + 0.8x AP), both using EffectValueCalculationPart -- which IS supported by FormulaInterpreter.cs (case CalculationPart.Kind.EffectValue -> LookupEffectAmount(skill, part.EffectIndex, rank), confirmed by direct source read). MinDamageTooltip matches wiki 'Minimum Magic Damage: 30/45/60/75/90 (+1.5% max health) (+35% AP)' exactly (the no-charge instant-tap value); MaxDamageTooltip matches wiki 'Maximum Magic Damage: 60/90/120/150/180 (+6% max health) (+80% AP)' (the full 1.5s-charge value). Since real charge duration is a player choice this project doesn't infer (P2, same convention as Sion Q/R), MinDamageTooltip (the guaranteed no-charge floor) is curated as the single E hit. This was a stale/incorrect prior claim, not a genuine engine limitation -- same class of bug found and fixed elsewhere this session (Nilah Q, Caitlyn Q).",
+  "_noteR": "Hemoplague. Damage = EffectValue(mEffectIndex=1) + StatByCoefficient(0.7)*AP -- matches wiki 'Magic damage: 150/250/350 (+70% AP)' exactly, confirming Hemoplague DOES deal real direct damage on its delayed detonation (resolving the module doc's open question -- it is not a pure amplification-only debuff). Curated as the direct hit. Hemoplague separately also inflicts a 10% damage-taken amplification debuff on infected targets for its 4s duration ('increasing the damage they take from all sources by 10%') -- NOT curated as a hit or a tag (no 'damage amplification' value exists in the fixed 8-tag taxonomy); noted here in text only, per the ground rules. Tagged BurstCeiling: Hemoplague is Vladimir's ultimate and single highest realistic direct-damage contribution (up to 350 + 70% AP magic against every infected target), further amplified in a real combo by its own untracked 10% damage-taken debuff.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BaseDamageTooltip",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "Damage",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "MinDamageTooltip",
+        "count": 1
+      }
+    ]
+  }
+}

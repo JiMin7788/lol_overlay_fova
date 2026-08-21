@@ -1,0 +1,87 @@
+{
+ "champion": "Qiyana",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Qiyana"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Edge of Ixtal",
+   "facts": [
+    {
+     "field": "EdgeOfIxtalDamage",
+     "kind": "ratio",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "70 / 100 / 130 / 160 / 190 (+ 85% bonus AD)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Elemental Wrath",
+   "facts": [
+    {
+     "field": "ElementalWrathTerrainDamage",
+     "kind": "ratio",
+     "values": [
+      112,
+      160,
+      208,
+      256,
+      304
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "112 / 160 / 208 / 256 / 304 (+ 136% bonus AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Audacity",
+   "facts": [
+    {
+     "field": "AudacityDamage",
+     "kind": "ratio",
+     "values": [
+      50,
+      90,
+      130,
+      170,
+      210
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "50 / 90 / 130 / 170 / 210 (+ 50% bonus AD) physical damage on dash arrival"
+    }
+   ]
+  },
+  "R": {
+   "name": "Supreme Display of Talent",
+   "facts": [
+    {
+     "field": "SupremeDisplayDamage",
+     "kind": "other",
+     "values": [
+      100,
+      200,
+      300
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "100 / 200 / 300 (+ 125% bonus AD) (+ 10% of target's maximum health) physical damage from shockwaves"
+    }
+   ]
+  }
+ }
+}

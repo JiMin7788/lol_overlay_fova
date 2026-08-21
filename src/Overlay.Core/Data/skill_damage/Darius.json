@@ -1,0 +1,47 @@
+{
+  "_note": "Curated (T2c/T3.1, MAJOR fix this pass). R (Noxian Guillotine) deals TRUE damage (auto-picker wrongly tagged Physical). 'Damage' is the base (no-stack) value; MaximumDamage is the fully-stacked execute. FIXED this pass: the prior claim 'Q/W base damage lives in EffectValueCalculationPart (not evaluable yet)' was FALSE (same stale-unsupported-calc bug class found elsewhere this session e.g. Nilah Q, Caitlyn Q, Vel'Koz W) -- neither Q's 'BladeDamage' nor W's 'EmpoweredAttackDamage' use EffectValueCalculationPart at all; both are NamedDataValue + StatBySubPartCalculationPart (AD-ratio read as a sub-part), which FormulaInterpreter fully supports. Both were verified against a live wiki fetch and added -- see _noteQ/_noteW. P (Hemorrhage): passive bleed, PHYSICAL, one stack per hit (BleedDamagePerStack = level-interpolated base + 0.3 bonus AD).",
+  "P": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BleedDamagePerStack",
+        "count": 1,
+        "tags": [
+          "Stacking"
+        ]
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling"
+    ],
+    "hits": [
+      {
+        "type": "True",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteQ": "Decimate (DariusCleaveAbility): 'BladeDamage' = NamedDataValue(BaseDamage=[50,80,110,140,170]) + StatBySubPart(mStat=2 total AD, subpart=TotalADRatio*0.01) -- TotalADRatio DataValue=[100,110,120,130,140] matches wiki's outer-radius 'Physical Damage: 50/80/110/140/170 (+100/110/120/130/140% AD)' exactly. This is the OUTER-radius ('Blade') hit -- the larger, farther-reaching sweep. A companion calc 'HandleDamage' (BladeDamage x0.35, wiki's inner-radius reduced hit) exists for enemies caught in the melee-range inner circle; not curated as a second additive hit since outer and inner are mutually exclusive per-target hit locations, not two guaranteed instances on the same target (using Blade, the larger/typical value, avoids both overcounting and undercounting relative to picking the smaller Handle number). Physical, one hit.",
+  "_noteW": "Crippling Strike (DariusNoxianTacticsONHAbility): 'EmpoweredAttackDamage' = StatBySubPart(mStat=2 total AD, subpart=ADRatio) -- ADRatio DataValue=[140,145,150,155,160]%, which is the TOTAL AD value of the whole empowered attack (normal 100% AD + wiki's documented 'Bonus Damage: 40/45/50/55/60% AD' bonus = 140/145/150/155/160% combined). Curated as ONE self-contained hit representing the whole empowered attack (Physical, count 1) rather than a bonusEffect layered atop a separately-simulated AA, since the calc already bundles the base attack's own AD into its total -- same 'combined-total' convention established for Blitzcrank E (Power Fist) and Volibear Q.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "BladeDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "EmpoweredAttackDamage",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_note": "Curated (loop 39; golden curation 2026-07-16). VERIFIED 2026-08-21 (loop 500): the build Cowork could not run has run since, and GoldenMaokaiTests is green (2 assertions) - the Kennen 580->69 / 1890->89 measurements this note cites are locked by it. P 'Sap Magic' is a self-heal only, zero enemy-damage calcs -- correctly no hits. Q 'Bramble Smash' now TWO hits per GOLDEN #6 (GoldenMaokaiTests, measured Kennen 580->69 / 1890->89, TARGET-basis proven live): hit1 TotalDamage = BaseDamage(r1..5 = 75/120/165/210/255) + APRatio*AP (PATCH 16.15, 2026-08-11: BIN APRatio 0.40 -> 0.50, confirmed off the in-client Shift tooltip on SR -- '75 (+50% AP) + 2% of max health' at rank 1, which also re-confirms BaseDamage[1]=75 and BasePercentHealth[1]=2.0% as UNCHANGED; note the DataValuesModeOverride cherry/Arena value is a separate mode value and is NOT used on SR); hit2 = rank-% of the TARGET's max health via hpPercentDataValue 'BasePercentHealth' (r1..5 = 2.0/2.5/3.0/3.5/4.0%), hpBasis Max. The earlier 'jungle-monster-only, uncited' caution is SUPERSEDED by the live golden vs a champion; NonChampMax/BonusMonsterDamage are the jungle cap/bonus siblings, not a champion gate. W 'Twisted Advance' single magic hit. E 'Sapling Toss' CURATED (CORRECTION to the earlier note): the mStat-12/mStatFormula-2 health term is CASTER bonus health, NOT target — matching the game (Maokai scales his sapling off his OWN bonus health), so the existing attacker-side resolver is CORRECT, not a bug. Curated as the NORMAL (non-brush) sapling TotalDamage = BaseDamage(r1..5 = 50/75/100/125/150) + 25%AP + 5% Maokai bonus health (conservative P2 floor). Brush-enhanced 'TotalEmpoweredDamage' (EmpoweredBaseDamage r1..5 = 100/150/200/250/300 + 50%AP + 10% own bonus health; golden-locked to raw 106 at L1/AP9/+10HP) is now the E hit's METCALC under conditionType 'InBrush' (loop 456, CLAUDE_CODE_TODO §76) -- the M25 conditional-bonus shape shared with Kha'Zix Q (BaseDamage -> IsoDamage) and Mordekaiser Q (QDamage -> EmpoweredDamageTooltip). InBrush is UserAssumed (brush position is terrain, which the Live Client API does not expose), so the ordinary sapling stays the P2 floor / default and the enhanced value is the ceiling; BuildExposureGraph widens E's range to [normal, brush-enhanced] and the editor grows a '최대' checkbox for it. This is the 'future charge/brush-knob round' the earlier note deferred. Own bonus health is total maxHealth (Live activePlayer, incl. Heartsteel/Overgrowth stacks) minus base -- resolver already handles it. R 'Nature's Grasp' single magic hit (TotalDamage, 150-300+75%AP).",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 },
+      { "type": "Magic", "hpPercentDataValue": "BasePercentHealth", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1,
+        "conditionType": "InBrush", "metCalc": "TotalEmpoweredDamage" }
+    ]
+  },
+  "R": {
+    "tags": ["AoeUltimate"],
+    "hits": [
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
+    ]
+  }
+}

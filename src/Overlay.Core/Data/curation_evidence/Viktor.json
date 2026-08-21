@@ -1,0 +1,68 @@
+{
+ "champion": "Viktor",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Viktor"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Siphon Power",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 120 / 160 / 200 / 240 (+ 100% AD) (+ 90% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Hextech Ray",
+   "facts": [
+    {
+     "field": "TotalAugmentedDamage",
+     "kind": "flat",
+     "values": [
+      90,
+      160,
+      230,
+      300,
+      370
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "90 / 160 / 230 / 300 / 370 (+ 130% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Arcane Storm",
+   "facts": [
+    {
+     "field": "TotalDamage",
+     "kind": "flat",
+     "values": [
+      490,
+      805,
+      1120
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "490 / 805 / 1120 (+ 260% AP)"
+    }
+   ]
+  }
+ }
+}

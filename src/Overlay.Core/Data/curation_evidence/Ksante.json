@@ -1,0 +1,106 @@
+{
+ "champion": "Ksante",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Ksante"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Dauntless Instinct",
+   "facts": [
+    {
+     "field": "MarkDamage",
+     "kind": "other",
+     "values": [
+      12
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Mark damage: 12 (+ 1% - 2% (based on level) of target's maximum health) bonus physical damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Ntofo Strikes",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      100,
+      130,
+      160,
+      190
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Base damage: 70 / 100 / 130 / 160 / 190 (+ 40% bonus armor) (+ 40% bonus magic resistance)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Path Maker",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      45,
+      75,
+      105,
+      135,
+      165
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Base damage: 45 / 75 / 105 / 135 / 165 (+ 8% (+ 2% per 100 bonus armor) (+ 2% per 100 bonus magic resistance) of target's maximum health)"
+    },
+    {
+     "field": "AllOutTrueDamage",
+     "kind": "other",
+     "values": [
+      0.1,
+      0.8
+     ],
+     "damageType": "True",
+     "source": "wiki",
+     "quote": "All Out true damage: 10% - 80% (based on channel time) bonus true damage"
+    }
+   ]
+  },
+  "R": {
+   "name": "All Out",
+   "facts": [
+    {
+     "field": "InitialDamage",
+     "kind": "flat",
+     "values": [
+      80,
+      115,
+      150
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Initial damage: 80 / 115 / 150"
+    },
+    {
+     "field": "TotalWithTerrain",
+     "kind": "flat",
+     "values": [
+      160,
+      230,
+      300
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Total with terrain: 160 / 230 / 300 (+ 5% of his bonus health)"
+    }
+   ]
+  }
+ }
+}

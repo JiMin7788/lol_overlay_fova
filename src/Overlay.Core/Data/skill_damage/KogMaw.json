@@ -1,0 +1,22 @@
+{
+  "_note": "Curated/fixed. Slot order confirmed via CharacterRecords spellNames: Q=KogMawQ (Caustic Spittle), W=KogMawBioArcaneBarrage, E=KogMawVoidOoze, R=KogMawLivingArtillery. Q (Caustic Spittle): TotalDamage=BaseDamage+0.9AP, magic -- matches prior auto-pick, hand-verified. E (Void Ooze, KogMawVoidOozeAbility): TotalDamage=BaseDamage+0.65AP, magic (the pool's initial impact) -- matches prior auto-pick; a re-detonation bonus if Caustic Spittle later hits a target standing in the pool exists in-game but has no separate GameCalculation exposed in this BIN dump, not modeled. P (Icathian Surprise) unchanged from prior curation (on-death explosion, correct as-is).",
+  "_noteW": "W (Bio-Arcane Barrage, KogMawBioArcaneBarrageAbility) FIXED a real bug: the prior curation used calc 'TotalHealthDamage' directly as a flat magic hit, but TotalHealthDamage is actually a %MAX-HP FRACTION (0.01x(MaxHealthDamage[2.25-6.75] + 0.015AP-coefficient), mDisplayAsPercent) -- treating it as literal flat damage undercounted real W by roughly two orders of magnitude. Real Bio-Arcane Barrage is a TOGGLE that makes every basic attack deal bonus magic damage equal to a % of the target's MAX health (not current, despite the calc/DataValue naming) -- an always-on effect while toggled, not gated by a limited charge -- so correctly modeled as a bonusEffect trigger onHit with hpPercentCalc/hpBasis Max (safe to auto-apply, matches real recurring behavior).",
+  "_noteR": "R (Living Artillery, KogMawLivingArtilleryAbility) FIXED a real damage-type bug (was tagged Physical, should be Magic per BIN structure and real kit) and switched calc from BaseDamageCalc to MaxDamageCalc. BaseDamageCalc = Damage + AP-ratio + 0.75 bonusAD-coefficient, magic -- the MINIMUM (point-blank) value; MidDamageCalc (1.5x) and MaxDamageCalc (2x, both real BIN GameCalculationModified multipliers) scale the same base up by cast distance, since Living Artillery deals more damage the farther it travels. Curated using MaxDamageCalc (max-range poke is the realistic, intended usage for this ability) -- tagged BurstCeiling, honestly noting this assumes a max-range cast; a point-blank R would deal only half this.",
+  "_noteP": "Curated (T3.x-ext passive pass, unchanged). P (Icathian Surprise): on death, Kog'Maw explodes for MAGIC damage to nearby enemies (KogMawIcathianSurpriseReady.mSpellCalculations 'PassiveDamage' = pure ByCharLevelInterpolation 140->650, no stat scaling at all). Curated as a standalone P hit (on-death, not an on-hit/on-ability proc).",
+    "_noteP_attach": "SELF-ATTACHABLE FALSE (loop 476, user asked what this bonus effect even was). Icathian Surprise is an ON-DEATH explosion - _noteP already said so - but the editor wraps any P-slot direct damage as an attachable bonus, so it was being offered as something to hang under a skill. It is not a rider on anything; it fires when Kog Maw dies. Still addable as its own P node, which is the honest way to include it in a combo.",
+  "P": { "selfAttachable": false, "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] },
+  "Q": {
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  },
+  "W": {
+    "tags": ["PercentMaxHp"],
+    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "hpPercentCalc": "TotalHealthDamage", "hpBasis": "Max", "count": 1 } ] } ]
+  },
+  "E": {
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [ { "type": "Magic", "calc": "MaxDamageCalc", "count": 1 } ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "_note": "Curated (T2c). Zoe's damage calcs are all named '...Tooltip', which the auto heuristic excludes, so the first pass resolved 0 slots. R (Portal Jump) is a blink with no damage.",
+  "_noteP": "P (More Sparkles!): every few spell casts empowers Zoe's next basic attack to deal bonus magic damage (ZoePassive.mSpellCalculations 'PassiveDamage' = ByCharLevelBreakpointsCalculationPart(Level1=16, +4/lvl, breakpoints @7->+6, @12->+8, @15->+10) + StatByNamedDataValueCalculationPart(APRatio)). Both CalculationPart kinds are fully supported by FormulaInterpreter.EvaluatePart (ByCharLevelBreakpoints and StatByNamedDataValue), so PassiveDamage resolves live -- unlike several other champions' passives this pass found blocked by ByCharLevelFormulaCalculationPart (a different, unsupported kind; see Leona/Khazix/Lux P notes). Modeled as a P bonusEffect trigger onHit (same conditional-proc style as Sejuani/Volibear/Nocturne P; the every-Nth-cast gating is not modeled, approximated as firing on every attack).",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "MissileDamageTooltip", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] } ] }
+}

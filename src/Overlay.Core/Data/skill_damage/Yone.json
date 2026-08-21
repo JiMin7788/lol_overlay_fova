@@ -1,0 +1,47 @@
+{
+  "_note": "Curated (T2c). W (Spirit Cleave) deals MAGIC damage (auto-picker wrongly tagged Physical). Q is physical. R (Fate Sealed) deals half physical + half magic from a single 'Damage' calc that cannot be split, so it is approximated as Physical.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "QDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteWSplit": "W SPLIT 50/50 PHYSICAL AND MAGIC (loop 497, closing the item _noteW_sweep opened for itself). The live wiki (wiki.leagueoflegends.com/en-us/Yone, fetched 2026-08-21) says Spirit Cleave deals equal parts physical and magic damage, and BOTH curated hits - the flat WDamage and the 8-12 percent maximum-health term - were typed wholly Magic. Half of Spirit Cleave was therefore meeting magic resist when it should have met armour, which against a target built for one and not the other is a large error in whichever direction that target leans. Curated through the new splitType field: each hit is emitted twice at half its value, once Physical and once Magic. No ratio is written into this file - the field says the damage is split between two types and equal parts is what that means. The minion floor and monster ceiling clamps are still not modelled, as the original note recorded.",
+  "W": {
+    "hits": [
+      {
+        "type": "Physical",
+        "splitType": "Magic",
+        "calc": "WDamage",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "splitType": "Magic",
+        "hpPercentDataValue": "MaxHealthDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "Damage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteW_sweep": "SWEEP §41 (2026-07-20): found by tools/sweep_unreferenced_damage.py (Zac-W risk class: a damage term whose DataValue no GameCalculation references is invisible to calc-name-driven curation). Wiki-verified against the live tooltip; the BIN array matches the tooltip digit-for-digit once the rank-0 placeholder at index 0 is dropped, which is the corroboration that it is live, not vestigial. Curated as a BIN-sourced dynamic reference -- no patch-dependent number is hardcoded. Yone W (Spirit Cleave) is flat + %maxHP; only WDamage (flat) was curated. MaxHealthDamage[1..5] = 8/9/10/11/12% matches the tooltip exactly, and it DOMINATES the flat term at every rank -- rank 1 vs a 2000 HP target was 10 reported against 170 actual. KNOWN IMPRECISION kept rather than silently restructured: the wiki says Spirit Cleave deals 'equal parts physical and magic', so BOTH this hit and the pre-existing WDamage hit should be split 50/50 across the two schools instead of being wholly Magic. That is a defect in the ALREADY-curated hit as much as this new one, so it is logged as its own item (CLAUDE_CODE_TODO §41) rather than folded into a sweep fix; typing this term to match the existing hit keeps the two consistent until the split is done. Minion floor / monster ceiling clamps are likewise not modeled."
+}

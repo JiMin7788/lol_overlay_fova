@@ -1,0 +1,46 @@
+{
+  "_note": "Curated (T3.x-ext pass, loop 39) + completed loop 66 (Cowork), 'auto' flag DROPPED. Q/R/W verified against illaoi.bin.json + wiki (all Physical). E is NOT a damage gap: its only calc (EchoPercent) is a damage-TRANSFER percentage, not an absolute hit — E deals no direct damage of its own (like a utility ability), so there is nothing to curate (see _noteE), and auto is dropped rather than kept for a non-damage slot. Tentacle slams (Illaoi's real DPS) are now modeled on R as a per-attack summon hit (see _noteRTentacles). P = no-damage spawn timer.",
+  "_noteP": "P (Prophet of an Elder God): IllaoiPassiveAbility/IllaoiPassive's only calc is SpawnCD (ByCharLevelInterpolation 18→7, a cooldown timer for spawning ambient Vessel tentacles around the map). No player-target damage calc exists on the passive itself — tentacles' actual damage is dealt through Q/W/E triggers, not the passive spawn event. Confirmed no-damage. Slot omitted.",
+  "_noteQ": "Q (Tentacle Smash): TentacleDamageTotal = ByCharLevelInterpolation(9→180) + StatByNamedDataValue(mStat=2 AD, TotalADRatio=1.1) + StatByNamedDataValue(APRatio=0.4, default mStat=AP). Physical, matches wiki. NOT modeled: TentacleDamageAmp DataValue (0%→35% bonus damage per nearby active Vessel tentacle, up to 6) — the base slam number here is the 0-tentacle floor case, real damage scales up with board state. Disclosed honestly, not fabricated into the single calc.",
+  "_noteW": "W (Harsh Lesson) was entirely MISSING from the file — investigated and it IS real direct damage, not just a self-heal (contrary to the original hint). IllaoiWAbility/IllaoiW's HealthPercentTotal = (NamedDataValue(HealthPercentDamage 2.5→5.5) + StatByNamedDataValue(mStat=2 AD, HealthDamageADRatio=0.035)) × mMultiplier(0.01, GameCalculation-level, confirmed applied per engine capabilities) — evaluates to a fraction (0.025→0.055 + AD scaling), i.e. a genuine %-max-HP hit; wiki confirms 'additional physical damage equal to X% max HP (+Y% per 100 AD)' on her empowered next attack. Modeled via hpPercentCalc/hpBasis=Max per schema. NOT modeled: WMinDamage (10→70 flat floor when the %HP number is small) and MonsterDamageCap (300 cap vs non-champions) — schema has no min-floor-with-percent mechanism, so the pure %HP number is used as-is; also the 'commands all nearby Tentacles to attack the same target' assist damage (separate Q-calc procs) is not folded in. Disclosed, not fabricated.",
+  "_noteE": "E (Test of Spirit) remains genuinely unresolvable, not merely unpicked. The only relevant calc, EchoPercent (BaseDamageTransferPercent 20%→50% + StatByNamedDataValue(mStat=2 AD, EchoTADScalar=0.0008)), is a TRANSFER PERCENTAGE applied to whatever damage other sources (Q slams, tentacle procs, teammates' damage) deal to the spirit-vessel clone — it is not itself an absolute damage GameCalculation, it requires cross-referencing a separately-dealt damage instance, which this engine's calc model (a single resolvable number per calc) cannot express. E's own cast (tether + vessel spawn) deals zero direct damage. Slot omitted as a no-damage utility ability (loop 66: this is NOT an uncurated gap, so auto was dropped — there is no absolute E damage to curate).",
+  "_noteR": "R (Leap of Faith): DamageCalc = NamedDataValue(BaseDamage 50→650) + StatByCoefficient(mStat=2 AD, mStatFormula=2 bonus-AD-only, coefficient=0.5). Physical, wiki-confirmed ('slams her idol into the ground, dealing physical damage to nearby enemies... tentacle slams also deal physical damage'). Unchanged from the prior auto-pick, verified correct.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TentacleDamageTotal",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "tags": ["PercentMaxHp"],
+    "hits": [
+      {
+        "type": "Physical",
+        "hpPercentCalc": "HealthPercentTotal",
+        "hpBasis": "Max",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "_tagNote": "BurstCeiling: R's base 50→650 (+50% bonus AD) AoE ground slam is by far the largest single modeled number in Illaoi's kit.",
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageCalc",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "perAttackCalc": "TentacleDamageTotal",
+        "binSpell": "Q",
+        "count": 1
+      }
+    ]
+  },
+  "_noteRTentacles": "loop 66 (Illaoi completion): R spawns a ring of Tentacles that each slam. Hit 1 = R's own AoE ground slam (DamageCalc). Hit 2 (M22 Phase 3) = tentacle slams as a per-attack SUMMON hit: perAttackCalc='TentacleDamageTotal' (the same tentacle-slam calc as Q, resolved on the Q spell via binSpell='Q') × the node's UserAttackCount ('몇 번의 텐타클 슬램'). Unset/0 -> 0 (R shows only the ground slam) -- honest default, since how many tentacle slams land is board-state/uptime dependent. This is the on-philosophy way to reflect Illaoi's real tentacle DPS the user asked summon skills to model. Still NOT modeled: the per-tentacle TentacleDamageAmp ramp (see _noteQ)."
+}

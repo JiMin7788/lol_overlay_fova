@@ -1,0 +1,45 @@
+{
+  "_noteQEmpowerNoOp": "Q, ASKED ABOUT AND CORRECTLY UNCHANGED FOR A SINGLE TARGET (loop 483, user asked whether the auto is empowered by Q). It is empowered, and for THIS calculator that adds nothing. Live wiki (wiki.leagueoflegends.com/en-us/Nilah, fetched 2026-08-21): the cast itself deals the damage already curated here, and hitting with it grants 4 seconds during which her basic attacks strike in a CONE dealing 100% AD to enemies hit, plus 125 attack range and 10-60% attack speed. The cone IS the attack, not a rider on top of it - the primary target takes one attack either way, and what the buff adds is reach, speed and spillover onto OTHER enemies. This project models one target, so there is no honest number to add; curating the cone as an on-hit rider would double the attack against the very target it does not affect. The attack-speed half is a rate, not damage per cast, and this calculator does not model combo duration.",
+  "_note": "Hand-curated (loop 39). Source: communitydragon/nilah.bin.json mSpellCalculations, cross-verified against a live wiki.leagueoflegends.com/en-us/Nilah fetch this session (2026-07-10).",
+  "_noteP": "Joy Unending: lifesteal-sharing passive, no direct damage calc -- correctly omitted.",
+  "_noteQ": "CORRECTED this pass: prior note claimed mStat=8 (crit chance) and mStat=9 (crit damage) are unmapped in FormulaInterpreter/BuildStatResolver and therefore DamageCalc throws. Verified against current SkillDamage.cs BuildStatResolver: StatCritChance=8 and StatCritDamage=9 BOTH resolve (to 0.0 each, the documented section-26 'model ability crit as no crit' conservative floor) -- they do NOT throw. Re-evaluating DamageCalc's mMultiplier with crit=0: mMultiplier = 1.0 + (0*ActiveCritScaling * ((0*1.0)-1.0)) = 1.0 + 0 = 1.0, i.e. the crit-scaling term correctly collapses to a no-op under the no-crit floor. So DamageCalc safely evaluates to BaseDamage + 1.0x total AD (mStat 2, QADRatio=1.0), matching wiki 'Minimum Physical Damage: 0/10/20/30/40 (+100% AD)' exactly. This is the same mStat-8/9-stale-reasoning bug class found and fixed elsewhere this session (Xayah E, Zeri E, Smolder Q, TwistedFate W, XinZhao W, Ambessa Q). Curated as a single hit; the crit-chance/crit-damage-scaled BONUS the ability tooltip shows on top of this floor (up to +191% AD at 100% crit chance/damage) is intentionally not modeled since crit state is not live-tracked -- this floor value is the honest no-crit baseline, consistent with the project's conservative-floor convention.",
+  "_noteE": "Slipstream: DashDamage = BaseDamage DataValue + 0.2x bonus AD (mStat 2, mStatFormula 2). Matches wiki 'Physical Damage: 60/70/80/90/100 (+20% bonus AD)' exactly.",
+  "_noteR": "Apotheosis: two real hits, both wiki-verified exact. (1) the 1s whirl channel = DamagePerTickCalcTooltip, a BIN calc that is ITSELF DamagePerTickCalc x4 (already pre-summed over the whirl's 4 ticks), matching wiki 'Total Physical Damage: 60/100/140 (+40% bonus AD)' -- used instead of the raw per-tick calc since the whirl is a short guaranteed channel (not an escapable zone) and the BIN already exposes the summed total. (2) DamageCalc = the pull-burst that follows, matching wiki 'Burst Physical Damage: 125/225/325 (+100% bonus AD)'. Sum matches wiki's 'Maximum Total Physical Damage: 185/325/465' exactly. Tagged BurstCeiling: Apotheosis is Nilah's single highest realistic burst-damage contribution (ultimate, both hits land on a pulled-together target).",
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DashDamage",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamagePerTickCalcTooltip",
+        "count": 1
+      },
+      {
+        "type": "Physical",
+        "calc": "DamageCalc",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "DamageCalc",
+        "count": 1
+      }
+    ]
+  },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): Q CritDamageRatio is the crit-interaction scalar handled by the M27 expected-crit model (see the no-crit floor policy in SkillDamage); not a standalone hit. Benign."
+}

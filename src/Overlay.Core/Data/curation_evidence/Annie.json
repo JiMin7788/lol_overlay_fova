@@ -1,0 +1,87 @@
+{
+ "champion": "Annie",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Annie"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Disintegrate",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      80,
+      125,
+      170,
+      215,
+      260
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "80 / 125 / 170 / 215 / 260 (+ 80% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Incinerate",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "ratio",
+     "values": [
+      70,
+      110,
+      150,
+      190,
+      230
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "70 / 110 / 150 / 190 / 230 (+ 80% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Molten Shield",
+   "facts": [
+    {
+     "field": "ReactionDamage",
+     "kind": "ratio",
+     "values": [
+      25,
+      35,
+      45,
+      55,
+      65
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "25 / 35 / 45 / 55 / 65 (+ 40% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Summon: Tibbers",
+   "facts": [
+    {
+     "field": "InitialDamage",
+     "kind": "ratio",
+     "values": [
+      150,
+      275,
+      400
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "150 / 275 / 400 (+ 75% AP)"
+    }
+   ]
+  }
+ }
+}

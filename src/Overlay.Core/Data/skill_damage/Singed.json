@@ -1,0 +1,33 @@
+{
+  "_note": "Re-verified this session (loop 343). REAL BUG FIXED: E (Fling) note previously claimed the MaxHPDamage %-max-HP bonus \"only applies to non-champion targets\" and was out of scope -- this was WRONG. WebFetch of wiki.leagueoflegends.com/en-us/Singed confirms: \"The maximum-health bonus damage is capped at 300 against minions and monsters only. This cap does not apply to champion targets, meaning the full percentage-based damage applies when flinging enemy champions.\" So the %maxHP term is real, guaranteed, UNCAPPED champion combo damage that was wrongly omitted. Added as a second E hit via hpPercentDataValue:\"MaxHPDamage\" (raw DataValue = [6.0,6.5,7.0,7.5,8.0], whole-percent form -- SkillDamage.ResolveHpPercent auto-normalizes since raw>=1.0), hpBasis Max, tag PercentMaxHp. Q (Poison Trail) unchanged, still correct (DamagePerSecond, Zone-tagged per-second convention). W/R unchanged, correctly no hits (pure utility).",
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "DamagePerSecond",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "Zone"
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "BaseDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentDataValue": "MaxHPDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": [
+          "PercentMaxHp"
+        ]
+      }
+    ]
+  }
+}

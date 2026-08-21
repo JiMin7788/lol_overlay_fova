@@ -1,0 +1,60 @@
+{
+  "_note": "Curated (loop39). Q (Leap Strike) and W (Empower) kept as the auto first-pass picks, both verified against wiki+BIN exactly (Q TotalDamage=BaseDamage(65-225)+100% bonus AD; W TotalDamage=Damage(50-190)+60% AP). E (Counter Strike) rewritten: wiki 'Minimum Magic Damage' 40-160(+70% AP)(+4% target max HP) modeled as two summed hits (flat+AP TotalDamage calc + PercentHealthDamage%maxHP hit) = the guaranteed 0-dodge baseline; the real dodge-stack scaling (PercentIncreasedPerDodge 20%/dodge up to MaxDodgesForDamageIncrease=5, i.e. up to +100%/2x, per BIN DataValues and the tooltip-only MaxDamage/MaxPercentHealthDamage x2 calcs) is NOT modeled because it needs a live dodged-attack-count input this engine has no stat resolver for — E is tagged Stacking to flag this, minimum-only value used. R (Grandmaster-at-Arms) corrected: the auto-picker had grabbed 'OnHitDamage' as R's own hit, but that calc is actually the SEPARATE passive stack-consumption on-hit proc (75/130/185 +60% AP, wiki 'Passive... consumes them to deal additional magic damage') and is now a bonusEffect (trigger onHit) instead; R's own direct hit is now 'SwingDamageTotal' (100/175/250 +100% AP), matching wiki's active-cast 'Magic Damage' for the lantern swing. R's bonus armor/MR gain on champion hit is a self-buff, not target damage, and is not modeled (no shred). P (Relentless Assault) confirmed genuinely damage-less (BIN JaxPassiveAbility has only attack-speed-stack calcs) and intentionally omitted, matching the pre-existing file.",
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentDataValue": "PercentHealthDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": ["PercentMaxHp"]
+      }
+    ],
+    "tags": ["Stacking"]
+  },
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "SwingDamageTotal",
+        "count": 1
+      }
+    ],
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "OnHitDamage",
+            "count": 1
+          }
+        ]
+      }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

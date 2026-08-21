@@ -1,0 +1,22 @@
+{
+  "_note": "Curated (T3.x passive pass). P (Double Strike): periodically Master Yi's attack strikes twice, the second instance dealing bonus PHYSICAL damage (TotalDamage = 0.5x total AD, MasterYiPassive.mSpellCalculations — flat AD coefficient, no interpolation). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than only the periodic double-strike (documented; this likely OVER-counts relative to the real every-4th-hit proc, same caveat style as other on-hit passives). Q/E kept as the auto first-pass physical picks.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Physical",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  }
+}

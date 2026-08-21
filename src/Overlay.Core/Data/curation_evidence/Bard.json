@@ -1,0 +1,47 @@
+{
+ "champion": "Bard",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Bard"
+  }
+ ],
+ "slots": {
+  "P": {
+   "name": "Traveler's Call",
+   "facts": [
+    {
+     "field": "MeepDamage",
+     "kind": "flat",
+     "values": [
+      30
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "deal 30 (+ 6 per 5 Chimes collected) (+ 40% AP) bonus magic damage"
+    }
+   ]
+  },
+  "Q": {
+   "name": "Cosmic Binding",
+   "facts": [
+    {
+     "field": "Damage",
+     "kind": "flat",
+     "values": [
+      80,
+      120,
+      160,
+      200,
+      240
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 80 / 120 / 160 / 200 / 240 (+ 80% AP)"
+    }
+   ]
+  }
+ }
+}

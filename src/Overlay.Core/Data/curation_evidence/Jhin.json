@@ -1,0 +1,90 @@
+{
+ "champion": "Jhin",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Jhin"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Dancing Grenade",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      44,
+      69,
+      94,
+      119,
+      144
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "44 / 69 / 94 / 119 / 144 (+ 44 / 51.5 / 59 / 66.5 / 74% AD) (+ 60% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Deadly Flourish",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      70,
+      105,
+      140,
+      175,
+      210
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "70 / 105 / 140 / 175 / 210 (+ 50% AD)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Captive Audience",
+   "facts": [
+    {
+     "field": "BaseDamage",
+     "kind": "flat",
+     "values": [
+      20,
+      80,
+      140,
+      200,
+      260
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "20 / 80 / 140 / 200 / 260 (+ 120% AD) (+ 100% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Curtain Call",
+   "facts": [
+    {
+     "field": "PerShotDamageRange",
+     "kind": "other",
+     "values": [
+      64,
+      128,
+      192,
+      256,
+      512,
+      768
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "64 / 128 / 192 (+ 25% AD) to 256 / 512 / 768 (+ 100% AD) physical damage based on target's missing health"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "note": "Static Summoner's Rift map facts (P1 public map geometry). Approximate straight-line distance in game units from a team's fountain to the given lane, used only as a fixed preset for the M08 ETA arithmetic. Not a live position source.",
+  "laneDistances": {
+    "top": 12500,
+    "mid": 4700,
+    "bot": 12500,
+    "jungle": 3500
+  }
+}

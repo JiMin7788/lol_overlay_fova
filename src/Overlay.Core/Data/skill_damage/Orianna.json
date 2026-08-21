@@ -1,0 +1,57 @@
+{
+  "_note": "Re-verified this session (loop 336). MAJOR FIX: Q (Command: Attack) and E (Command: Protect) were ENTIRELY MISSING from curation -- both deal real, guaranteed magic damage confirmed via BIN CharacterRecord.spellNames (authoritative Q/W/E/R -> spell-object mapping: [OrianaIzunaCommandAbility/OrianaIzunaCommand, OrianaDissonanceCommandAbility/OrianaDissonanceCommand, OrianaRedactCommandAbility/OrianaRedactCommand, OrianaDetonateCommandAbility/OrianaDetonateCommand]) and wiki-verified (wiki.leagueoflegends.com/en-us/Orianna). Q = OrianaIzunaCommand.TotalDamageTooltip (BaseDamage 60/90/120/150/180 + 55% AP) -- the auto-picker skipped it purely because of the substring \"Tooltip\" in the calc name (the calc has no tooltipOnly:true flag, same false-positive class documented in AurelionSol.json this session). E = OrianaRedactCommand.TotalDamageTooltip (BaseDamage 60/90/120/150/180 + 30% AP, ball-transit damage) -- same false-positive skip; its TotalShieldTooltip (ally shield, 55/90/125/160/195 + 45% AP) is correctly left uncurated (non-damage). P (Clockwork Windup): unchanged, still bonusEffect onHit approximation. W (Command: Dissonance, OrianaDissonanceCommand.TotalDamage) and R (Command: Shockwave, OrianaDetonateCommand.TotalDamage) re-confirmed correct against BIN + wiki (W 70/110/150/190/230 + 80% AP; R 225/350/475 + 110% AP) -- unchanged.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "hits": [
+          {
+            "type": "Magic",
+            "calc": "TotalDamage",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamageTooltip",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "E": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamageTooltip",
+        "count": 1
+      }
+    ]
+  },
+  "R": {
+    "tags": [
+      "BurstCeiling",
+      "AoeUltimate"
+    ],
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  }
+}

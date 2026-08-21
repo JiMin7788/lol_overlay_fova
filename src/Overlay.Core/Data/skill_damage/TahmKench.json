@@ -1,0 +1,48 @@
+{
+  "_note": "AUTO-GENERATED first-pass skill-damage map (primary calc \u002B inferred type only, count=1). Multi-hit / passive / true-damage / bonus effects need manual curation. Delete the \u0022auto\u0022 flag when hand-verified.",
+  "auto_removed_note": "P added this session: mStat id 12 (bonus/total Health) is now mapped in SkillDamage.BuildStatResolver/ComboRunner.BuildItemStatResolver. TahmKenchPassive.TotalDamage (An Acquired Taste) previously threw KeyNotFoundException on mStat=12 and was silently dropped. Cited from communitydragon/tahmkench.bin.json Characters/TahmKench/Spells/TahmKenchPassiveAbility/TahmKenchPassive/mSpell/mSpellCalculations/TotalDamage: mFormulaParts[0] ByCharLevelBreakpointsCalculationPart (Level1Value=5, InitialBonusPerLevel=5, +5 additional at level 12); mFormulaParts[1] StatByCoefficientCalculationPart (mStat=12, mStatFormula=2 = BONUS health, mCoefficient=0.04, i.e. 4% of bonus health); mFormulaParts[2] StatBySubPartCalculationPart (NO mStat -> outer stat defaults to AP id 0) wrapping ProductOfSubPartsCalculationPart (mPart1 = StatByNamedDataValueCalculationPart(mStat=12, mStatFormula=2, mDataValue=APRatioPer100BonusHP=0.0125) times mPart2 = NumberCalculationPart(0.01)) -> the product is an AP RATIO (bonusHp*0.000125), so part[2] = AP * that ratio, contributing 0 at 0 AP (verified in SkillDamageTests with AP=100). Evaluated end-to-end by FormulaInterpreter via calc name TotalDamage, same as Q/W/R -- no manual re-derivation. Type Magic per live tooltip. Confirms mStat=12 needs the same total/bonus mStatFormula split as AD/Armor/MR/MS: TahmKenchE GreyHealthMaximum (same file, mFormulaParts[0], mStat=12, coefficient=3.0, no mStatFormula) scales off TOTAL max health, not bonus.",
+  "P": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "Q": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "binSpell": "P",
+        "count": 1
+      }
+    ]
+  },
+  "W": {
+    "hits": [
+      {
+        "type": "Magic",
+        "calc": "TotalDamage",
+        "count": 1
+      }
+    ]
+  },
+  "_noteR": "R (Abyssal Voyage, Devour-spit) curation — CLAUDE_CODE_TODO §17. RESOLVED (Cowork 2026-07-16); VERIFIED 2026-08-21 (loop 500) - GoldenTahmKenchTests is green (6 assertions), including the r1 L6/AP29-vs-Kennen row this note computes below. Both terms curated. (1) %maxHP term: BIN calc PercentHPDamage (Characters/TahmKench/Spells/TahmKenchRWrapperAbility/TahmKenchRWrapper/mSpell/mSpellCalculations/PercentHPDamage) is a FRACTION (mDisplayAsPercent=true) = BasePercentHPDamage(0.15) + 0.0007×AP; curated as hpPercentCalc:PercentHPDamage / hpBasis:Max, Magic. (2) flat base term: CORRECTION to the earlier note — the flat term DOES have a named DataValue. TahmKenchRWrapper.mSpell.DataValues carries BaseDamage = [-50, 100, 250, 400, 550, 700, 850] (index0 = rank-0 placeholder; ranks 1/2/3 = 100/250/400). The earlier note searched mDataValues/mEffectAmount but the key is DataValues (same place BasePercentHPDamage lives). Curated as a second hit { flatDataValue:'BaseDamage', type:Magic }, exactly the Garen-R flat-base pattern. Golden cross-check (r1, L6/AP29 vs Kennen 755HP): 100 + (0.15+0.0007×29)×755 = 228.6 ×(100/132) = 173 ✓ (GoldenTahmKenchTests). No engine change needed.",
+  "_noteQ": "Q champion-hit bonus (CLAUDE_CODE_TODO §17) — RESOLVED via curation (Cowork 2026-07-16); VERIFIED 2026-08-21 (loop 500) by the same green GoldenTahmKenchTests - the QVsChampion 60/82/92 row below is one of its assertions. NO engine change needed. Measured Q-vs-champion = Q.TotalDamage + the passive An-Acquired-Taste calc (P.TotalDamage, mStat-12 bonus health) as a separate summed Magic hit (GoldenTahmKenchTests QVsChampion: 60/82/92). The passive calc lives under the P slot; expressed with the EXISTING M22 cross-spell field binSpell:'P' on a second Q hit — ComboRunner.TryBuildHitShape sets calcSlotEff=binSpell and SkillDamage.ComputeCalcDamage evaluates slot 'P' at CHAMPION LEVEL (its P-rank rule), so the passive's level-scaled value resolves correctly. The combo target is always a champion, so the bonus applies unconditionally (no vsChampion gate). NOTE (item on-hit): Tahm has no on-hit on Q/W/E/R and P applies only to basic attacks; an item that grants on-hit would be a separate OnHit bonusEffect (framework already exists), left open, not added here.",
+  "R": {
+    "hits": [
+      {
+        "type": "Magic",
+        "flatDataValue": "BaseDamage",
+        "count": 1
+      },
+      {
+        "type": "Magic",
+        "hpPercentCalc": "PercentHPDamage",
+        "hpBasis": "Max",
+        "count": 1,
+        "tags": ["PercentMaxHp"]
+      }
+    ],
+    "tags": ["AoeUltimate"]
+  }
+}

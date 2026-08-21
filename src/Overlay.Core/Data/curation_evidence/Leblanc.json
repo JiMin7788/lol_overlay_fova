@@ -1,0 +1,87 @@
+{
+ "champion": "Leblanc",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Leblanc"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Sigil of Malice",
+   "facts": [
+    {
+     "field": "TotalWithMarkDamage",
+     "kind": "flat",
+     "values": [
+      130,
+      180,
+      230,
+      280,
+      330
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Total Magic Damage: 130 / 180 / 230 / 280 / 330 (+ 80% AP)"
+    }
+   ]
+  },
+  "W": {
+   "name": "Distortion",
+   "facts": [
+    {
+     "field": "ArrivalDamage",
+     "kind": "flat",
+     "values": [
+      75,
+      115,
+      155,
+      195,
+      235
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 75 / 115 / 155 / 195 / 235 (+ 80% AP)"
+    }
+   ]
+  },
+  "E": {
+   "name": "Ethereal Chains",
+   "facts": [
+    {
+     "field": "TotalWithFractureDamage",
+     "kind": "flat",
+     "values": [
+      130,
+      190,
+      250,
+      310,
+      370
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Total Damage: 130 / 190 / 250 / 310 / 370 (+ 125% AP)"
+    }
+   ]
+  },
+  "R": {
+   "name": "Mimic",
+   "facts": [
+    {
+     "field": "MimicDistortionDamage",
+     "kind": "flat",
+     "values": [
+      150,
+      315,
+      480
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Magic Damage: 150 / 315 / 480 (+ 80% AP)"
+    }
+   ]
+  }
+ }
+}

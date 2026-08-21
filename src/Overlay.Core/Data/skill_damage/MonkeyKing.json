@@ -1,0 +1,25 @@
+{
+  "_note": "Curated (batch3, 2026-07-10). Source: monkeyking.bin.json mSpellCalculations (Q=MonkeyKingDoubleAttackAbility Crushing Blow, W=MonkeyKingDecoyAbility Warrior Trickster, E=MonkeyKingNimbusAbility Nimbus Strike, R=MonkeyKingSpinToWinAbility Cyclone). Cross-checked vs WebSearch snippets and a full wiki.leagueoflegends.com/en-us/Template:Data_Wukong/Cyclone fetch. Q kept unchanged. E newly added (was missing). R's calc name corrected -- the prior auto-pick referenced a calc named 'Damage' that DOES NOT EXIST anywhere in Cyclone's BIN data (silently null already, not a regression). W confirmed genuinely damage-less.",
+  "_noteQ": "Crushing Blow unchanged: TotalDamage=BaseDamage+ADRatio(0.5 bonus AD) -- empowered-next-attack bonus, standard AD-scaling physical shape (identical twin calc BonusDamageTT exists). One hit, Physical.",
+  "_noteW": "Warrior Trickster (Decoy) has zero damage DataValues/calcs -- only clone/stealth timing and CloneDamageMod (a %-of-Wukong's-own-damage multiplier the clone applies, not a discrete instance). No hits, matches pre-existing omission.",
+  "_noteE": "Nimbus Strike: TotalDamage=BaseDamage+StatByCoefficient(1.0 AP default). WebSearch: 'Damage Type: Magic ... Scales with 80% AP ... changed from physical to magic damage previously, no longer scales with bonus AD' -- confirms Magic, AP-only ratio (BIN's 1.0 vs wiki's 80% is plausible patch drift, shape matches). Dashes to a primary target and clones strike up to 2 EXTRA enemies -- out of scope (single-primary-target model). One hit on primary target, Magic -- was entirely missing before this pass.",
+  "_noteR": "Cyclone: channeled spin, PHYSICAL damage every 0.25s from an AD-ratio term AND a %max-health term (wiki: 'Physical Damage Per Tick: ...% of max health(+34.375%AD)', both terms present). BIN exposes ready-made FULL-DURATION totals: TotalDamageTT(=DamagePerSecondTotal[ADRatioPerSecond=1.375 total AD] x SpinDuration 2.0) and PercentHPDamageTT(=the hashed %maxHP-per-second calc x SpinDuration) -- using these avoids re-deriving a tick count (same 'use the calc that's already a total' lesson as Ashe Q). The wiki's 'Maximum Total' figure (exactly 2x) is Cyclone's OPTIONAL manual recast within 8s -- not guaranteed by default, so only the single guaranteed spin is curated. MonsterCap/MonsterCapTT out of scope (non-champion). The prior auto-picked calc name 'Damage' does not exist in this spell's BIN data and is replaced. Two hits (TotalDamageTT + PercentHPDamageTT hpPercentCalc hpBasis Max), both Physical.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteRSplit": "R SPLIT INTO R AND R2 (loop 482, user request). Cyclone is two spins, not one: the live wiki (wiki.leagueoflegends.com/en-us/Wukong, fetched 2026-08-21) says the first spin runs up to 2 seconds and he may cast it a SECOND time within 8 seconds, which the BIN confirms with RecastWindow 8 and LockoutTimeBetweenCasts 1 beside SpinDuration 2. The two spins are identical in damage - 1/1.5/2% of maximum health (+34.375% AD) every 0.25s, so 8/12/16% (+275% AD) over a full spin, which is exactly TotalDamageTT and PercentHPDamageTT - so R2 is R again, resolving the same calcs through binSpell. The knock-up is once per spin per target and is crowd control, not damage, so it changes nothing here. R itself is untouched: a combo that had one R node still scores one full spin, and the second is now sayable instead of silently absent.",
+  "R2": {
+    "icon": "assets/characters/monkeyking/hud/icons2d/monkeykingcyclone2.png",
+    "tags": ["Zone", "AoeUltimate"],
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamageTT", "binSpell": "R", "count": 1 },
+      { "type": "Physical", "hpPercentCalc": "PercentHPDamageTT", "hpBasis": "Max", "binSpell": "R", "count": 1, "tags": ["PercentMaxHp"] }
+    ]
+  },
+  "R": {
+    "tags": ["BurstCeiling", "AoeUltimate"],
+    "hits": [
+      { "type": "Physical", "calc": "TotalDamageTT", "count": 1 },
+      { "type": "Physical", "hpPercentCalc": "PercentHPDamageTT", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
+    ]
+  }
+}

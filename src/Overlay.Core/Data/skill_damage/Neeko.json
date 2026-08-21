@@ -1,0 +1,18 @@
+{
+  "_note": "Hand-curated (loop 39). Source: communitydragon/neeko.bin.json mSpellCalculations, hand-traced against DataValue/coefficient shapes (all standard NamedDataValue + StatByCoefficient forms, no wiki cross-check needed for these damage numbers).",
+  "_noteQ": "Blooming Burst: two real hits. ExplosionDamage (initial burst on cast, ZoneDamage DataValue + 0.6 AP) and SecondDamage (the delayed second, larger explosion 0.75s later, SecondaryDamage DataValue + 0.25 AP) -- both land on a target that stays in the blooming area, a normal combo assumption (not an escapable DoT, both are discrete instant bursts).",
+  "_noteW": "Shapesplitter: the dash/clone-creation itself has no damage calc. PassiveBonusDamageCalc (PassiveDamage DataValue + 0.6 AP via APRatio DataValue) is Shapesplitter's own built-in passive: casting W empowers Neeko's next basic attack with bonus magic damage. Curated as a W bonusEffect trigger onHit (the attack that gets empowered), not a direct hit.",
+  "_noteE": "Tangle-Barbs: BaseDamage = Damage DataValue + 0.65 AP. Single hit root+slow, no additional components.",
+  "_noteR": "Pop Blossom: TotalDamage = Damage DataValue + 1.2 AP. Tagged BurstCeiling: the delayed AoE detonation is Neeko's single highest realistic burst-damage contribution (ultimate).",
+  "_noteP": "Inherent Glamour (disguise passive): pure utility/detection, no damage calc anywhere in NeekoPassiveAbility -- correctly no P.",
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "ExplosionDamage", "count": 1 },
+      { "type": "Magic", "calc": "SecondDamage", "count": 1 }
+    ]
+  },
+  "W": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveBonusDamageCalc", "count": 1 } ] } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "BaseDamage", "count": 1 } ] },
+  "R": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },
+  "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W CloneDamageTimer(0.75) is a clone-behavior TIMER, not a damage term. Benign."
+}

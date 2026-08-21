@@ -1,0 +1,31 @@
+{
+  "_note": "FULLY CURATED (loop 39). P (pre-existing) and Q confirmed correct as-is via wiki cross-check. W gained a missing onHit bonusEffect (Mount Up's empowered-attack flip damage). E had a real bug fixed: the auto-picked 'calc' was being evaluated as flat damage when it is actually a %maxHP FRACTION (mDisplayAsPercent=true in the BIN) -- switched to hpPercentCalc. R's count corrected from 1 to 2 to represent its full 2-second channel using the clean per-second calc (avoiding both under- and over-counting vs. the tooltipOnly pre-summed alternative). 'auto' flag removed: all 5 slots (P/Q/W/E/R) are now curated/verified.",
+  "_noteP": "P (Break the Mold): basic attacks deal bonus MAGIC on-hit damage (RellP.mSpellCalculations 'OnHitDamage' = StatByCoefficientCalculationPart(mStat=1 Armor, mCoefficient=0.05) + StatByCoefficientCalculationPart(mStat=6 MagicResist, mCoefficient=0.05), both terms summed directly in one GameCalculation's mFormulaParts, no interpolation/level scaling; DataValue 'StealPercent'=0.03 and the 'StealFloor' calc belong to the mount-speed-steal mechanic, not damage, and are left out). Hand-traced example: at 100 Armor / 50 MR -> 0.05x100 + 0.05x50 = 5 + 2.5 = 7.5 bonus magic on-hit damage. Curated as a P bonusEffect trigger onHit (approximated as firing on every AA rather than gated on the 3.5s refresh window, same documented style as Volibear P / Rammus P).",
+  "_noteQ": "Q (Shattering Strike): 'Damage' = NamedDataValue(BaseDamage) + StatByCoefficient(0.6, mStat unset -> AP). WebSearch (wiki.leagueoflegends.com via mobafire template mirror) confirms Magic Damage 60/100/140/180/220 (+60% AP) -- EXACT match to BIN's BaseDamage[20,60,100,140,180,220,260] indices 1-5 and the 0.6 AP coefficient. No change needed; confirmed correct as originally auto-picked.",
+  "_noteW": "W (Ferromancy): the auto-picked 'DismountDamage' (Crash Down, dismount slam) = NamedDataValue(CrashDownDamage) + StatByCoefficient(0.6, mStat unset -> AP) -- WebSearch confirms Magic Damage 60/90/120/150/180 (+60% AP), an EXACT match to BIN's CrashDownDamage[30,60,90,120,150,180,210] indices 1-5. Kept as the slot's main hit. ADDED: Mount Up (the OTHER W cast) empowers Rell's next basic attack to charge+flip the target, dealing a separate bonus magic hit -- WebSearch confirms 'causes her to charge to the target, dealing bonus magic damage before briefly stunning and flinging them over'. Curated as an onHit bonusEffect: 'FlipDamage' = NamedDataValue(MountUpDamage) + StatByCoefficient(0.4, mStat unset -> AP), living in the same RellW_Dismount spell block. The Shield calc in the same block is defensive, not damage, and is left out.",
+  "_noteE": "E (Attract and Repel recast): the pre-existing curation used calc:'MaxHealthDamageCalc' as if it were FLAT damage -- this was a bug. The BIN shows MaxHealthDamageCalc's mFormulaParts = NamedDataValue(PercentHealthDamage, values 0.045-0.075 -- already sub-1 fractions) + StatByCoefficient(0.0003, mStat unset -> AP), AND the calc itself carries 'mDisplayAsPercent': true / 'mPrecision': 1 -- unambiguous proof this evaluates to a %maxHP FRACTION (roughly 4.5-7.5% + 0.03% per AP point), not a raw damage number. A WebSearch cross-check independently corroborated the %-of-max-health structure (order-of-magnitude match) and additionally surfaced 'ExplosionRadius'=300 in the same DataValues array, matching the ability's known AoE-on-next-AA-or-Q mechanic. Fixed by switching to hpPercentCalc (hpBasis Max) -- SkillDamage.ResolveHpPercentCalc evaluates the same formula tree and, since the raw result stays well under 1.0, no /100 whole-percent normalization is triggered (correct as-is). Tagged PercentMaxHp. NOT representable in the current schema: a separate 'PercentHealthDamageCap' calc (ByCharLevelInterpolation 150->300 by champion level) caps the absolute damage -- the schema has no cap field, so very-high-max-HP targets will be slightly overestimated; documented limitation, not a fabricated fix.",
+  "_noteR": "R (Magnet Storm): 'DamagePerSecond' = NamedDataValue(BaseDamagePerSecond) + StatByCoefficient(0.55, mStat unset -> AP) is a genuine PER-SECOND rate (not per-tick -- WebSearch confirms the ability ticks every 0.25s / 8 times, but DamagePerSecond is the aggregate one-second rate, not a per-tick amount). A separate tooltipOnly calc 'TotalDamage' = DamagePerSecond x Duration(2.0) confirms the intended total is exactly 2x the per-second rate over the ability's fixed 2.0s Duration DataValue. Rather than use the tooltipOnly aggregate directly, count was corrected from 1 to 2 (matching Duration) so DamagePerSecond x count reproduces the same total via the already-established count-repeats-a-clean-calc convention, each 'count' unit separately mitigated as an approximation of the channel's ramp. Unlike Malzahar-style escapable ground zones (which this project deliberately omits full-duration damage for, P2), Magnet Storm actively pulls enemies toward Rell for its full duration rather than being a walkable-away zone, making a fixed full-duration assumption reasonable here -- no Zone tag applied (it is a point/pull AoE centered on the caster, not a stationary escapable ground zone). Slot tagged BurstCeiling: Rell's ultimate is her clearest single highest-realistic-burst/teamfight damage tool.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "OnHitDamage", "count": 1 } ] } ] },
+  "Q": {
+    "hits": [
+      { "type": "Magic", "calc": "Damage", "count": 1 }
+    ]
+  },
+  "W": {
+    "hits": [
+      { "type": "Magic", "calc": "DismountDamage", "count": 1 }
+    ],
+    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "FlipDamage", "count": 1 } ] } ]
+  },
+  "E": {
+    "hits": [
+      { "type": "Magic", "hpPercentCalc": "MaxHealthDamageCalc", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
+    ]
+  },
+  "R": {
+    "hits": [
+      { "type": "Magic", "calc": "DamagePerSecond", "count": 2 }
+    ],
+    "tags": ["BurstCeiling", "AoeUltimate"]
+  }
+}

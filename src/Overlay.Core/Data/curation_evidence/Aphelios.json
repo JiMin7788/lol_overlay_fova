@@ -1,0 +1,67 @@
+{
+ "champion": "Aphelios",
+ "collectedAt": "2026-07-20",
+ "collector": "Cowork M32 batch",
+ "sources": [
+  {
+   "id": "wiki",
+   "url": "https://wiki.leagueoflegends.com/en-us/Aphelios"
+  }
+ ],
+ "slots": {
+  "Q": {
+   "name": "Moonshot (Calibrum)",
+   "facts": [
+    {
+     "field": "PhysicalDamage",
+     "kind": "other",
+     "values": [
+      70,
+      160
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Moonshot (Calibrum): 70 - 160 (based on level) (+ 42% - 60% (based on level) bonus AD) (+ 100% AP) physical damage"
+    }
+   ]
+  },
+  "E": {
+   "name": "Weapon-Dependent (Onslaught / Binding Eclipse / Duskwave / Sentry)",
+   "facts": [
+    {
+     "field": "BindingEclipseDamage",
+     "kind": "other",
+     "values": [
+      50,
+      140
+     ],
+     "damageType": "Magic",
+     "source": "wiki",
+     "quote": "Binding Eclipse (Gravitum): 50 - 140 (based on level) (+ 32% - 50% (based on level) bonus AD) (+ 70% AP) magic damage"
+    },
+    {
+     "field": "DuskwaveDamage",
+     "kind": "other",
+     "values": [
+      20,
+      110
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Duskwave (Infernum): 20 - 110 (based on level) (+ 15% - 21% (based on level) bonus AD) (+ 70% AP) physical damage"
+    },
+    {
+     "field": "SentryDamage",
+     "kind": "other",
+     "values": [
+      35,
+      125
+     ],
+     "damageType": "Physical",
+     "source": "wiki",
+     "quote": "Sentry (Crescendum): 35 - 125 (based on level) (+ 34% - 52% (based on level) bonus AD) (+ 50% AP) physical damage"
+    }
+   ]
+  }
+ }
+}

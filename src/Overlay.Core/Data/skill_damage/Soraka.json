@@ -1,0 +1,5 @@
+{
+  "_note": "Curated (hand-verified against soraka.bin.json). Q (Starcall) 'TotalDamage' = BaseDamage + 0.35 AP, Magic -- resolves cleanly, matches the auto-picker's choice. E (Equinox) 'TotalDamage' = BaseDamage + 0.4 AP, Magic -- same, matches the auto-picker. W (Astral Infusion) and R (Wish) have NO damage calc in the BIN (both are pure heals: W's 'TotalHeal'/'MinimumHealth' and R's 'HealingCalc'/'AmpedHealing') -- correctly left with no hits entry, not auto:true (genuine no-damage utility skills).",
+  "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] }
+}
