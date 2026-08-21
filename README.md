@@ -41,10 +41,26 @@ explicit confirmation.
 
 ### 편의 기능 · Quality-of-life helpers
 
-![리콜 · 억제기 타이머](docs/images/feature-timers.png)
-
 **Quality-of-life helpers** — recall/objective timers, item completion alerts, enemy-jungler
 spotted notifications, optional voice (TTS) alerts.
+
+![타이머 · 귀환 계산](docs/images/feature-timers.png)
+
+적 귀환 감지와 라인 복귀 예측(이동속도 기반), 억제기·넥서스 포탑 리스폰 타이머를 실제 인게임 API
+이벤트로 추적합니다.
+
+![적 정글 발견 · 아이템 완성 알림](docs/images/feature-alerts.png)
+
+적 정글러가 시야에 잡히는 순간 "발견"만 알리고 위치·방향은 추측하지 않습니다. 적의 완성
+아이템(신발 제외)이 완성되면 알립니다.
+
+### 적 위치 안내 · Enemy position tracking (전체 기능 빌드 전용)
+
+![적 위치 안내](docs/images/feature-jungle-tracking.png)
+
+미니맵에 실제로 보이는 아이콘만 읽어 위치를 알리고, 안 보이게 되면 "사라짐"을 알립니다. 마지막 목격
+지점은 잔상 + 경과 시간으로 남습니다. **공개 배포본(라이트 빌드)에는 화면을 읽는 코드가 없어 이
+기능이 들어 있지 않습니다** — 소스에서 전체 빌드 시에만 사용할 수 있습니다.
 
 ## Safety & fair play · 안전과 공정성
 
