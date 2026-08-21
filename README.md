@@ -83,31 +83,41 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 ## Requirements · 요구 사항
 
 - Windows 10 (2004 이상) / 11, 64비트
-- .NET 8 **Desktop** Runtime (x64)
+- .NET 8 **Desktop** Runtime (x64) — 인스톨러 사용 시 자동 설치
 - League of Legends (KR/global clients)
 
 ## 설치하기 · Install
 
-### 1. 받기
+### 인스톨러로 설치 (권장)
 
-**[⬇ fova-0.1.1.zip 내려받기](release/fova-0.1.1.zip)**  (3.9 MB)
+**[⬇ fova-0.2.0-setup.exe 내려받기](release/fova-0.2.0-setup.exe)** (4.5 MB)
 
-> 무결성 확인(선택): 같은 폴더의 [`fova-0.1.1.zip.sha256`](release/fova-0.1.1.zip.sha256)과
-> `certutil -hashfile fova-0.1.1.zip SHA256` 결과가 같은지 비교하세요.
+일반적인 설치 프로그램입니다. 실행하면 알아서 처리합니다:
 
-### 2. .NET 8 데스크톱 런타임 (한 번만)
+- **.NET 8 데스크톱 런타임** — 없으면 설치 중에 Microsoft 공식 설치기를 내려받아 조용히
+  설치합니다. 이미 있으면 건너뜁니다.
+- 사용자 폴더(`%LocalAppData%\Programs\Fova`)에 설치 — **관리자 권한 불필요**, UAC 창 없음.
+- **시작 메뉴 바로가기** 생성(바탕화면 바로가기는 설치 중 선택), 제어판 "앱 제거" 지원.
+- 챔피언·스킬 아이콘과 패치 데이터(Data Dragon)는 기본 데이터가 동봉돼 있고, 첫 온라인 실행 때
+  최신으로 자동 갱신됩니다 — 따로 할 일이 없습니다.
 
-**[⬇ .NET 8 Desktop Runtime (x64)](https://dotnet.microsoft.com/ko-kr/download/dotnet/8.0/runtime)**
+> 무결성 확인(선택): `certutil -hashfile fova-0.2.0-setup.exe SHA256` 결과를
+> [`fova-0.2.0-setup.exe.sha256`](release/fova-0.2.0-setup.exe.sha256)과 비교하세요.
+> 설치기 자체도 내장 파일을 CRC로 검증합니다.
 
-> ⚠️ **"Desktop Runtime"** 이어야 합니다. 그냥 "Runtime"으로는 안 켜집니다.
-> 페이지에서 **Windows → x64 → Desktop Runtime**을 고르세요. 앱이 안 켜지는 이유 대부분이 이겁니다.
+### "Windows의 PC 보호" 파란 경고가 떠요
 
-### 3. 압축 풀고 실행
+정상입니다. Fova는 아직 **코드 서명 인증서로 서명되지 않아** Windows SmartScreen이
+"인식할 수 없는 앱"으로 표시합니다 — 다운로드 이력이 적은 모든 무서명 프로그램에 뜨는
+경고이고, 악성 판정이 아닙니다. **"추가 정보" → "실행"**을 누르면 설치가 진행됩니다.
+찜찜하면 위의 SHA-256 확인으로 파일이 배포본 그대로인지 검증한 뒤 실행하세요.
 
-1. 원하는 폴더에 풉니다 (예: `C:\Fova`). 설정 파일을 옆에 만들기 때문에 폴더째로 두세요.
-2. `fova.exe` 실행 — 관리자 권한을 요구하지 않습니다. UAC 창 없이 그냥 켜집니다.
+### 압축(zip)으로 설치 — 포터블
 
-설치 프로그램은 없습니다. 지울 때도 폴더만 삭제하면 됩니다.
+**[⬇ fova-0.2.0.zip](release/fova-0.2.0.zip)** (3.9 MB) — 원하는 폴더에 풀고 `fova.exe` 실행.
+지울 때는 폴더만 삭제하면 됩니다. 단, **.NET 8 Desktop Runtime은 직접 설치**해야 합니다
+([다운로드](https://dotnet.microsoft.com/ko-kr/download/dotnet/8.0/runtime) — 반드시
+"Desktop Runtime"을 고르세요. 그냥 "Runtime"으로는 안 켜집니다).
 
 ### 관리자 권한에 대해 — 정정 (2026-08-21)
 
@@ -137,7 +147,8 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 
 ### 잘 안 될 때
 
-- **앱이 아예 안 켜져요** → .NET 8 **Desktop** Runtime을 확인하세요 (위 2단계).
+- **앱이 아예 안 켜져요** → .NET 8 **Desktop** Runtime을 확인하세요. 인스톨러 설치라면 설치 중
+  런타임 다운로드가 실패하지 않았는지, zip 설치라면 직접 설치했는지 봐주세요.
 - **게임 안에서만 단축키가 안 먹어요** → 롤을 관리자 권한으로 실행 중인지 확인하세요. 그렇다면
   Fova도 관리자 권한으로 실행해 권한을 맞춰야 합니다 (기본 설치에서는 발생하지 않습니다).
 - **숫자가 안 나와요** → 연습 모드나 실제 게임에 들어가야 인게임 API가 열립니다.
