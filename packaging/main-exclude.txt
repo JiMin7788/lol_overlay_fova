@@ -24,13 +24,6 @@ docs/
 !docs/00_PROJECT_OVERVIEW.md
 !docs/01_SYSTEM_ARCHITECTURE.md
 
-# ── Riot Developer Portal ownership token ───────────────────────────────────────────────────────
-# Removed at the owner's instruction (2026-08-21). NOTE FOR LATER: this token is PUBLIC BY DESIGN -
-# Riot fetches the URL and compares the value, so it was never a secret, and deleting it can break
-# portal verification. Restore with:
-#     git show <old-commit>:riot.txt > riot.txt      (value also in this repo's history)
-# and drop this rule.
-riot.txt
 
 # ── data-pipeline and curation tooling ──────────────────────────────────────────────────────────
 # Riot match collection, aggregation, BIN drift auditing, curation validators. Needed to REGENERATE
