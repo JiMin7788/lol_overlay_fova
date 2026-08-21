@@ -40,15 +40,17 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
     padding:20px;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
-  .card:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
+  .card.on:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
   .card .ico{font-size:30px;line-height:1}
   .card h3{font-size:17px;margin:12px 0 6px}
   .card p{color:var(--dim);font-size:13.5px;flex:1}
   .card .buy{margin-top:16px;align-self:flex-start;padding:8px 16px;border-radius:8px;
     background:var(--surface-hi);border:1px solid var(--border);color:var(--text);
     font-size:13.5px;font-weight:600;transition:background .15s,border-color .15s}
-  .card .buy:hover{background:var(--gold);color:#14181E;border-color:var(--gold)}
-  .card .buy::after{content:" →"}
+  .card.on .buy::after{content:" →"}
+  .card.on .buy:hover{background:var(--gold);color:#14181E;border-color:var(--gold)}
+  .card.off{opacity:.5}
+  .card.off .buy{color:var(--dim);cursor:default}
 
   footer{margin:48px 0 40px;padding-top:24px;border-top:1px solid var(--border);
     color:var(--dim);font-size:12.5px;text-align:center}
@@ -64,46 +66,45 @@
       <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova">Fova 내려받기</a>
     </header>
 
+    <!-- 쿠팡 파트너스 필수 고지 문구 (수정하지 마세요) -->
     <div class="disclosure">
-      <b>제휴 안내 (Affiliate disclosure).</b> 이 페이지의 “아마존에서 보기” 링크는 Amazon Associates
-      제휴 링크입니다. 링크를 통해 구매하시면 Fova가 소정의 수수료를 받을 수 있으며, 구매 가격은
-      동일합니다. As an Amazon Associate we earn from qualifying purchases.
+      <b>이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</b>
+      구매 가격은 동일하며, 받은 수수료는 Fova 개발에 쓰입니다.
     </div>
 
     <h2>추천 게이밍 장비</h2>
-    <p class="sub">FPS·MOBA에 두루 쓰기 좋은 기준으로 골랐습니다. 카테고리를 누르면 아마존에서 열립니다.</p>
+    <p class="sub">FPS·MOBA에 두루 쓰기 좋은 기준으로 골랐습니다. 카테고리를 누르면 쿠팡에서 열립니다.</p>
 
     <div class="grid" id="grid">
-      <!-- data-q → 아마존 검색어. 특정 상품으로 바꾸려면 data-q 대신 data-asin="B0XXXXXXXX" 를 쓰세요. -->
-      <a class="card" data-q="gaming mouse lightweight wireless">
+      <a class="card" data-key="mouse">
         <div class="ico">🖱️</div><h3>게이밍 마우스</h3>
         <p>가벼운 무선 · 낮은 클릭 지연. 롱겜에도 손 안 피로한 60~70g대 위주.</p>
-        <span class="buy">아마존에서 보기</span>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
-      <a class="card" data-q="mechanical keyboard tkl gaming">
+      <a class="card" data-key="keyboard">
         <div class="ico">⌨️</div><h3>기계식 키보드</h3>
-        <p>TKL/텐키리스로 마우스 공간 확보. 리니어 스위치가 QWER 연타에 유리.</p>
-        <span class="buy">아마존에서 보기</span>
+        <p>텐키리스로 마우스 공간 확보. 리니어 스위치가 QWER 연타에 유리.</p>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
-      <a class="card" data-q="gaming headset wired">
+      <a class="card" data-key="headset">
         <div class="ico">🎧</div><h3>게이밍 헤드셋</h3>
         <p>발소리·정글 동선 파악용. 유선 저지연 + 편한 착용감 기준.</p>
-        <span class="buy">아마존에서 보기</span>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
-      <a class="card" data-q="144hz gaming monitor 240hz">
+      <a class="card" data-key="monitor">
         <div class="ico">🖥️</div><h3>고주사율 모니터</h3>
         <p>144Hz 이상. 스킬샷·무빙 체감이 확 달라지는 첫 업그레이드.</p>
-        <span class="buy">아마존에서 보기</span>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
-      <a class="card" data-q="large gaming mouse pad xl">
+      <a class="card" data-key="mousepad">
         <div class="ico">🟦</div><h3>대형 마우스패드</h3>
         <p>낮은 감도용 XL 사이즈. 일관된 에임을 위한 균일한 표면.</p>
-        <span class="buy">아마존에서 보기</span>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
-      <a class="card" data-q="ergonomic gaming chair">
+      <a class="card" data-key="chair">
         <div class="ico">🪑</div><h3>게이밍 의자</h3>
         <p>장시간 앉아도 허리 편한 인체공학. 요추 지지 기준.</p>
-        <span class="buy">아마존에서 보기</span>
+        <span class="buy">쿠팡에서 보기</span>
       </a>
     </div>
 
@@ -115,23 +116,31 @@
   </div>
 
 <script>
-  // ── 여기 한 줄만 본인 아마존 어소시에이츠 추적 ID로 바꾸세요 ──────────────────────
-  //  예: "fova-20". 승인 후 Associates Central 상단에 표시되는 스토어 ID입니다.
-  var AMAZON_TAG = "YOURTAG-20";
-  //  한국 사용자는 amazon.com 글로벌 스토어를 씁니다. 다른 지역이면 아래 호스트만 바꾸면 됩니다.
-  var AMAZON_HOST = "https://www.amazon.com";
+  // ── 쿠팡 파트너스 링크를 여기에 붙여넣으세요 ────────────────────────────────────
+  //  쿠팡 파트너스 승인 후, 파트너스 대시보드의 "링크 생성"에서 상품/검색 링크를 만들어
+  //  아래에 붙여넣으면 됩니다. 비워두면 그 카드는 "준비 중"으로 표시됩니다.
+  //  (쿠팡 링크는 상품마다 고유 추적 링크라, 일반 URL로는 수수료가 잡히지 않습니다.)
+  var COUPANG = {
+    mouse:    "",   // 예: "https://link.coupang.com/a/XXXXXX"
+    keyboard: "",
+    headset:  "",
+    monitor:  "",
+    mousepad: "",
+    chair:    ""
+  };
   // ────────────────────────────────────────────────────────────────────────────
 
   document.querySelectorAll("#grid .card").forEach(function (card) {
-    var asin = card.getAttribute("data-asin");
-    var q = card.getAttribute("data-q");
-    var url = asin
-      ? AMAZON_HOST + "/dp/" + encodeURIComponent(asin)
-      : AMAZON_HOST + "/s?k=" + encodeURIComponent(q || "");
-    url += (url.indexOf("?") === -1 ? "?" : "&") + "tag=" + encodeURIComponent(AMAZON_TAG);
-    card.setAttribute("href", url);
-    card.setAttribute("target", "_blank");
-    card.setAttribute("rel", "sponsored noopener");
+    var url = COUPANG[card.getAttribute("data-key")];
+    if (url) {
+      card.classList.add("on");
+      card.setAttribute("href", url);
+      card.setAttribute("target", "_blank");
+      card.setAttribute("rel", "sponsored nofollow noopener");
+    } else {
+      card.classList.add("off");
+      card.querySelector(".buy").textContent = "준비 중";
+    }
   });
 </script>
 </body>
