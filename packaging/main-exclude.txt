@@ -25,6 +25,13 @@ docs/
 !docs/01_SYSTEM_ARCHITECTURE.md
 
 
+# ── curation audit evidence ─────────────────────────────────────────────────────────────────────
+# The M32 audit queue, coverage manifest and crosscheck report. These are BUILD-TIME triage data:
+# Overlay.Core.csproj links only communitydragon/ and skill_damage/ into the output, so none of
+# this reaches the shipped package. Excluding it costs a user nothing and keeps the curation
+# methodology - which is the part that is actually hard to reproduce - out of the public tree.
+src/Overlay.Core/Data/curation_evidence/
+
 # ── data-pipeline and curation tooling ──────────────────────────────────────────────────────────
 # Riot match collection, aggregation, BIN drift auditing, curation validators. Needed to REGENERATE
 # the shipped data under src/Overlay.Core/Data, never to build or run the app.

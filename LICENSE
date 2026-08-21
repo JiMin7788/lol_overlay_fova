@@ -1,0 +1,66 @@
+Fova — 최종 사용자 라이선스 / End User License
+Copyright (c) 2026 박지민 (JiMin Park). All rights reserved.
+
+이 소프트웨어와 함께 배포되는 모든 데이터(챔피언 피해량 큐레이션 데이터를 포함하되 이에
+한정되지 않음)의 저작권은 저작권자에게 있습니다.
+
+This repository is source-available, NOT open source. Publishing the source does not place it in
+the public domain and does not grant a license to reuse it.
+
+
+■ 허용되는 것 · You MAY
+
+  1. 개인적, 비상업적 목적으로 이 소프트웨어를 내려받아 설치하고 사용하는 것.
+     Download, install, and use this software for personal, non-commercial purposes.
+
+  2. 소스 코드를 열람하고, 안전성을 검증하고, 그에 대해 공개적으로 언급하는 것.
+     Read the source, audit it for safety, and publicly discuss what you find.
+     (이 소프트웨어는 전역 키보드 훅과 관리자 권한을 사용합니다. 검증할 수 없다면 신뢰할 수
+     없으므로, 열람과 검증은 명시적으로 허용됩니다.)
+
+  3. 개인적인 용도로 수정하여 자신이 사용하는 것.
+     Modify it for your own personal use.
+
+
+■ 허용되지 않는 것 · You MAY NOT
+
+  1. 이 소프트웨어 또는 그 일부(빌드 결과물, 소스, 동봉 데이터 포함)를 재배포하거나
+     공개적으로 게시하는 것. 수정 여부와 무관합니다.
+     Redistribute or publish this software or any part of it - binaries, source, or bundled
+     data - modified or not.
+
+  2. 판매하거나, 유료 서비스에 포함하거나, 그 밖의 상업적 목적으로 이용하는 것.
+     Sell it, bundle it into a paid product or service, or otherwise use it commercially.
+
+  3. 동봉된 데이터를 추출하여 별도의 저작물이나 서비스에 사용하는 것.
+     Extract the bundled data and use it in a separate work or service.
+
+  4. "Fova" 이름 또는 로고를 파생물이나 다른 프로젝트에 사용하는 것.
+     Use the "Fova" name or logo for a derivative or another project.
+
+위 허용 범위를 넘는 이용을 원하시면 저작권자에게 문의하십시오.
+For any use beyond the above, contact the copyright holder.
+
+
+■ 보증 없음 · NO WARRANTY
+
+이 소프트웨어는 "있는 그대로" 제공되며, 명시적이든 묵시적이든 어떠한 보증도 하지 않습니다.
+상품성, 특정 목적 적합성, 비침해에 대한 보증을 포함합니다. 저작권자는 이 소프트웨어의 사용
+또는 사용 불능으로 인해 발생하는 어떠한 손해에 대해서도 책임지지 않습니다.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+■ 제3자 자산 · Third-party assets
+
+이 소프트웨어는 Riot Games, Inc.가 공개적으로 제공하는 정적 게임 데이터(Data Dragon,
+CommunityDragon)를 포함합니다. 해당 자산의 권리는 Riot Games, Inc.에 있으며 이 라이선스의
+적용을 받지 않습니다.
+
+Fova는 Riot Games가 승인하거나 후원한 프로그램이 아닙니다.
+Fova is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or
+anyone officially involved in producing or managing League of Legends.
