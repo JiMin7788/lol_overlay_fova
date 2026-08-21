@@ -13,20 +13,42 @@ overlay, plus champ-select rune & spell presets.**
 
 ## What it does · 무엇을 하나요
 
+### 콤보 데미지 계산기 · Combo damage calculator
+
+![콤보 데미지 · 킬각 계산](docs/images/feature-combo-damage.png)
+
 **Combo damage calculator (콤보 데미지 계산기)** — build ability combos per champion; during a
 match, a click-through overlay shows the combo's expected damage against your current target,
 computed from your own live stats (levels, items, runes). Damage formulas come from Riot's own
 static game data, hand-verified per champion.
+
+![멀티폼 · 추가 스킬](docs/images/feature-multiform.png)
+
+폼이 바뀌면 스킬 세트도 바뀝니다 — 제이스 대포/망치, 그나르 메가, 아펠리오스 무기별 Q, 크산테 R
+총공세, 소환수 히트 수까지 지금 폼 기준으로 계산합니다.
+
+![추가효과 계산](docs/images/feature-bonus-effects.png)
+
+온힛·처형·룬/아이템 프록 같은 추가효과는 트리거×조건으로 분류해 합산에 반영합니다(개발 중). 관측할
+수 없는 조건은 추측하지 않고 사용자 가정 입력으로 받습니다.
+
+### 픽창 보조 · Champ-select assistant
 
 **Champ-select assistant (픽창 보조)** — save your preferred rune page and summoner spells per
 champion, then re-apply them with one click (or an explicit opt-in auto-apply on lock-in) through
 the League Client's own local API. Your hand-made rune pages are never touched without an
 explicit confirmation.
 
+### 편의 기능 · Quality-of-life helpers
+
+![리콜 · 억제기 타이머](docs/images/feature-timers.png)
+
 **Quality-of-life helpers** — recall/objective timers, item completion alerts, enemy-jungler
 spotted notifications, optional voice (TTS) alerts.
 
 ## Safety & fair play · 안전과 공정성
+
+![안티치트 안전 설계](docs/images/feature-anticheat.png)
 
 Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 
@@ -86,6 +108,8 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 | `Shift + Tab` | 오버레이 켜고 끄기 |
 | `Alt + 1` | 콤보 결과 오버레이 |
 | `Alt + 2` | 스킬별 데미지 오버레이 |
+
+![콤보 에디터 · 단축키 · TTS](docs/images/feature-assist.png)
 
 **콤보 만들기**: 홈 창 → 콤보 설정 → 챔피언 선택 → 스킬을 순서대로 끌어다 놓기 → 단축키 지정.
 **위치 보정**: 설정에서 "이동 여부"를 켜고 카드를 드래그.
