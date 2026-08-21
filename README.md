@@ -97,6 +97,7 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 - **.NET 8 데스크톱 런타임** — 없으면 설치 중에 Microsoft 공식 설치기를 내려받아 조용히
   설치합니다. 이미 있으면 건너뜁니다.
 - 사용자 폴더(`%LocalAppData%\Programs\Fova`)에 설치 — **관리자 권한 불필요**, UAC 창 없음.
+  (.NET 런타임을 새로 설치하게 되는 경우에만 Microsoft 런타임 설치기의 UAC 창이 한 번 뜹니다.)
 - **시작 메뉴 바로가기** 생성(바탕화면 바로가기는 설치 중 선택), 제어판 "앱 제거" 지원.
 - 챔피언·스킬 아이콘과 패치 데이터(Data Dragon)는 기본 데이터가 동봉돼 있고, 첫 온라인 실행 때
   최신으로 자동 갱신됩니다 — 따로 할 일이 없습니다.
