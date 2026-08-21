@@ -85,13 +85,13 @@ public sealed class LiveClientPoller : IAsyncDisposable, IDisposable
         else
         {
             // The Live Client Data API serves over HTTPS with Riot's local
-            // self-signed certificate. Accept it for this single localhost host
-            // only — not a blanket disable.
+            // self-signed certificate. LoopbackServerCertificate accepts it for
+            // loopback targets only — not a blanket disable.
             var handler = new SocketsHttpHandler
             {
                 SslOptions =
                 {
-                    RemoteCertificateValidationCallback = static (_, _, _, _) => true,
+                    RemoteCertificateValidationCallback = LoopbackServerCertificate.Validate,
                 },
                 ConnectTimeout = TimeSpan.FromSeconds(2),
             };

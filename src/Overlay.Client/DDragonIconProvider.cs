@@ -36,6 +36,18 @@ public static class DDragonIconProvider
     /// never re-decoded from disk. Keyed by the same string used to build the on-disk path.</summary>
     private static readonly ConcurrentDictionary<string, ImageSource> MemoryCache = new(StringComparer.Ordinal);
 
+    /// <summary>(loop 515) Failure memory + in-flight dedupe for every loader here. The
+    /// <c>*PathOrNull</c> members run inside the 60fps HUD render loop; without these, a miss
+    /// (offline, CDN 403, an id the pinned patch has no asset for) launched a fresh HTTP attempt
+    /// EVERY FRAME — ~240 requests over one 4s enemy-item toast. A failure is remembered for
+    /// <see cref="FailureRetryMs"/> and then retried once, so going back online recovers without a
+    /// storm. <see cref="ChampionIconProvider"/> already did this (it caches null); this brings the
+    /// rest of the loaders to the same contract. Cancellation is never treated as a failure.</summary>
+    private static readonly ConcurrentDictionary<string, long> FailedUntil = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Task<ImageSource?>> InFlight = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Task> EnsureInFlight = new(StringComparer.Ordinal);
+    private const int FailureRetryMs = 60_000;
+
     private static HttpClient CreateClient()
     {
         var http = new HttpClient();
@@ -195,12 +207,21 @@ public static class DDragonIconProvider
     /// form they are in. Both fall back to their base icon. Surveying all 172 champions' asset
     /// folders, those are the only two: Elise, Nidalee, Jayce, Rek'Sai, Shyvana and Kled publish no
     /// alternate circle icon at all, so their minimap icon does not change.</para></summary>
-    public static async Task EnsureChampionCircleIconAsync(string championId, CancellationToken ct = default)
+    public static Task EnsureChampionCircleIconAsync(string championId, CancellationToken ct = default)
     {
+        string key = "circle:" + championId;
+        if (FailedUntil.TryGetValue(key, out var until) && Environment.TickCount64 < until)
+            return Task.CompletedTask;
+        return EnsureInFlight.GetOrAdd(key, _ => EnsureChampionCircleIconCoreAsync(key, championId, ct));
+    }
+
+    private static async Task EnsureChampionCircleIconCoreAsync(
+        string key, string championId, CancellationToken ct)
+    {
+        var path = Path.Combine(CircleIconDir, championId + ".png");
         try
         {
             Directory.CreateDirectory(CircleIconDir);
-            var path = Path.Combine(CircleIconDir, championId + ".png");
             if (File.Exists(path) && new FileInfo(path).Length == 0) File.Delete(path);
             if (File.Exists(path)) return;
 
@@ -223,9 +244,43 @@ public static class DDragonIconProvider
             }
         }
         catch { /* best-effort, same as every other loader here */ }
+        finally
+        {
+            // Giving up is still not an error — the champion keeps the Data Dragon square — but it
+            // IS remembered, so the retry cadence is FailureRetryMs, not every caller.
+            if (!ct.IsCancellationRequested && !File.Exists(path))
+                FailedUntil[key] = Environment.TickCount64 + FailureRetryMs;
+            EnsureInFlight.TryRemove(key, out _);
+        }
     }
 
-    private static async Task<ImageSource?> LoadAsync(
+    private static Task<ImageSource?> LoadAsync(
+        string memoryKey, string diskDir, string fileName, string url, CancellationToken ct)
+    {
+        if (MemoryCache.TryGetValue(memoryKey, out var cached)) return Task.FromResult<ImageSource?>(cached);
+        if (FailedUntil.TryGetValue(memoryKey, out var until) && Environment.TickCount64 < until)
+            return Task.FromResult<ImageSource?>(null);
+        return InFlight.GetOrAdd(memoryKey, _ => LoadCoreAsync(memoryKey, diskDir, fileName, url, ct));
+    }
+
+    private static async Task<ImageSource?> LoadCoreAsync(
+        string memoryKey, string diskDir, string fileName, string url, CancellationToken ct)
+    {
+        try
+        {
+            var bmp = await LoadUncachedAsync(memoryKey, diskDir, fileName, url, ct).ConfigureAwait(false);
+            if (bmp is not null) FailedUntil.TryRemove(memoryKey, out _);
+            else if (!ct.IsCancellationRequested)
+                FailedUntil[memoryKey] = Environment.TickCount64 + FailureRetryMs;
+            return bmp;
+        }
+        finally
+        {
+            InFlight.TryRemove(memoryKey, out _);
+        }
+    }
+
+    private static async Task<ImageSource?> LoadUncachedAsync(
         string memoryKey, string diskDir, string fileName, string url, CancellationToken ct)
     {
         if (MemoryCache.TryGetValue(memoryKey, out var cached)) return cached;

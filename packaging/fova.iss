@@ -31,9 +31,10 @@ OutputBaseFilename=fova-{#AppVersion}-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-; The app itself requests administrator (see app.manifest), so the installer may as well
-; install per-machine rather than pretend it is a per-user app.
-PrivilegesRequired=admin
+; The app runs asInvoker (no elevation, loop 512) and writes its config/logs/data caches
+; NEXT TO THE EXE — so it must NOT live in a machine-wide Program Files it cannot write to.
+; "lowest" makes {autopf} resolve per-user ({localappdata}\Programs\Fova), which is writable.
+PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 ; Win10 2004 is the floor the app targets.
@@ -91,9 +92,14 @@ end;
 
 function IsSelfContained(): Boolean;
 begin
-  { A self-contained publish drops the host runtime next to the exe. }
+  { A non-single-file self-contained publish drops the host runtime next to the exe. The shape
+    build-release.ps1 actually produces (-SelfContained => PublishSingleFile) embeds hostfxr and
+    coreclr INSIDE fova.exe, so neither DLL exists on disk - detect that shape by the absence of
+    fova.dll, which a framework-dependent publish always leaves beside the exe. Without this,
+    every single-file self-contained install got a false ".NET 8 not found" prompt. }
   Result := FileExists(ExpandConstant('{#SourceDir}\hostfxr.dll'))
-         or FileExists(ExpandConstant('{#SourceDir}\coreclr.dll'));
+         or FileExists(ExpandConstant('{#SourceDir}\coreclr.dll'))
+         or (not FileExists(ExpandConstant('{#SourceDir}\fova.dll')));
 end;
 
 function InitializeSetup(): Boolean;

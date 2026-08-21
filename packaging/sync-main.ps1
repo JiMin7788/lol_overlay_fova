@@ -53,13 +53,24 @@ if (git status --porcelain) {
 $listPath = Join-Path $PSScriptRoot 'main-exclude.txt'
 if (-not (Test-Path $listPath)) { throw "missing $listPath" }
 
-$remove = @(); $keep = @()
+$remove = @(); $keep = @(); $mainOnly = @()
 foreach ($raw in Get-Content $listPath) {
     $line = $raw.Trim()
     if (-not $line -or $line.StartsWith('#')) { continue }
-    if ($line.StartsWith('!')) { $keep += $line.Substring(1) } else { $remove += $line }
+    if ($line.StartsWith('!')) { $keep += $line.Substring(1) }
+    elseif ($line.StartsWith('+')) { $mainOnly += $line.Substring(1) }
+    else { $remove += $line }
 }
-Write-Host "$($remove.Count) removal rule(s), $($keep.Count) exception(s)"
+Write-Host "$($remove.Count) removal rule(s), $($keep.Count) exception(s), $($mainOnly.Count) main-only path(s)"
+
+# Rule matchers: a trailing / is a directory prefix, anything else an exact path.
+function Test-RuleMatch([string[]] $rules, [string] $path) {
+    foreach ($rule in $rules) {
+        if ($rule.EndsWith('/')) { if ($path.StartsWith($rule)) { return $true } }
+        elseif ($path -eq $rule) { return $true }
+    }
+    return $false
+}
 
 $startBranch = (git rev-parse --abbrev-ref HEAD)
 
@@ -67,10 +78,7 @@ if ($DryRun) {
     Step "Dry run - what would be removed from $Branch"
     $tracked = git ls-tree -r --name-only $From
     $doomed = $tracked | Where-Object {
-        $p = $_
-        $hit = $remove | Where-Object { if ($_.EndsWith('/')) { $p.StartsWith($_) } else { $p -eq $_ } }
-        $spared = $keep -contains $p
-        $hit -and -not $spared
+        (Test-RuleMatch $remove $_) -and -not (Test-RuleMatch $keep $_)
     }
     $bytes = 0
     foreach ($f in $doomed) { if (Test-Path $f) { $bytes += (Get-Item $f).Length } }
@@ -101,6 +109,26 @@ if ($hasRemote) {
 Step "Taking $From's tree"
 git checkout $From -- .
 if ($LASTEXITCODE -ne 0) { git checkout -q $startBranch; throw "failed to take $From's tree" }
+
+# ── propagate deletions ─────────────────────────────────────────────────────────────────────────
+# `git checkout $From -- .` only ADDS and OVERWRITES; it never deletes. Without this step a file
+# deleted or renamed on master persisted on public main forever — compiled into any build made from
+# the public tree (SDK-style **/*.cs globs) — and a sensitive file synced before its exclusion rule
+# existed could never be removed by the sync at all. Anything main carries that master no longer
+# tracks is deleted here, except the declared main-only paths (release/, riot.txt).
+Step "Propagating deletions from $From"
+$fromSet = [System.Collections.Generic.HashSet[string]]::new(
+    [string[]]@(git -c core.quotepath=false ls-tree -r --name-only $From),
+    [System.StringComparer]::Ordinal)
+$stray = @(git -c core.quotepath=false ls-files --cached) | Where-Object {
+    -not $fromSet.Contains($_) -and -not (Test-RuleMatch $mainOnly $_)
+}
+foreach ($f in $stray) {
+    git rm -q --cached --ignore-unmatch -- $f | Out-Null
+    if (Test-Path -LiteralPath $f) { Remove-Item -LiteralPath $f -Force }
+    Write-Host "  deleted $f (no longer on $From)"
+}
+if (-not $stray) { Write-Host "  nothing to delete" }
 
 Step "Removing process material"
 # Delete only what git TRACKS. The first version removed whole directories with
@@ -139,11 +167,35 @@ foreach ($path in $keep) {
 # developer one every time, which is exactly the kind of quiet regression a scripted sync invites.
 if ($ReleaseZip) {
     if (-not (Test-Path $ReleaseZip)) { git checkout -q $startBranch; throw "no zip at $ReleaseZip" }
+
+    # Existence used to be the ONLY check, so a -full debug package, a zip carrying a populated
+    # user_config.json, or the ~197MB self-contained zip (which GitHub's 100MB push limit then
+    # wedges the branch on) would all ship verbatim. Inspect before committing.
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $za = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $ReleaseZip))
+    try { $entries = @($za.Entries | ForEach-Object { $_.FullName }) } finally { $za.Dispose() }
+    if ($entries -notcontains 'fova.exe') {
+        git checkout -q $startBranch; throw "zip has no fova.exe at its root - not a release payload"
+    }
+    $bad = $entries | Where-Object { $_ -match '(?i)vortice|sharpgen|Overlay\.Capture|user_config\.json|riot\.key|\.secrets' }
+    if ($bad) {
+        git checkout -q $startBranch; throw "zip contains disallowed entries: $($bad -join ', ')"
+    }
+    $zipMb = (Get-Item $ReleaseZip).Length / 1MB
+    if ($zipMb -gt 95) {
+        git checkout -q $startBranch
+        throw ("zip is {0:N0} MB - GitHub rejects pushes over 100 MB; publish it as a Release asset instead" -f $zipMb)
+    }
+
     New-Item -ItemType Directory -Force -Path 'release' | Out-Null
     Copy-Item $ReleaseZip (Join-Path 'release' (Split-Path $ReleaseZip -Leaf)) -Force
+    # build-release.ps1 writes <zip>.sha256 beside the zip; ship it so downloads are verifiable.
+    if (Test-Path "$ReleaseZip.sha256") {
+        Copy-Item "$ReleaseZip.sha256" (Join-Path 'release' (Split-Path "$ReleaseZip.sha256" -Leaf)) -Force
+    }
     git add 'release' | Out-Null
-    Write-Host ("  release {0} ({1:N1} MB)" -f (Split-Path $ReleaseZip -Leaf),
-                ((Get-Item $ReleaseZip).Length / 1MB))
+    Write-Host ("  release {0} ({1:N1} MB, {2} entries verified)" -f (Split-Path $ReleaseZip -Leaf),
+                $zipMb, $entries.Count)
 }
 
 $distReadme = 'packaging/README.dist.md'
@@ -194,8 +246,21 @@ if (-not $SkipBuild) {
     Write-Host "light build OK"
 }
 
-Step "Committing"
+# ── secret scan: the last line of defense before anything is committed publicly ────────────────
+# The key and the Riot match data are kept off this branch by master's .gitignore (layer 1) and
+# the exclusion list (layer 2). This abort is layer 3: even if both fail, nothing secret-like is
+# ever COMMITTED to the public branch.
+Step "Secret scan"
 git add -A
+$secretLike = @(git -c core.quotepath=false ls-files --cached) |
+    Where-Object { $_ -match '(?i)^\.secrets/|riot\.key|\.sqlite' }
+if ($secretLike) {
+    git checkout -q $startBranch
+    throw "SECRET-LIKE paths staged for the public branch, refusing to commit: $($secretLike -join ', ')"
+}
+Write-Host "no secret-like paths staged"
+
+Step "Committing"
 if (-not (git diff --cached --name-only)) {
     Write-Host "nothing changed - $Branch is already in sync"
 } else {

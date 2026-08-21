@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
   <!--
-    WHY ELEVATED. The overlay must run at the same integrity level as the League game
-    (which runs elevated). Windows UIPI stops a lower-integrity process from receiving
-    keyboard input while a higher-integrity window is in the foreground, so without this
-    the hotkeys work everywhere EXCEPT in game — which is the only place they matter.
+    WHY NOT ELEVATED — corrected 2026-08-21 (loop 512). This manifest said
+    requireAdministrator from loop 21 to loop 512, on the theory that the League game runs
+    elevated and UIPI would starve a lower-integrity hook of keyboard input. That theory was
+    already contradicted by the project's own loop-25 measurement (elevation did NOT fix the
+    RegisterHotKey failure — the WH_KEYBOARD_LL hook did), and a live test with an asInvoker
+    build confirmed the hook receives input over the game without elevation: League runs at
+    medium integrity, same as this app. Nothing in this app calls an API that needs admin
+    (SetWindowsHookEx(WH_KEYBOARD_LL), topmost z-order, WGC capture: all unprivileged), so
+    asInvoker loses nothing and drops the UAC prompt, the elevated-file-lock deploy pain, and
+    the worst-optics combination of an unsigned binary demanding admin plus a keyboard hook.
+    Edge case: if a user deliberately runs League elevated, UIPI then applies — run Fova
+    elevated too (right-click → run as administrator). That is opt-in, not the default.
 
     WHAT IT ACTUALLY DOES — corrected 2026-08-21. The earlier text here said this build
     "does not hook input". That stopped being true when hotkeys moved from RegisterHotKey
@@ -28,7 +36,7 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

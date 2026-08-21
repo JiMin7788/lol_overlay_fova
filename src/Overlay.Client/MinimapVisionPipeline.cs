@@ -48,6 +48,10 @@ public sealed class MinimapVisionPipeline : IDisposable
     private readonly JunglePresenceTracker _tracker;
 
     private IReadOnlyList<EnemyTemplate> _templates = Array.Empty<EnemyTemplate>();
+
+    /// <summary>Roster key of the templates last built. (loop 515) Always set after a build — the
+    /// old "null while any square fallback is pending" retry signal caused a per-frame rebuild;
+    /// square upgrades are now tracked by <see cref="_templateSquares"/> on a coarse timer.</summary>
     private string? _templateRosterKey;
     private Timer? _tickTimer;
     private volatile bool _disposed;
@@ -81,6 +85,12 @@ public sealed class MinimapVisionPipeline : IDisposable
     // StructureMinimapLayout's structure anchors).
     private readonly Dictionary<string, (int Count, double MaxConf, double X, double Y)> _diagByChamp
         = new(StringComparer.Ordinal);
+
+    /// <summary>(loop 515) Guards every diag field above/below: OnFrame writes them on the capture
+    /// callback thread while SafeTick → MaybeLogDiag enumerates and clears on a Timer thread.
+    /// Unsynchronized Dictionary write+Clear can corrupt the buckets — worst case the capture
+    /// thread spins in bucket traversal while holding WgcFrameProvider's gate, wedging Stop().</summary>
+    private readonly object _diagGate = new();
 
     // (TODO 43-AK) Over-detection alarm. A single frame cannot legitimately contain more sightings
     // than there are enemies — each champion occupies one point on the minimap. When it does, stage 1
@@ -120,7 +130,7 @@ public sealed class MinimapVisionPipeline : IDisposable
         if (_disposed) return;
         try
         {
-            _diagFrames++; // counts frames reaching the pipeline, independent of templates
+            lock (_diagGate) _diagFrames++; // counts frames reaching the pipeline, independent of templates
             EnsureTemplates();
             if (_templates.Count == 0) return;
 
@@ -128,17 +138,20 @@ public sealed class MinimapVisionPipeline : IDisposable
             IReadOnlyList<MinimapSighting> sightings = _detector.Detect(frame, _templates, options);
             RecordDebugFrame(frame, sightings);
             FeedRadiusCalibrator(frame, PriorRadiusPx(frame.Width));
-            _diagSightings += sightings.Count;
-            if (sightings.Count > _diagMaxPerFrame) _diagMaxPerFrame = sightings.Count;
-            if (sightings.Count > _templates.Count) _diagOverFrames++;
-            for (int i = 0; i < sightings.Count; i++)
+            lock (_diagGate)
             {
-                var s = sightings[i];
-                int c = _diagByChamp.TryGetValue(s.ChampionId, out var v) ? v.Count : 0;
-                double mc = v.MaxConf;
-                _diagByChamp[s.ChampionId] = (c + 1, Math.Max(mc, s.Confidence), s.MapPos01.X, s.MapPos01.Y);
-                _tracker.OnSighting(s, frame.Flipped);
+                _diagSightings += sightings.Count;
+                if (sightings.Count > _diagMaxPerFrame) _diagMaxPerFrame = sightings.Count;
+                if (sightings.Count > _templates.Count) _diagOverFrames++;
+                for (int i = 0; i < sightings.Count; i++)
+                {
+                    var s = sightings[i];
+                    int c = _diagByChamp.TryGetValue(s.ChampionId, out var v) ? v.Count : 0;
+                    _diagByChamp[s.ChampionId] = (c + 1, Math.Max(v.MaxConf, s.Confidence), s.MapPos01.X, s.MapPos01.Y);
+                }
             }
+            for (int i = 0; i < sightings.Count; i++)
+                _tracker.OnSighting(sightings[i], frame.Flipped);
         }
         catch (Exception ex)
         {
@@ -164,22 +177,35 @@ public sealed class MinimapVisionPipeline : IDisposable
         long now = Environment.TickCount64;
         if (now - _lastDiagMs < 2000) return;
 
-        string breakdown = _diagByChamp.Count == 0
+        // Snapshot + reset under the gate; compose and write the log line outside it, so the
+        // capture thread is never blocked on this method's file I/O.
+        int frames, sightings, overFrames, maxPerFrame;
+        KeyValuePair<string, (int Count, double MaxConf, double X, double Y)>[] byChamp;
+        lock (_diagGate)
+        {
+            frames = _diagFrames;
+            sightings = _diagSightings;
+            overFrames = _diagOverFrames;
+            maxPerFrame = _diagMaxPerFrame;
+            byChamp = _diagByChamp.ToArray();
+            _diagFrames = 0;
+            _diagSightings = 0;
+            _diagOverFrames = 0;
+            _diagMaxPerFrame = 0;
+            _diagByChamp.Clear();
+        }
+
+        string breakdown = byChamp.Length == 0
             ? ""
-            : " → " + string.Join(", ", _diagByChamp
+            : " → " + string.Join(", ", byChamp
                 .OrderByDescending(kv => kv.Value.Count)
                 .Select(kv => $"{kv.Key}×{kv.Value.Count}@{kv.Value.MaxConf:F2}({kv.Value.X:F2},{kv.Value.Y:F2})"));
 
         _log?.Invoke(
-            $"pipeline diag (last {now - _lastDiagMs} ms): frames={_diagFrames}, capturing={_capture.IsCapturing}, " +
-            $"templates={_templates.Count}{(_templateRosterKey is null ? "" : $" [{_templateRosterKey}]")}, sightings={_diagSightings}, " +
-            $"maxPerFrame={_diagMaxPerFrame}, overFrames={_diagOverFrames}{breakdown}");
+            $"pipeline diag (last {now - _lastDiagMs} ms): frames={frames}, capturing={_capture.IsCapturing}, " +
+            $"templates={_templates.Count}{(_templateRosterKey is null ? "" : $" [{_templateRosterKey}]")}, sightings={sightings}, " +
+            $"maxPerFrame={maxPerFrame}, overFrames={overFrames}{breakdown}");
 
-        _diagFrames = 0;
-        _diagSightings = 0;
-        _diagOverFrames = 0;
-        _diagMaxPerFrame = 0;
-        _diagByChamp.Clear();
         _lastDiagMs = now;
     }
 
@@ -406,7 +432,19 @@ public sealed class MinimapVisionPipeline : IDisposable
 
         string key = string.Join(",", roster.Select(r => (r.IsEnemy ? "E:" : "A:") + r.Id)
                                             .OrderBy(s => s, StringComparer.Ordinal));
-        if (key == _templateRosterKey) return; // roster unchanged → keep existing templates
+        bool rosterChanged = key != _templateRosterKey;
+        if (!rosterChanged)
+        {
+            // Roster unchanged → keep existing templates, EXCEPT to upgrade square fallbacks to
+            // circle icons as their downloads land — retried on a coarse timer. (loop 515) This
+            // retry used to work by leaving the roster key null, which meant a rebuild EVERY FRAME
+            // while any square was pending: if one circle icon never downloads, that is ~10 PNG
+            // decodes per frame at 30fps on the capture thread, a per-frame calibrator reset that
+            // kept §43-AQ radius calibration from ever reaching MinSamples, and 5-8 log lines per
+            // frame into an unrotated file for the rest of the game.
+            if (_templateSquares == 0) return;
+            if (Environment.TickCount64 - _lastTemplateBuildMs < CircleRetryIntervalMs) return;
+        }
 
         var built = new List<EnemyTemplate>(roster.Count);
         int circles = 0, squares = 0;
@@ -423,21 +461,43 @@ public sealed class MinimapVisionPipeline : IDisposable
         }
 
         _templates = built;
-        // The circle icons download in the background, so the first build of a game can fall back to
-        // Data Dragon squares. Leaving the roster key unset makes the next frame rebuild, which picks
-        // them up as they land — a square-portrait template is the difference between finding a
-        // champion every frame and never finding him at all (§43-AP), so it is worth retrying for.
-        _templateRosterKey = squares == 0 ? key : null;
-        // New roster = new game, and the capture geometry may have changed with it.
-        _radiusCalibrator.Reset();
-        _calibratedRadiusPx = null;
-        _autoDumps = 0;   // the cap is per game, and a new roster is a new game
-        int enemies = built.Count(t => t.IsEnemy);
-        _log?.Invoke($"minimap: built {built.Count}/{roster.Count} templates " +
-                     $"({enemies} enemy + {built.Count - enemies} ally decoy; " +
-                     $"{circles} circle + {squares} square) [{key}]");
-        LogPairwiseSimilarity(built);
+        // A square-portrait template is the difference between finding a champion every frame and
+        // never finding him at all (§43-AP), so square fallbacks keep being retried (throttled,
+        // above) until every template is a circle icon.
+        bool upgraded = !rosterChanged && squares < _templateSquares;
+        _templateRosterKey = key;
+        _templateSquares = squares;
+        _lastTemplateBuildMs = Environment.TickCount64;
+
+        if (rosterChanged)
+        {
+            // New roster = new game, and the capture geometry may have changed with it. Only a REAL
+            // roster change resets these — the circle-upgrade retry path must not (loop 515): the
+            // per-frame reset was exactly what kept the radius calibrator at zero samples forever.
+            _radiusCalibrator.Reset();
+            _calibratedRadiusPx = null;
+            _autoDumps = 0;   // the cap is per game, and a new roster is a new game
+        }
+        if (rosterChanged || upgraded)
+        {
+            // Silent when a retry changed nothing — otherwise a permanently missing circle icon
+            // writes this whole block every CircleRetryIntervalMs for the rest of the game.
+            int enemies = built.Count(t => t.IsEnemy);
+            _log?.Invoke($"minimap: built {built.Count}/{roster.Count} templates " +
+                         $"({enemies} enemy + {built.Count - enemies} ally decoy; " +
+                         $"{circles} circle + {squares} square) [{key}]");
+            LogPairwiseSimilarity(built);
+        }
     }
+
+    /// <summary>Square-fallback templates in the last build; zero = nothing left to upgrade.</summary>
+    private int _templateSquares;
+    private long _lastTemplateBuildMs;
+
+    /// <summary>How often a square-fallback template set is rebuilt to pick up circle icons that
+    /// finished downloading. Coarse on purpose: the rebuild decodes ~10 portrait PNGs on the
+    /// capture thread.</summary>
+    private const int CircleRetryIntervalMs = 5000;
 
     /// <summary>Percentiles of <see cref="MinimapDetector.MaxAchievableMargin"/> measured over all
     /// 1891 pairs of the 62 cached minimap icons (loop 501). A roster pair is only interesting

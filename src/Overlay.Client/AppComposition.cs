@@ -204,6 +204,11 @@ public sealed class AppComposition : IDisposable
     /// instance — its dormancy rule is what keeps the in-game path ad-free.</summary>
     public AdSlotService Ads => _ads;
 
+    /// <summary>Default ad manifest URL — the house manifest in the public repo's ads/ folder.
+    /// Overridable (or disabled with "") via "ads": { "endpoint": ... } in user_config.json.</summary>
+    private const string DefaultAdEndpoint =
+        "https://raw.githubusercontent.com/JiMin7788/lol_overlay_fova/main/ads/manifest.json";
+
     /// <summary>The champion set available to the combo builder / stats — the FULL cached
     /// roster once the M11 repository has loaded (so combos can be built for any of the ~173
     /// cached champions), falling back to the sampled 5 until then / if the load failed.</summary>
@@ -216,13 +221,13 @@ public sealed class AppComposition : IDisposable
     {
         // M29: the slot subscribes to GAME.CONNECTED here — before Start() — so the in-game
         // dormancy rule holds even if a game is already running when the app launches.
-        _ads = new AdSlotService(GetBool("ads.enabled", true), GetString("ads.endpoint", ""));
-        // ads.enabled defaults TRUE while ads.endpoint defaults EMPTY, so the out-of-the-box state
-        // is "ads on, nothing to fetch": AdSlotService nulls a blank endpoint, IsConfigured goes
-        // false, and HomeWindow collapses the whole row. That is correct behaviour but it is also
-        // completely silent, and silence reads as a bug — a tester can only conclude the ads are
-        // broken. Say it once at startup instead. (tools/ad_test_server.py serves a local manifest
-        // if you want to see the slot actually render.)
+        _ads = new AdSlotService(GetBool("ads.enabled", true), GetString("ads.endpoint", DefaultAdEndpoint));
+        // Since loop 513 the endpoint has a real default: the house manifest served from the public
+        // repo (ads/ on lol_overlay_fova main, regenerated with tools/make_ad_manifest.py). Setting
+        // "ads": { "endpoint": "" } in user_config.json still nulls it — AdSlotService nulls a blank
+        // endpoint, IsConfigured goes false, and HomeWindow collapses the whole row — so the log
+        // line below stays: silence reads as a bug, say it once at startup instead.
+        // (tools/ad_test_server.py serves a local manifest if you want to test the slot offline.)
         if (!_ads.IsConfigured && GetBool("ads.enabled", true))
             Log("ads: enabled but no ads.endpoint configured — the slot is collapsed and will "
                 + "never fill. This is configuration, not a failure.");

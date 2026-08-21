@@ -159,7 +159,7 @@ public static class WindowProbe
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
     // Bare "GetWindowLongPtr" is a C macro; the real x64 export is GetWindowLongPtrW. (Assumes an
-    // x64 host — the elevated WPF app is x64. On x86 this entry point does not exist; noted in the TODO.)
+    // x64 host — the WPF app is x64. On x86 this entry point does not exist; noted in the TODO.)
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 

@@ -32,6 +32,12 @@ internal sealed class WgcFrameProvider : IFrameProvider
     private readonly object _gate = new();
     private int _arrivals;
     private bool _loggedError;
+    private int _errorStreak;
+
+    /// <summary>(loop 516) Consecutive FrameArrived failures before declaring the backend dead. A
+    /// removed D3D device makes EVERY frame throw; the once-only error log kept that invisible
+    /// while the session burned a callback per frame forever. One transient failure never trips it.</summary>
+    private const int MaxErrorStreak = 30;
 
     public WgcFrameProvider(IntPtr hwnd, IDirect3DDevice winrtDevice, Action<string>? log = null)
     {
@@ -41,6 +47,12 @@ internal sealed class WgcFrameProvider : IFrameProvider
     }
 
     public bool IsRunning { get; private set; }
+
+    /// <summary>Always true here: <see cref="Stop"/> blocks on <see cref="_gate"/> until the
+    /// in-flight callback finishes, so disposal never races the delivery thread.</summary>
+    public bool StoppedCleanly => true;
+
+    public event Action? Died;
 
     /// <summary>Whether WGC is available on this OS at all (Win10 1903+). Cheap static probe the
     /// orchestrator can use before choosing this backend.</summary>
@@ -63,7 +75,7 @@ internal sealed class WgcFrameProvider : IFrameProvider
         TrySet(() => _session.IsCursorCaptureEnabled = false); // Win10 20H1+
         TrySet(() => _session.IsBorderRequired = false);        // Win11 (removes the capture outline)
 
-        _item.Closed += (_, _) => Stop();
+        _item.Closed += (_, _) => { Stop(); Died?.Invoke(); }; // game window closed → observable death
         _session.StartCapture();
         IsRunning = true;
         _log?.Invoke($"WGC started: item {_item.Size.Width}x{_item.Size.Height}, hwnd={_hwnd} (awaiting FrameArrived…)");
@@ -76,23 +88,40 @@ internal sealed class WgcFrameProvider : IFrameProvider
             lock (_gate)
             {
                 if (!IsRunning) return;
-                using Direct3D11CaptureFrame? frame = sender.TryGetNextFrame();
+                Direct3D11CaptureFrame? frame = sender.TryGetNextFrame();
                 if (frame is null) { _log?.Invoke("WGC FrameArrived: TryGetNextFrame returned null"); return; }
 
-                // Window resize → recreate the pool at the new size (WGC requirement).
-                if (frame.ContentSize.Width != _lastSize.Width || frame.ContentSize.Height != _lastSize.Height)
+                // Window resize → recreate the pool at the new size (WGC requirement). (loop 516)
+                // The frame from the OLD pool must be disposed BEFORE the recreate and this delivery
+                // dropped: the old code recreated the pool and then read the still-live frame's
+                // surface — a discarded buffer — and for that frame the texture carried the old pool
+                // size while the content was the new size, so the ROI calibrated against the wrong
+                // dimensions. The dispose-then-recreate ordering lives in the finally below; one
+                // dropped frame per resize is invisible at 30fps.
+                bool resized = false;
+                try
                 {
-                    _lastSize = frame.ContentSize;
-                    sender.Recreate(_winrtDevice, Bgra, BufferCount, _lastSize);
+                    if (frame.ContentSize.Width != _lastSize.Width || frame.ContentSize.Height != _lastSize.Height)
+                    {
+                        _lastSize = frame.ContentSize;
+                        resized = true;
+                        return;
+                    }
+
+                    long ts = frame.SystemRelativeTime.Ticks / TimeSpan.TicksPerMillisecond;
+                    using ID3D11Texture2D texture = Direct3D11WinRtInterop.GetTexture2D(frame.Surface);
+
+                    if (++_arrivals == 1)
+                        _log?.Invoke($"WGC first frame delivered ({frame.ContentSize.Width}x{frame.ContentSize.Height}) → forwarding to detector");
+
+                    _onFrame?.Invoke(texture, ts);
+                    _errorStreak = 0;
                 }
-
-                long ts = frame.SystemRelativeTime.Ticks / TimeSpan.TicksPerMillisecond;
-                using ID3D11Texture2D texture = Direct3D11WinRtInterop.GetTexture2D(frame.Surface);
-
-                if (++_arrivals == 1)
-                    _log?.Invoke($"WGC first frame delivered ({frame.ContentSize.Width}x{frame.ContentSize.Height}) → forwarding to detector");
-
-                _onFrame?.Invoke(texture, ts);
+                finally
+                {
+                    frame.Dispose();
+                    if (resized) sender.Recreate(_winrtDevice, Bgra, BufferCount, _lastSize);
+                }
             }
         }
         catch (Exception ex)
@@ -103,6 +132,14 @@ internal sealed class WgcFrameProvider : IFrameProvider
             {
                 _loggedError = true;
                 _log?.Invoke($"WGC FrameArrived ERROR (further suppressed): {ex.GetType().Name}: {ex.Message}");
+            }
+            // (loop 516) A removed device fails every frame forever — stop the session and make the
+            // death observable instead of burning a silent callback per frame for the rest of the game.
+            if (++_errorStreak >= MaxErrorStreak && IsRunning)
+            {
+                _log?.Invoke($"WGC: {MaxErrorStreak} consecutive frame failures — backend self-disabling (device lost?)");
+                Stop();
+                Died?.Invoke();
             }
         }
     }

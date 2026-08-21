@@ -90,7 +90,10 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 
 ### 1. 받기
 
-**[⬇ fova-0.1.0.zip 내려받기](release/fova-0.1.0.zip)**  (3.9 MB)
+**[⬇ fova-0.1.1.zip 내려받기](release/fova-0.1.1.zip)**  (3.9 MB)
+
+> 무결성 확인(선택): 같은 폴더의 [`fova-0.1.1.zip.sha256`](release/fova-0.1.1.zip.sha256)과
+> `certutil -hashfile fova-0.1.1.zip SHA256` 결과가 같은지 비교하세요.
 
 ### 2. .NET 8 데스크톱 런타임 (한 번만)
 
@@ -103,8 +106,6 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 
 1. 원하는 폴더에 풉니다 (예: `C:\Fova`). 설정 파일을 옆에 만들기 때문에 폴더째로 두세요.
 2. `fova.exe` 실행 — 관리자 권한을 요구하지 않습니다. UAC 창 없이 그냥 켜집니다.
-   (동봉된 0.1.0 패키지는 아직 이전 빌드라 UAC 창이 뜹니다 — **예**를 누르세요. 다음 패키지부터
-   사라집니다.)
 
 설치 프로그램은 없습니다. 지울 때도 폴더만 삭제하면 됩니다.
 

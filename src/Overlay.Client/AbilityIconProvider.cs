@@ -121,6 +121,17 @@ public static class AbilityIconProvider
     private static readonly ConcurrentDictionary<string, byte> PrepareInFlight =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>(loop 515) Earliest tick a champion's prepare may run again. PrepareInFlight only
+    /// guards WHILE a task runs — a failed prepare was relaunched by the very next frame of the
+    /// render loop, each attempt doing up to two CDN fetches, a continuous serial retry for as long
+    /// as the icon stayed on screen. Every prepare now stamps this on completion, capping attempts
+    /// at one per champion per <see cref="PrepareRetryMs"/> whatever the outcome (a fully successful
+    /// prepare never re-enters — the resolved paths short-circuit before EnsurePrepared).</summary>
+    private static readonly ConcurrentDictionary<string, long> NextPrepareAt =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private const int PrepareRetryMs = 60_000;
+
     /// <summary>The on-disk PATH of a champion ability icon (<paramref name="slot"/> = P/Q/W/E/R) if it
     /// is already resolved AND cached on disk (a valid image reference for the overlay's <c>Icon</c> draw
     /// command), else <see langword="null"/>. Synchronous + non-blocking, mirroring
@@ -154,7 +165,11 @@ public static class AbilityIconProvider
     /// starts returning real paths on a later frame. Best-effort; never throws.</summary>
     private static void EnsurePrepared(string championId)
     {
-        if (SlotFulls.ContainsKey(championId)) return;
+        // No SlotFulls.ContainsKey short-circuit here (loop 515): it made the second call site in
+        // AbilityIconPathOrNull — "filename known but the PNG isn't cached yet" — a permanent no-op,
+        // so a champion whose slot map resolved but whose PNG download failed kept the letter badge
+        // until app restart. The backoff below is what bounds re-entry instead.
+        if (NextPrepareAt.TryGetValue(championId, out var at) && Environment.TickCount64 < at) return;
         if (!PrepareInFlight.TryAdd(championId, 0)) return;
         _ = PrepareAsync(championId);
     }
@@ -174,6 +189,7 @@ public static class AbilityIconProvider
         }
         finally
         {
+            NextPrepareAt[championId] = Environment.TickCount64 + PrepareRetryMs;
             PrepareInFlight.TryRemove(championId, out _);
         }
     }

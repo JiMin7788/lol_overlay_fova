@@ -77,6 +77,9 @@ public sealed class MinimapCaptureSource : IMinimapCaptureSource
         lock (_gate)
         {
             if (IsCapturing || _stopping) return;
+            // A backend that died mid-session (OnProviderDied) leaves IsCapturing false with live
+            // resources — release them before building new ones, or a restart leaks a full set.
+            if (_provider is not null) CleanupLocked();
             try
             {
                 _hwnd = _getGameWindow();
@@ -89,6 +92,7 @@ public sealed class MinimapCaptureSource : IMinimapCaptureSource
                 _readback = new RoiReadback(_device!);
                 _perf = new CapturePerfHarness(_log);
                 _provider = CreateProvider(mode);
+                _provider.Died += OnProviderDied;
                 _provider.Start(OnFrame);
 
                 IsCapturing = true;
@@ -120,7 +124,7 @@ public sealed class MinimapCaptureSource : IMinimapCaptureSource
         if (mode == GameDisplayMode.ExclusiveFullscreenLikely || !WgcFrameProvider.IsSupported())
         {
             IntPtr monitor = WindowProbe.GetContainingMonitor(_hwnd);
-            return new DxgiDuplicationFrameProvider(_device!, monitor);
+            return new DxgiDuplicationFrameProvider(_device!, monitor, _log);
         }
 
         _winrtDevice ??= CreateWinRtDevice();
@@ -161,8 +165,38 @@ public sealed class MinimapCaptureSource : IMinimapCaptureSource
         }
         catch (Exception ex)
         {
-            _log?.Invoke($"minimap frame dropped ({ex.GetType().Name}: {ex.Message})");
+            // (loop 516) Rate-limited: on a removed device every delivered frame throws, and the
+            // per-frame version of this line wrote up to 30 lines/s indefinitely — exactly the
+            // retry/log storm M31 §6 forbids. One line per window, with the drop count.
+            long now = Environment.TickCount64;
+            _dropCount++;
+            if (now - _lastDropLogMs >= DropLogWindowMs)
+            {
+                _log?.Invoke($"minimap frame dropped ×{_dropCount} (last: {ex.GetType().Name}: {ex.Message})");
+                _dropCount = 0;
+                _lastDropLogMs = now;
+            }
         }
+    }
+
+    private int _dropCount;
+    private long _lastDropLogMs;
+    private const long DropLogWindowMs = 5000;
+
+    /// <summary>Objects deliberately kept alive forever after a timed-out capture-thread join —
+    /// see the leak branch in <see cref="CleanupLocked"/>. Bounded by how often that branch can
+    /// run (once per wedged session), so this is a pathological-path safety root, not growth.</summary>
+    private static readonly List<object> LeakedOnPurpose = new();
+
+    /// <summary>The backend self-disabled (device removed, window closed, unrecoverable DXGI
+    /// error). Runs on the PROVIDER'S OWN thread, so no teardown happens here — the DXGI poll
+    /// thread would be joining itself inside Stop(). This only makes the death observable
+    /// (IsCapturing goes false, per the IMinimapCaptureSource contract, instead of lying) and logs
+    /// once; the owner's next Stop()/Start() performs the actual cleanup.</summary>
+    private void OnProviderDied()
+    {
+        IsCapturing = false;
+        _log?.Invoke("minimap: capture backend self-disabled (device lost / game window closed) — capture off until restarted");
     }
 
     /// <summary>Resolve the minimap ROI for the captured frame size. Prefers the user's manual
@@ -238,12 +272,33 @@ public sealed class MinimapCaptureSource : IMinimapCaptureSource
         _stopping = true;
         IsCapturing = false;
 
-        try { _provider?.Stop(); } catch { /* ignore */ }
-        _provider?.Dispose();
-        _readback?.Dispose();
-        _winrtDevice?.Dispose();
-        _context?.Dispose();
-        _device?.Dispose();
+        bool clean = true;
+        if (_provider is not null)
+        {
+            _provider.Died -= OnProviderDied;
+            try { _provider.Stop(); } catch { /* ignore */ }
+            clean = _provider.StoppedCleanly;
+            if (clean) _provider.Dispose();
+        }
+
+        if (clean)
+        {
+            _readback?.Dispose();
+            _winrtDevice?.Dispose();
+            _context?.Dispose();
+            _device?.Dispose();
+        }
+        else
+        {
+            // (loop 516) The DXGI poll thread outlived its join timeout, so it may still be inside
+            // CopySubresourceRegion/Map on these objects. Disposing them under it is a native
+            // access violation; leaking is the safe failure. Rooting them statically matters:
+            // merely dropping the references would let their FINALIZERS release the native
+            // pointers later — the same AV, just delayed.
+            foreach (var leaked in new object?[] { _provider, _readback, _winrtDevice, _context, _device })
+                if (leaked is not null) LeakedOnPurpose.Add(leaked);
+            _log?.Invoke("minimap: capture thread did not exit — leaking the D3D device/staging objects instead of disposing under a live thread");
+        }
 
         _provider = null;
         _readback = null;

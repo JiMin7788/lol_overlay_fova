@@ -46,7 +46,7 @@ public class AdSlotServiceTests : IDisposable
     {
         var handler = new StubHandler(req => req.RequestUri!.ToString() == Endpoint
             ? Ok(ManifestJson())
-            : Ok(new byte[64]));
+            : Ok(Png()));
         using var http = new HttpClient(handler);
         using var service = new AdSlotService(true, Endpoint, _cacheDir, http);
 
@@ -125,7 +125,7 @@ public class AdSlotServiceTests : IDisposable
                 entered.Release();
                 await Task.Delay(Timeout.Infinite, ct); // hangs until the dormancy cancel aborts it
             }
-            return req.RequestUri!.ToString() == Endpoint ? Ok(ManifestJson()) : Ok(new byte[64]);
+            return req.RequestUri!.ToString() == Endpoint ? Ok(ManifestJson()) : Ok(Png());
         });
         using var http = new HttpClient(handler);
         using var service = new AdSlotService(true, Endpoint, _cacheDir, http);
@@ -151,7 +151,7 @@ public class AdSlotServiceTests : IDisposable
     {
         var handler = new StubHandler(req => req.RequestUri!.ToString() == Endpoint
             ? Ok(ManifestJson(twoCreatives: true))
-            : Ok(new byte[64]));
+            : Ok(Png()));
         using var http = new HttpClient(handler);
         using var service = new AdSlotService(true, Endpoint, _cacheDir, http);
 
@@ -170,7 +170,7 @@ public class AdSlotServiceTests : IDisposable
     {
         var handler = new StubHandler(req => req.RequestUri!.ToString() == Endpoint
             ? Ok(ManifestJson())
-            : Ok(new byte[64]));
+            : Ok(Png()));
         using var http = new HttpClient(handler);
         using var service = new AdSlotService(true, Endpoint, _cacheDir, http);
 
@@ -196,6 +196,15 @@ public class AdSlotServiceTests : IDisposable
 
     private static HttpResponseMessage Ok(byte[] body)
         => new(HttpStatusCode.OK) { Content = new ByteArrayContent(body) };
+
+    /// <summary>Bytes that pass the loop-514 magic-byte check (PNG signature + padding) — the
+    /// service no longer serves arbitrary bytes as a creative.</summary>
+    private static byte[] Png(int length = 64)
+    {
+        var bytes = new byte[length];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(bytes, 0);
+        return bytes;
+    }
 
     /// <summary>GAME.* events are delivered on the bus's dispatch thread, so dormancy flips
     /// asynchronously; poll briefly instead of sleeping a fixed amount.</summary>

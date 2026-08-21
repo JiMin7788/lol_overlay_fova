@@ -7,6 +7,9 @@
 # Applied by packaging/sync-main.ps1. One path per line, relative to the repo root.
 # A trailing / means "the whole directory". Lines starting with # are comments.
 # A line starting with ! is an EXCEPTION: keep it even though a broader rule removed it.
+# A line starting with + is a MAIN-ONLY path: it exists on main but not on master, and the
+# deletion-propagation step must not remove it (everything else on main that master no longer
+# tracks IS removed — a file deleted on master must not keep shipping publicly).
 
 # ── agent / process state ───────────────────────────────────────────────────────────────────────
 .agent-state/
@@ -15,14 +18,27 @@ CLAUDE.md
 CLAUDE_CODE_TODO.md
 info.md
 
+# ── secrets / Riot match data — SECOND layer of defense ─────────────────────────────────────────
+# Both are gitignored on master (the first layer), so these rules match nothing today. They exist
+# so that a single mistake on master — a `git add -f`, a narrowed .gitignore — still cannot reach
+# the public branch. sync-main.ps1 additionally hard-aborts if anything secret-like is staged.
+.secrets/
+data-pipeline/
+
+# ── main-only paths (kept by the deletion-propagation step) ─────────────────────────────────────
++release/
++riot.txt
+
 # ── internal documentation ──────────────────────────────────────────────────────────────────────
 # Module specs, review templates, loop reports, the traps file, the 600 KB TODO archive, and the
 # source MP3s the shipped voice WAVs were converted from (the WAVs live in
 # src/Overlay.Client/Assets/voice/enemy and DO ship).
 docs/
-# …except the two the README links to for the P1-P4 policy and the anti-cheat section.
+# …except the two the README links to for the P1-P4 policy and the anti-cheat section,
+# and the feature-card images the distribution README embeds.
 !docs/00_PROJECT_OVERVIEW.md
 !docs/01_SYSTEM_ARCHITECTURE.md
+!docs/images/
 
 
 # ── curation audit evidence ─────────────────────────────────────────────────────────────────────

@@ -117,8 +117,8 @@ If the app does not start, install it from:
   https://dotnet.microsoft.com/download/dotnet/8.0/runtime
 Pick "Desktop Runtime" - the plain "Runtime" is not enough for a WPF app.
 
-Fova asks for administrator rights on launch. That is required so hotkeys work while the
-(elevated) League client has focus - see README.md, which also documents the keyboard hook.
+Fova does not require administrator rights - it runs as a normal user process. README.md
+documents the keyboard hook it installs for in-game hotkeys.
 "@ | Set-Content (Join-Path $stage 'RUNTIME-REQUIREMENTS.txt') -Encoding UTF8
 }
 
@@ -129,9 +129,15 @@ if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
 $zipMb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 
+# A download users are told to elevate/trust with no integrity story is a supply-chain hole:
+# publish the SHA-256 beside the zip so a substituted payload is at least detectable.
+$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+"$hash *$(Split-Path $zip -Leaf)" | Set-Content "$zip.sha256" -Encoding ascii
+
 Step "Done"
 Write-Host "package : $stage"
 Write-Host "zip     : $zip ($zipMb MB)"
+Write-Host "sha256  : $hash (written to $zip.sha256)"
 Write-Host ""
 Write-Host "Installer (optional): packaging/fova.iss - needs Inno Setup 6." -ForegroundColor DarkGray
 Write-Host "  iscc packaging/fova.iss /DSourceDir=`"$((Resolve-Path $stage).Path)`" /DAppVersion=$Version" -ForegroundColor DarkGray

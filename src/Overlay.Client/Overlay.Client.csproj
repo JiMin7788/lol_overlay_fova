@@ -32,8 +32,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <!-- Run elevated so global RegisterHotKey hotkeys fire while the (elevated) game is
-         focused — see app.manifest. Fixes hotkeys not working over the League window. -->
+    <!-- asInvoker since loop 512 — League runs at medium integrity, so the keyboard hook
+         needs no elevation (measured in a live game). See app.manifest for the history. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- fova branding: exe name (fova.exe), exe file icon, product name. -->
     <AssemblyName>fova</AssemblyName>

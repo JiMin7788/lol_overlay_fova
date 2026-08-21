@@ -16,19 +16,25 @@ internal sealed class DxgiDuplicationFrameProvider : IFrameProvider
 {
     private readonly ID3D11Device _device;
     private readonly IntPtr _targetMonitor;
+    private readonly Action<string>? _log;
 
     private IDXGIOutputDuplication? _duplication;
     private Thread? _thread;
     private volatile bool _running;
     private Action<ID3D11Texture2D, long>? _onFrame;
 
-    public DxgiDuplicationFrameProvider(ID3D11Device device, IntPtr targetMonitor)
+    public DxgiDuplicationFrameProvider(ID3D11Device device, IntPtr targetMonitor, Action<string>? log = null)
     {
         _device = device;
         _targetMonitor = targetMonitor;
+        _log = log;
     }
 
     public bool IsRunning => _running;
+
+    public bool StoppedCleanly { get; private set; } = true;
+
+    public event Action? Died;
 
     public void Start(Action<ID3D11Texture2D, long> onFrame)
     {
@@ -56,6 +62,7 @@ internal sealed class DxgiDuplicationFrameProvider : IFrameProvider
         {
             if (output.Description.Monitor == _targetMonitor)
             {
+                chosen?.Dispose(); // release the first-output fallback we no longer need
                 chosen = output;
                 break;
             }
@@ -79,6 +86,7 @@ internal sealed class DxgiDuplicationFrameProvider : IFrameProvider
 
     private void PollLoop()
     {
+        bool died = false;
         while (_running)
         {
             IDXGIOutputDuplication? dup = _duplication;
@@ -88,8 +96,9 @@ internal sealed class DxgiDuplicationFrameProvider : IFrameProvider
             if (result.Failure || resource is null)
             {
                 if (result == Vortice.DXGI.ResultCode.WaitTimeout) continue;    // no update this interval
-                if (result == Vortice.DXGI.ResultCode.AccessLost) { Recreate(); continue; } // mode switch
-                break; // unrecoverable → self-disable (orchestrator sees IsRunning=false)
+                if (result == Vortice.DXGI.ResultCode.AccessLost && Recreate()) continue; // mode switch
+                died = _running; // unrecoverable (or recreate failed) → self-disable; a Stop() request is not a death
+                break;
             }
 
             try
@@ -104,28 +113,48 @@ internal sealed class DxgiDuplicationFrameProvider : IFrameProvider
             }
         }
         _running = false;
+        if (died) Died?.Invoke();
     }
 
-    private void Recreate()
+    private bool Recreate()
     {
         try
         {
             _duplication?.Dispose();
             _duplication = CreateDuplication();
+            return true;
         }
         catch
         {
-            _running = false; // give up rather than spin (M31 §6: no retry storm)
+            return false; // give up rather than spin (M31 §6: no retry storm)
         }
     }
 
     public void Stop()
     {
         _running = false;
-        try { _thread?.Join(1000); } catch { /* ignore */ }
+        if (!StoppedCleanly) return; // a prior Stop already timed out; the leak stands
+
+        // (loop 516) Join-then-dispose, and NEVER dispose on a timed-out join: the poll thread can
+        // legitimately be up to ~500ms inside AcquireNextFrame plus one _onFrame (GPU crop), and
+        // the old Join(1000)-then-dispose freed the duplication/device objects under it on a slow
+        // frame — a native access violation, not a catchable exception. 5s covers every legitimate
+        // wait; past that the thread is wedged in the driver and leaking beats crashing.
+        bool joined = true;
+        try { joined = _thread?.Join(5000) ?? true; } catch { /* ignore */ }
         _thread = null;
-        _duplication?.Dispose();
-        _duplication = null;
+
+        if (joined)
+        {
+            _duplication?.Dispose();
+            _duplication = null;
+        }
+        else
+        {
+            StoppedCleanly = false;
+            _log?.Invoke("dxgi: poll thread did not exit within 5s — leaking the duplication " +
+                         "(and the shared device, see orchestrator) rather than disposing under a live thread");
+        }
     }
 
     public void Dispose() => Stop();

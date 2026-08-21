@@ -130,7 +130,8 @@ public sealed class LcuConnector : IDisposable
 
     private static HttpClient NewOwnedClient() => new(new SocketsHttpHandler
     {
-        SslOptions = { RemoteCertificateValidationCallback = static (_, _, _, _) => true },
+        // Riot's self-signed cert — accepted for loopback targets only, never remote hosts.
+        SslOptions = { RemoteCertificateValidationCallback = LoopbackServerCertificate.Validate },
         ConnectTimeout = TimeSpan.FromSeconds(2),
     })
     { Timeout = TimeSpan.FromSeconds(5) };

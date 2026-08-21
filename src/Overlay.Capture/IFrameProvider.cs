@@ -16,6 +16,20 @@ internal interface IFrameProvider : IDisposable
 {
     bool IsRunning { get; }
 
+    /// <summary>(loop 516) False when <see cref="Stop"/> could not prove the delivery thread has
+    /// exited (DXGI: the poll thread outlived its join timeout). The orchestrator must then LEAK
+    /// the shared D3D objects instead of disposing them — freeing a device/staging texture under a
+    /// thread still inside CopySubresourceRegion/Map is a native access violation, not a catchable
+    /// exception. WGC is always clean: its Stop blocks on the callback gate.</summary>
+    bool StoppedCleanly { get; }
+
+    /// <summary>(loop 516) Raised at most once, on the provider's own thread, when the backend
+    /// self-disables (device removed, target window closed, unrecoverable duplication error) —
+    /// previously this was silent: nothing read <see cref="IsRunning"/>, so the orchestrator's
+    /// IsCapturing kept claiming capture was live. Handlers must not tear the provider down
+    /// synchronously (the DXGI poll thread would be joining itself).</summary>
+    event Action? Died;
+
     /// <summary>Begin delivering frames. <paramref name="onFrame"/> = (fullFrameTexture,
     /// timestampMs), called on a background/pool thread.</summary>
     void Start(Action<ID3D11Texture2D, long> onFrame);

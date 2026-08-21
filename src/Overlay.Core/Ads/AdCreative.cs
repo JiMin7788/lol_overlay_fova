@@ -11,7 +11,9 @@ public sealed class AdCreative
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
 
-    /// <summary>HTTPS URL of a static JPEG/PNG/WebP (max 300 KB, max 800x200 — M29 §2).</summary>
+    /// <summary>HTTPS URL of a static JPEG/PNG/WebP (max 300 KB, max 800x200 — M29 §2). Enforced
+    /// at parse since loop 514: non-https images drop the creative (plain http passes for loopback
+    /// hosts only, so the local test server works), and the bytes are magic-byte checked.</summary>
     [JsonPropertyName("image")]
     public string Image { get; set; } = "";
 

@@ -71,16 +71,25 @@ public sealed class AdSlotService : IDisposable
 
     /// <param name="enabled">Config <c>ads.enabled</c>; false disables every code path here.</param>
     /// <param name="endpoint">Config <c>ads.endpoint</c>: HTTPS URL returning an
-    /// <see cref="AdManifest"/>. Empty/null = no ads (the slot simply stays collapsed).</param>
+    /// <see cref="AdManifest"/>. Empty/null/invalid (see <see cref="IsAllowedFetchUrl"/>) = no ads
+    /// (the slot simply stays collapsed).</param>
     /// <param name="cacheRoot">Disk cache dir (tests inject a temp dir).</param>
     /// <param name="httpClient">Injected for tests; otherwise a short-timeout client is owned here.</param>
     public AdSlotService(bool enabled, string? endpoint, string? cacheRoot = null, HttpClient? httpClient = null)
     {
         _enabled = enabled;
-        _endpoint = string.IsNullOrWhiteSpace(endpoint) ? null : endpoint;
+        // (loop 514) The endpoint must satisfy the same fetch-URL rule as the creatives it names:
+        // an invalid one degrades to "no endpoint" — the slot stays collapsed, nothing throws.
+        _endpoint = IsAllowedFetchUrl(endpoint) ? endpoint : null;
         _cacheDir = cacheRoot ?? DefaultCacheDirectory;
         _ownsHttp = httpClient is null;
-        _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        // No auto-redirect on the owned client (loop 514): a redirecting manifest/creative URL is a
+        // non-success response and falls back to the cache, instead of letting the remote endpoint
+        // bounce requests to arbitrary hosts through up to 50 hops.
+        _http = httpClient ?? new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
+        {
+            Timeout = TimeSpan.FromSeconds(10),
+        };
 
         _connSub = EventBus.EventBus.Subscribe("GAME.CONNECTED", _ => SetDormant(true));
         _discSub = EventBus.EventBus.Subscribe("GAME.DISCONNECTED", _ => SetDormant(false));
@@ -134,8 +143,10 @@ public sealed class AdSlotService : IDisposable
             if (string.IsNullOrWhiteSpace(creative.Image)) return null;
 
             var bytes = await FetchWithCacheAsync(creative.Image, linked.Token).ConfigureAwait(false);
-            if (bytes is null)
+            if (bytes is null || !LooksLikeStaticImage(bytes))
             {
+                // D1 says static JPEG/PNG/WebP; anything else (HTML error page, SVG, a video the
+                // endpoint mislabelled) must never reach the client-side decoder. (loop 514)
                 Fail();
                 return null;
             }
@@ -181,13 +192,50 @@ public sealed class AdSlotService : IDisposable
 
         try
         {
-            return JsonSerializer.Deserialize<AdManifest>(bytes, ManifestOptions);
+            var manifest = JsonSerializer.Deserialize<AdManifest>(bytes, ManifestOptions);
+            if (manifest is null) return null;
+
+            // (loop 514) The manifest is the one remote input this app consumes: nothing in it is
+            // trusted until its URLs pass the scheme rules. A creative with a bad image or click
+            // URL is dropped whole; a bad impression URL only loses its beacon.
+            manifest.Creatives.RemoveAll(c => !IsAllowedFetchUrl(c.Image) || !IsAllowedClickUrl(c.Click));
+            foreach (var c in manifest.Creatives)
+                if (c.Impression is not null && !IsAllowedFetchUrl(c.Impression))
+                    c.Impression = null;
+            return manifest;
         }
         catch (JsonException)
         {
             Fail();
             return null;
         }
+    }
+
+    /// <summary>Rule for every URL this service itself fetches (endpoint, image, impression):
+    /// absolute HTTPS — or plain HTTP to a loopback host only, so <c>tools/ad_test_server.py</c>
+    /// keeps working. Everything else (other schemes, remote http, relative) is rejected.</summary>
+    internal static bool IsAllowedFetchUrl(string? url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+        if (uri.Scheme == Uri.UriSchemeHttps) return true;
+        return uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback;
+    }
+
+    /// <summary>Click URLs open in the system browser, never in-process — absolute http(s) only
+    /// (matching the client-side allow-list in AdBanner, so a creative that would be unclickable
+    /// there is dropped here instead of rendering dead).</summary>
+    internal static bool IsAllowedClickUrl(string? url)
+        => Uri.TryCreate(url, UriKind.Absolute, out var uri)
+           && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp);
+
+    /// <summary>D1 magic-byte check: PNG, JPEG, or (lossy/lossless/extended) WebP.</summary>
+    internal static bool LooksLikeStaticImage(ReadOnlySpan<byte> b)
+    {
+        if (b.Length >= 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return true;
+        if (b.Length >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF) return true;
+        return b.Length >= 12
+            && b[0] == (byte)'R' && b[1] == (byte)'I' && b[2] == (byte)'F' && b[3] == (byte)'F'
+            && b[8] == (byte)'W' && b[9] == (byte)'E' && b[10] == (byte)'B' && b[11] == (byte)'P';
     }
 
     // ── HTTPS + disk cache with ETag revalidation (§2) ──────────────────────────
@@ -216,8 +264,8 @@ public sealed class AdSlotService : IDisposable
             if (!response.IsSuccessStatusCode) return ReadCached(blobPath);
             if (response.Content.Headers.ContentLength > MaxCreativeBytes) return null;
 
-            var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
-            if (bytes.Length > MaxCreativeBytes) return null;
+            var bytes = await ReadCappedAsync(response.Content, ct).ConfigureAwait(false);
+            if (bytes is null) return null;
 
             WriteCache(blobPath, etagPath, bytes, response.Headers.ETag?.Tag);
             return bytes;
@@ -234,6 +282,27 @@ public sealed class AdSlotService : IDisposable
         {
             return ReadCached(blobPath);
         }
+    }
+
+    /// <summary>Reads at most <see cref="MaxCreativeBytes"/>; null once the cap is crossed.
+    /// (loop 514) The ContentLength pre-check above is only a fast reject: it is <c>long?</c>, and
+    /// for a chunked response it is null — <c>null &gt; cap</c> is false — so the old
+    /// <c>ReadAsByteArrayAsync</c> path buffered the ENTIRE body (framework limit 2 GB;
+    /// MaxResponseContentBufferSize does not apply under ResponseHeadersRead) before the post-hoc
+    /// length check. A hostile endpoint could stream hundreds of MB into this "never visible,
+    /// never logged" code path. Reading through a cap+1 buffer rejects at 300 KB instead.</summary>
+    private static async Task<byte[]?> ReadCappedAsync(HttpContent content, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        var buffer = new byte[MaxCreativeBytes + 1];
+        int total = 0;
+        while (total < buffer.Length)
+        {
+            int read = await stream.ReadAsync(buffer.AsMemory(total), ct).ConfigureAwait(false);
+            if (read == 0) break;
+            total += read;
+        }
+        return total > MaxCreativeBytes ? null : buffer.AsSpan(0, total).ToArray();
     }
 
     private static byte[]? ReadCached(string blobPath)
