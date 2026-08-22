@@ -90,12 +90,12 @@ public static class LiveDataParser
             else if (reader.ValueTextEquals("currentGold"u8))
             {
                 reader.Read();
-                s.CurrentGold = reader.GetDouble();
+                s.CurrentGold = NumD(ref reader);
             }
             else if (reader.ValueTextEquals("level"u8))
             {
                 reader.Read();
-                s.Level = reader.GetInt32();
+                s.Level = NumI(ref reader);
             }
             else if (reader.ValueTextEquals("championStats"u8))
             {
@@ -118,6 +118,18 @@ public static class LiveDataParser
         }
     }
 
+    // (loop 520) Number reads at the current value token, tolerant of a non-number token. Raw
+    // GetDouble/GetInt32 THROW on a null or string value, and the Live Client API is known to serve
+    // partial data during game load — one transient null field would abort the whole snapshot parse,
+    // and three such ticks in a row publish a FALSE GAME.DISCONNECTED mid-game (hiding the overlay),
+    // the exact symptom the 3-strike tolerance exists to prevent, re-entering through the parser.
+    // A defaulted field on one tick is corrected on the next; a false disconnect is not.
+    private static double NumD(ref Utf8JsonReader r)
+        => r.TokenType == JsonTokenType.Number ? r.GetDouble() : 0.0;
+
+    private static int NumI(ref Utf8JsonReader r)
+        => r.TokenType == JsonTokenType.Number ? r.GetInt32() : 0;
+
     private static void ReadChampionStats(ref Utf8JsonReader reader, GameSnapshot s)
     {
         if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); return; }
@@ -129,21 +141,21 @@ public static class LiveDataParser
             if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-            if (reader.ValueTextEquals("currentHealth"u8)) { reader.Read(); st.CurrentHealth = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("maxHealth"u8)) { reader.Read(); st.MaxHealth = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("resourceValue"u8)) { reader.Read(); st.ResourceValue = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("resourceMax"u8)) { reader.Read(); st.ResourceMax = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("attackDamage"u8)) { reader.Read(); st.AttackDamage = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("abilityPower"u8)) { reader.Read(); st.AbilityPower = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("armor"u8)) { reader.Read(); st.Armor = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("magicResist"u8)) { reader.Read(); st.MagicResist = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("moveSpeed"u8)) { reader.Read(); st.MoveSpeed = reader.GetDouble(); }
+            if (reader.ValueTextEquals("currentHealth"u8)) { reader.Read(); st.CurrentHealth = NumD(ref reader); }
+            else if (reader.ValueTextEquals("maxHealth"u8)) { reader.Read(); st.MaxHealth = NumD(ref reader); }
+            else if (reader.ValueTextEquals("resourceValue"u8)) { reader.Read(); st.ResourceValue = NumD(ref reader); }
+            else if (reader.ValueTextEquals("resourceMax"u8)) { reader.Read(); st.ResourceMax = NumD(ref reader); }
+            else if (reader.ValueTextEquals("attackDamage"u8)) { reader.Read(); st.AttackDamage = NumD(ref reader); }
+            else if (reader.ValueTextEquals("abilityPower"u8)) { reader.Read(); st.AbilityPower = NumD(ref reader); }
+            else if (reader.ValueTextEquals("armor"u8)) { reader.Read(); st.Armor = NumD(ref reader); }
+            else if (reader.ValueTextEquals("magicResist"u8)) { reader.Read(); st.MagicResist = NumD(ref reader); }
+            else if (reader.ValueTextEquals("moveSpeed"u8)) { reader.Read(); st.MoveSpeed = NumD(ref reader); }
             // Final attacks-per-second (activePlayer.championStats.attackSpeed, confirmed in Riot's
             // liveclientdata_sample.json). Consumed by SkillDamage's mStat=4 resolver mapping (§48).
-            else if (reader.ValueTextEquals("attackSpeed"u8)) { reader.Read(); st.AttackSpeed = reader.GetDouble(); }
+            else if (reader.ValueTextEquals("attackSpeed"u8)) { reader.Read(); st.AttackSpeed = NumD(ref reader); }
             // Penetration flat fields: additive, no unit ambiguity.
-            else if (reader.ValueTextEquals("armorPenetrationFlat"u8)) { reader.Read(); st.ArmorPenetrationFlat = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("magicPenetrationFlat"u8)) { reader.Read(); st.MagicPenetrationFlat = reader.GetDouble(); }
+            else if (reader.ValueTextEquals("armorPenetrationFlat"u8)) { reader.Read(); st.ArmorPenetrationFlat = NumD(ref reader); }
+            else if (reader.ValueTextEquals("magicPenetrationFlat"u8)) { reader.Read(); st.MagicPenetrationFlat = NumD(ref reader); }
             // Percent penetration fields — loop-38 fix (CONFIRMED live, was a flagged/unverified
             // assumption): the Live Client API reports these as a MULTIPLIER on remaining
             // resistance (baseline "no bonus pen" = 1.0, i.e. "100% of resistance still applies"),
@@ -163,14 +175,14 @@ public static class LiveDataParser
             // convention at the parse boundary (`1.0 - raw`), so a baseline 1.0 correctly becomes our
             // 0.0 (no bonus pen) and every downstream consumer (AttackerStat, EffectiveResistMultiplier)
             // needs no further change.
-            else if (reader.ValueTextEquals("armorPenetrationPercent"u8)) { reader.Read(); st.ArmorPenetrationPercent = 1.0 - reader.GetDouble(); }
-            else if (reader.ValueTextEquals("magicPenetrationPercent"u8)) { reader.Read(); st.MagicPenetrationPercent = 1.0 - reader.GetDouble(); }
+            else if (reader.ValueTextEquals("armorPenetrationPercent"u8)) { reader.Read(); st.ArmorPenetrationPercent = 1.0 - NumD(ref reader); }
+            else if (reader.ValueTextEquals("magicPenetrationPercent"u8)) { reader.Read(); st.MagicPenetrationPercent = 1.0 - NumD(ref reader); }
             // Crit stats (M05 v2.8, real-crit-range simplification): field names confirmed
             // verbatim against Riot's public Live Client Data API sample JSON — no unit-flip
             // needed here (unlike armorPenetrationPercent/magicPenetrationPercent above),
             // critChance is already the 0-1 fraction AttackerStat.CriticalChance expects.
-            else if (reader.ValueTextEquals("critChance"u8)) { reader.Read(); st.CritChance = reader.GetDouble(); }
-            else if (reader.ValueTextEquals("critDamage"u8)) { reader.Read(); st.CritDamage = reader.GetDouble(); }
+            else if (reader.ValueTextEquals("critChance"u8)) { reader.Read(); st.CritChance = NumD(ref reader); }
+            else if (reader.ValueTextEquals("critDamage"u8)) { reader.Read(); st.CritDamage = NumD(ref reader); }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
     }
@@ -213,7 +225,7 @@ public static class LiveDataParser
             if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-            if (reader.ValueTextEquals("abilityLevel"u8)) { reader.Read(); level = reader.GetInt32(); }
+            if (reader.ValueTextEquals("abilityLevel"u8)) { reader.Read(); level = NumI(ref reader); }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
         return level;
@@ -269,7 +281,7 @@ public static class LiveDataParser
                 if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-                if (reader.ValueTextEquals("id"u8)) { reader.Read(); id = reader.GetInt32(); }
+                if (reader.ValueTextEquals("id"u8)) { reader.Read(); id = NumI(ref reader); }
                 else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
             }
             if (id != 0 && !ids.Contains(id)) ids.Add(id);
@@ -290,7 +302,7 @@ public static class LiveDataParser
             if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-            if (reader.ValueTextEquals("id"u8)) { reader.Read(); id = reader.GetInt32(); }
+            if (reader.ValueTextEquals("id"u8)) { reader.Read(); id = NumI(ref reader); }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
         return id;
@@ -334,9 +346,9 @@ public static class LiveDataParser
             // Best-effort lane (ranked/draft only; "" otherwise). activePlayer has no position field,
             // so the active player's position is derived by matching its scoreboard row (ComboRunner).
             else if (reader.ValueTextEquals("position"u8)) { reader.Read(); e.Position = ReadStringIfChanged(ref reader, e.Position); }
-            else if (reader.ValueTextEquals("level"u8)) { reader.Read(); e.Level = reader.GetInt32(); }
+            else if (reader.ValueTextEquals("level"u8)) { reader.Read(); e.Level = NumI(ref reader); }
             else if (reader.ValueTextEquals("isDead"u8)) { reader.Read(); e.IsDead = reader.TokenType == JsonTokenType.True; }
-            else if (reader.ValueTextEquals("respawnTimer"u8)) { reader.Read(); e.RespawnTimer = reader.GetDouble(); }
+            else if (reader.ValueTextEquals("respawnTimer"u8)) { reader.Read(); e.RespawnTimer = NumD(ref reader); }
             else if (reader.ValueTextEquals("scores"u8)) ReadScores(ref reader, e);
             else if (reader.ValueTextEquals("items"u8)) ReadItems(ref reader, e);
             // M31 P3 (Smite jungler-ID fallback, unlike position/ available in every game mode).
@@ -393,10 +405,10 @@ public static class LiveDataParser
             if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-            if (reader.ValueTextEquals("kills"u8)) { reader.Read(); e.Kills = reader.GetInt32(); }
-            else if (reader.ValueTextEquals("deaths"u8)) { reader.Read(); e.Deaths = reader.GetInt32(); }
-            else if (reader.ValueTextEquals("assists"u8)) { reader.Read(); e.Assists = reader.GetInt32(); }
-            else if (reader.ValueTextEquals("creepScore"u8)) { reader.Read(); e.CreepScore = reader.GetInt32(); }
+            if (reader.ValueTextEquals("kills"u8)) { reader.Read(); e.Kills = NumI(ref reader); }
+            else if (reader.ValueTextEquals("deaths"u8)) { reader.Read(); e.Deaths = NumI(ref reader); }
+            else if (reader.ValueTextEquals("assists"u8)) { reader.Read(); e.Assists = NumI(ref reader); }
+            else if (reader.ValueTextEquals("creepScore"u8)) { reader.Read(); e.CreepScore = NumI(ref reader); }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
     }
@@ -418,8 +430,8 @@ public static class LiveDataParser
                 if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
                 if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-                if (reader.ValueTextEquals("itemID"u8)) { reader.Read(); itemId = reader.GetInt32(); }
-                else if (reader.ValueTextEquals("count"u8)) { reader.Read(); count = reader.GetInt32(); }
+                if (reader.ValueTextEquals("itemID"u8)) { reader.Read(); itemId = NumI(ref reader); }
+                else if (reader.ValueTextEquals("count"u8)) { reader.Read(); count = NumI(ref reader); }
                 else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
             }
             e.TryAddItem(itemId, count);
@@ -474,7 +486,7 @@ public static class LiveDataParser
                 if (reader.ValueTextEquals("EventID"u8))
                 {
                     reader.Read();
-                    eventId = reader.GetInt32();
+                    eventId = NumI(ref reader);
                     if (eventId > s.MaxEventId) s.MaxEventId = eventId;
                     if (slot is not null) slot.EventId = eventId;
                     if (inhibSlot is not null) inhibSlot.EventId = eventId;
@@ -511,7 +523,7 @@ public static class LiveDataParser
                 else if (reader.ValueTextEquals("EventTime"u8))
                 {
                     reader.Read();
-                    double t = reader.GetDouble();
+                    double t = NumD(ref reader);
                     if (slot is not null) slot.EventTime = t;
                     if (inhibSlot is not null) inhibSlot.EventTime = t;
                     if (turretSlot is not null) turretSlot.EventTime = t;
@@ -570,7 +582,7 @@ public static class LiveDataParser
             if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
 
-            if (reader.ValueTextEquals("gameTime"u8)) { reader.Read(); s.GameTime = reader.GetDouble(); }
+            if (reader.ValueTextEquals("gameTime"u8)) { reader.Read(); s.GameTime = NumD(ref reader); }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
     }

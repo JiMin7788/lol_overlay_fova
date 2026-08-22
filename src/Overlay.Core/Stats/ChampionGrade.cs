@@ -1,112 +1,116 @@
 namespace Overlay.Core.Stats;
 
-/// <summary>One champion's place in the tier list: the score it was graded on, the conservative
-/// edge behind the confidence gate, the grade itself, and whether that gate is what capped it.
-/// <see cref="Gated"/> is why a row can show a high score under a middling letter, so the view has
-/// to be able to say so.</summary>
+/// <summary>One champion's place in the tier list: the composite point score, the confidence-adjusted
+/// score the grade is actually cut on, the grade, and whether the confidence adjustment is what capped
+/// it. <see cref="Gated"/> lets the view explain a row whose point score would rank a tier higher than
+/// its letter.</summary>
 public sealed record GradedRow(TierRow Row, double Score, double LowerEdge, string Grade, bool Gated);
 
 /// <summary>
-/// The tier list's grading: ABSOLUTE cutoffs on a measured win-rate edge (loop 467, replacing the
-/// percentile bands of loop 464 at the user's direction — percentile bands fix how many champions
-/// hold each letter, so a lane always had one S+ and roughly three S whatever the patch looked
-/// like, which is a property of the ranking rather than of the champions).
+/// The tier list's grading: a self-contained "PS-style" composite power score (loop 538, user
+/// request), replacing the pure win-rate edge of loop 467. It combines win rate, pick rate and ban
+/// rate into one number the way a Korean tier site's PS score does, so a 51%-but-everywhere pick reads
+/// as stronger than a 53%-but-niche one — which the win-rate-only grade could not express.
 ///
-/// <para>Grades can now be empty, crowded, or lopsided, and that is the point: an S+ means the
-/// sample measured this champion at least <see cref="Bands"/>' first cutoff above even, not that
-/// it came first.</para>
+/// <para><b>Calibration.</b> The formula is fit by least squares to a 258-champion snapshot of that
+/// site (<c>ps_star_258.csv</c>, 2026-08): PS ≈ a + b·WR + c·√PickRate + d·√BanRate, and every other
+/// step (the sample-confidence weight, the standard-error slope, the 1.28-σ lower bound) is fit to the
+/// site's own columns. Model-vs-site correlation ≈ 0.94, mean |Δ| ≈ 1 point. It is OUR model — the
+/// numbers are computed from our own KR aggregation, not scraped — so it can differ from the site by
+/// the residual the public win/pick/ban rates cannot explain. Percentages throughout, not fractions.</para>
 ///
-/// <para>The claim is absolute, so it has to be stated in measured units and be checkable. Both
-/// numbers behind a letter are printed by the view:</para>
-///
-/// <para><see cref="Score"/> — the win-rate edge in percentage points, after shrinking toward 50%
-/// with the project-wide K=10. This is what the cutoffs are compared against, so a reader can see
-/// exactly why a champion sits where it does.</para>
-///
-/// <para><see cref="LowerEdge"/> — the same edge minus one standard error, i.e. what the sample
-/// supports conservatively. This drives the CONFIDENCE GATE: the top two grades additionally
-/// require the sample to place the champion above even, so a 95-game hot streak cannot buy an S.
-/// The gate exists because this pipeline's per-champion samples are hundreds of games, not
-/// millions — at that size a standard error is 3-4 percentage points, comparable to the entire
-/// spread of real win rates, and a bare point estimate would hand out letters to noise.</para>
+/// <para><b>Two numbers behind a letter</b>, both printed by the view:</para>
+/// <para><see cref="Score"/> — PS on the SAMPLE-SHRUNK win rate (a thin hot streak cannot inflate it).</para>
+/// <para><see cref="LowerEdge"/> — PS★, that point score minus 1.28 standard errors (the SE mapped to
+/// PS-scale points). The GRADE is cut on THIS, so a small sample is graded on what it conservatively
+/// supports; the confidence "gate" is inherent — no separate rule — because a thin sample's SE is large
+/// enough to pull PS★ down a tier on its own.</para>
 /// </summary>
 public static class ChampionGrade
 {
-    /// <summary>Bayesian shrink toward 50%, the same constant the aggregations and the win-rate
-    /// sort already use. Kept identical so two places never disagree about what a win rate means.</summary>
+    // PS ≈ a + b·WR% + c·√PickRate% + d·√BanRate% — least-squares fit to the site snapshot (R² ≈ 0.87).
+    private const double PsBase = -32.2514, PsWin = 1.546, PsPick = 2.0675, PsBan = 0.3634;
+
+    // Sample-confidence weight √N/(√N+K0), K0 fit to the site's own 신뢰가중치 column (maxerr 0.007).
+    private const double WeightK = 8.7;
+
+    // Win-rate SE → PS-scale slope: |SeA − SeB·(WR−50)| PS points per WR point (the site's ⑤), times
+    // the win-rate SE, times a calibration factor fit to the site's 오차 column.
+    private const double SeSlopeA = 1.4731, SeSlopeB = 0.08068, SeFactor = 0.96;
+
+    // PS★ = point − 1.28·SE: a one-sided ~90% lower confidence bound (the site's ⑥).
+    private const double ZLower = 1.28;
+
+    /// <summary>Bayesian shrink toward 50%, kept for the view's separate win-rate SORT (which still
+    /// ranks by shrunk win rate, not by the composite). Unrelated to the grade's own weight.</summary>
     public const double SmoothK = 10;
 
-    /// <summary>Grades, best first, as the minimum win-rate edge in PERCENTAGE POINTS. Chosen
-    /// against the measured distribution rather than by feel: across the five lanes of the 16.15
-    /// Platinum+ sample these produce 2–6 S+ and 1–6 S per lane, with the count varying by lane —
-    /// which is the behaviour percentile bands could not give.</summary>
-    public static readonly (string Label, double MinEdge)[] Bands =
+    /// <summary>Grades, best first, as the minimum PS★ (the confidence-adjusted composite). ABSOLUTE
+    /// cutoffs — a lane can hold no S+ at all, which is the healthy-meta norm. Calibrated to a sensible
+    /// tier pyramid on the 258-champion sample (S+ ≈ top 2%, S ≈ 8%, A ≈ 16%, B the bulk, then C/D).
+    /// The PS scale centres near 50, so ~50 = an average champion (B), and 56+ = the few genuine OPs.</summary>
+    public static readonly (string Label, double MinPsStar)[] Bands =
     {
-        ("S+", 4.0),
-        ("S", 2.5),
-        ("A", 1.0),
-        ("B", -1.0),
-        ("C", -3.0),
+        ("S+", 56.0),
+        ("S", 53.0),
+        ("A", 50.5),
+        ("B", 48.0),
+        ("C", 45.5),
         ("D", double.NegativeInfinity),
     };
 
-    /// <summary>Grades at or above this one must also clear the confidence gate.</summary>
-    private const int GatedBands = 2;   // S+ and S
+    private static double ConfidenceWeight(int games)
+        => games <= 0 ? 0 : System.Math.Sqrt(games) / (System.Math.Sqrt(games) + WeightK);
 
-    /// <summary>Where a champion demoted by the gate lands: the best grade that does not claim
-    /// more than the sample supports.</summary>
-    private const string DemotedTo = "A";
+    private static double Ps(double winPct, double pickPct, double banPct)
+        => PsBase + PsWin * winPct
+           + PsPick * System.Math.Sqrt(System.Math.Max(0, pickPct))
+           + PsBan * System.Math.Sqrt(System.Math.Max(0, banPct));
 
-    /// <summary>Shrunk win rate, pulled toward 50% by <see cref="SmoothK"/> so a thin sample
-    /// cannot report an extreme rate at face value.</summary>
-    private static double Shrunk(TierRow row)
+    /// <summary>The composite point score (PS on the sample-shrunk win rate). Higher is stronger; the
+    /// scale centres near 50. Returns 0 for an empty row (never ranked).</summary>
+    public static double Score(TierRow row)
     {
-        if (row.Games <= 0) return 0.5;
-        double wins = row.WinRate * row.Games;
-        return (wins + SmoothK * 0.5) / (row.Games + SmoothK);
+        if (row.Games <= 0) return 0;
+        double win = row.WinRate * 100, pick = row.PickRate * 100, ban = row.BanRate * 100;
+        double shrunkWin = 50 + (win - 50) * ConfidenceWeight(row.Games);
+        return Ps(shrunkWin, pick, ban);
     }
 
-    /// <summary>Win-rate edge over even, in percentage points: +3.2 means "wins 53.2% of the time,
-    /// after shrinking". This is the number the cutoffs are applied to.</summary>
-    public static double Score(TierRow row)
-        => row.Games <= 0 ? 0 : (Shrunk(row) - 0.5) * 100;
-
-    /// <summary>The edge the sample supports conservatively — one standard error below
-    /// <see cref="Score"/>. Positive means "this sample places the champion above even".</summary>
+    /// <summary>The confidence-adjusted score PS★ = <see cref="Score"/> − 1.28 standard errors, the
+    /// SE being the win-rate SE mapped to PS-scale points. This is what the grade is cut on.</summary>
     public static double LowerEdge(TierRow row)
     {
         if (row.Games <= 0) return 0;
-        double p = Shrunk(row);
-        double se = Math.Sqrt(p * (1 - p) / (row.Games + SmoothK));
-        return (p - se - 0.5) * 100;
+        double win = row.WinRate * 100, p = row.WinRate;
+        double se = System.Math.Sqrt(System.Math.Max(0, p * (1 - p)) / row.Games) * 100; // %p
+        double err = System.Math.Abs(SeSlopeA - SeSlopeB * (win - 50)) * se * SeFactor;  // PS points
+        return Score(row) - ZLower * err;
     }
 
-    /// <summary>The grade for one champion, on its own — no peer group involved. <paramref
-    /// name="gated"/> reports whether the confidence gate is what produced it.</summary>
+    private static string BandOf(double psStar)
+    {
+        for (int i = 0; i < Bands.Length; i++)
+            if (psStar >= Bands[i].MinPsStar) return Bands[i].Label;
+        return Bands[^1].Label;
+    }
+
+    /// <summary>The grade for one champion, on its own — no peer group involved. Cut on PS★, so the
+    /// sample confidence is already baked in. <paramref name="gated"/> is true when the POINT score
+    /// would place it a tier higher, i.e. the sample's uncertainty is what held the letter down.</summary>
     public static string Of(TierRow row, out bool gated)
     {
-        gated = false;
-        double score = Score(row), lower = LowerEdge(row);
-        for (int i = 0; i < Bands.Length; i++)
-        {
-            if (score < Bands[i].MinEdge) continue;
-            // Confidence gate: the top grades claim more than a point estimate can carry at this
-            // sample size, so they also require the conservative edge to be above even.
-            if (i < GatedBands && lower <= 0)
-            {
-                gated = true;
-                return DemotedTo;
-            }
-            return Bands[i].Label;
-        }
-        return Bands[^1].Label;
+        if (row.Games <= 0) { gated = false; return Bands[^1].Label; }
+        string byStar = BandOf(LowerEdge(row));
+        gated = BandIndex(BandOf(Score(row))) < BandIndex(byStar);
+        return byStar;
     }
 
     /// <inheritdoc cref="Of(TierRow, out bool)"/>
     public static string Of(TierRow row) => Of(row, out _);
 
-    /// <summary>Position of a grade in <see cref="Bands"/>, best first; past the end for an
-    /// unknown label so it sorts last rather than throwing.</summary>
+    /// <summary>Position of a grade in <see cref="Bands"/>, best first; past the end for an unknown
+    /// label so it sorts last rather than throwing.</summary>
     public static int BandIndex(string grade)
     {
         for (int i = 0; i < Bands.Length; i++)
@@ -114,14 +118,8 @@ public static class ChampionGrade
         return Bands.Length;
     }
 
-    /// <summary>Grades a set of rows and orders them by GRADE first, then score. The order is
-    /// presentation only — unlike the percentile scheme this replaced, no champion's grade depends
-    /// on which other champions were passed in.
-    ///
-    /// <para>Grade has to lead the ordering because the confidence gate breaks the tie between the
-    /// two: a gated champion keeps its high score while dropping a letter, so ordering on score
-    /// alone drops an A into the middle of the S+ block. A tier list that interleaves its own tiers
-    /// is not one.</para></summary>
+    /// <summary>Grades a set of rows and orders them by GRADE first, then point score. The order is
+    /// presentation only — no champion's grade depends on which others were passed in.</summary>
     public static IReadOnlyList<GradedRow> Rank(IReadOnlyList<TierRow> rows)
     {
         var result = new List<GradedRow>(rows.Count);
@@ -131,8 +129,8 @@ public static class ChampionGrade
             result.Add(new GradedRow(row, Score(row), LowerEdge(row), grade, gated));
         }
 
-        // Within a grade, by score; ties (identical records score identically) break on sample
-        // size, so the better-evidenced champion is listed first.
+        // Grade first (the confidence gate can drop a high-point champion a tier, so score alone would
+        // interleave the tiers), then point score, then sample size as the final tie-break.
         result.Sort((a, b) =>
         {
             int ba = BandIndex(a.Grade), bb = BandIndex(b.Grade);

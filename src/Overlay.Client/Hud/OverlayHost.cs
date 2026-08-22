@@ -1270,9 +1270,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         }
     }
 
-    /// <summary>④ Combo-damage overlay: armor/MR header, a max-HP kill-threshold bar (solid red = HP
-    /// surviving the MAX combo, translucent spread = min→max, yellow line = min-damage cut, ticks per
-    /// 100/1000 HP), MAX/MIN damage boxes (RangeMax/RangeMin) — collapsed to a single 확정 box when the
+    /// <summary>④ Combo-damage overlay: armor/MR header, a bordered KILL-THRESHOLD bar over the enemy's
+    /// full HP (red = the HP the combo kills through — solid to rMin = guaranteed, translucent spread out
+    /// to rMax = kills only on the max roll, yellow line = the guaranteed-kill HP, ticks per 100/1000 HP;
+    /// so an enemy dropping into the red is comboable), MAX/MIN damage boxes (RangeMax/RangeMin) —
+    /// collapsed to a single 확정 box when the
     /// two ends print identically (§76) — the combo sequence chips carrying M28 §3's knob glyphs, and
     /// the big target portrait.
     ///
@@ -1318,22 +1320,33 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         if (hpBarW < barW * 0.4) hpBarW = barW * 0.4; // safety floor for very small scales
         double rMax = cr.RangeMax > 0 ? cr.RangeMax : cr.TotalDamage;
         double rMin = cr.RangeMin > 0 ? cr.RangeMin : rMax;
+        // (user request) A frame around the gauge so it reads clearly against the card: a border rect
+        // one pixel larger on every side, then the track inset inside it (the same border-then-inset
+        // pattern the card itself uses).
+        into.Add(Rect(innerX - 1 * scale, cy - 1 * scale, hpBarW + 2 * scale, hpBarH + 2 * scale, HpBarBorder));
         into.Add(Rect(innerX, cy, hpBarW, hpBarH, HpBarBg));
         if (maxHp > 0)
         {
-            double remMax = System.Math.Clamp((maxHp - rMax) / maxHp, 0, 1);
-            double remMin = System.Math.Clamp((maxHp - rMin) / maxHp, 0, 1);
-            into.Add(Rect(innerX, cy, hpBarW * remMax, hpBarH, HpSurviveRed));
-            if (remMin > remMax)
-                into.Add(Rect(innerX + hpBarW * remMax, cy, hpBarW * (remMin - remMax), hpBarH, HpSpreadRed));
+            // (user request) Show the KILL THRESHOLD, not the leftover. The bar is the enemy's full HP
+            // (ticks every 100), and the RED fills from the left up to the combo's damage: an enemy
+            // whose current HP lands inside the red dies to this combo. Solid to rMin = a guaranteed
+            // kill (dies even on the min roll); translucent out to rMax = a kill only on the max roll.
+            // Read at a glance: "combo them once they drop into the red." When the combo out-damages
+            // the enemy's whole HP the red fills the bar — a kill from full.
+            double killMin = System.Math.Clamp(rMin / maxHp, 0, 1);
+            double killMax = System.Math.Clamp(rMax / maxHp, 0, 1);
+            into.Add(Rect(innerX, cy, hpBarW * killMin, hpBarH, HpKillRed));
+            if (killMax > killMin)
+                into.Add(Rect(innerX + hpBarW * killMin, cy, hpBarW * (killMax - killMin), hpBarH, HpKillSpread));
             for (int hp = 100; hp < maxHp; hp += 100)
             {
                 double tx = innerX + (hp / maxHp) * hpBarW;
                 if (hp % 1000 == 0) into.Add(Rect(tx - 1 * scale, cy, 2 * scale, hpBarH, 0xF2000000));
                 else into.Add(Rect(tx, cy + hpBarH * 0.5, 1 * scale, hpBarH * 0.5, 0xB3000000));
             }
-            double minX = innerX + hpBarW * remMin;
-            into.Add(Rect(minX - 1 * scale, cy - 2 * scale, 2 * scale, hpBarH + 4 * scale, HpMinLine));
+            // The bright cut line marks the guaranteed-kill HP (rMin): at or below it, the kill is sure.
+            double cutX = innerX + hpBarW * killMin;
+            into.Add(Rect(cutX - 1 * scale, cy - 2 * scale, 2 * scale, hpBarH + 4 * scale, HpMinLine));
         }
         cy += hpBarH + m2;
 
@@ -1926,10 +1939,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     private const uint ComboTagBg       = 0xFFC8AA6E; // gold combo tag
     private const uint SkillTagBg       = 0xFF8AB4F0; // blue skill tag
     private const uint TagTextDark      = 0xFF0F1117; // #0F1117 tag label
-    private const uint HpBarBg          = 0xFF07090D; // #07090d gauge track
-    private const uint HpSurviveRed     = 0xFFE23327; // solid red = HP surviving max combo
-    private const uint HpSpreadRed      = 0x66E23327; // translucent red = min→max spread
-    private const uint HpMinLine        = 0xFFFFE066; // #ffe066 min-damage cut line
+    private const uint HpBarBg          = 0xFF07090D; // #07090d gauge track (= the HP the combo can't take)
+    private const uint HpBarBorder      = 0xFF6B7280; // visible slate frame so the gauge stands out on the card
+    private const uint HpKillRed        = 0xFFE23327; // solid red = HP the combo GUARANTEES a kill on (≤ rMin)
+    private const uint HpKillSpread     = 0x66E23327; // translucent red = min→max kill spread (kills only on the max roll)
+    private const uint HpMinLine        = 0xFFFFE066; // #ffe066 guaranteed-kill cut line
     private const uint MaxBoxBg         = 0xFF1A1310; private const uint MaxBoxBorder = 0xFF3A2420;
     private const uint MinBoxBg         = 0xFF1A170F; private const uint MinBoxBorder = 0xFF3A3220;
     private const uint MaxDmgNum        = 0xFFFF7A6A; private const uint MaxDmgLabel  = 0xFFFF9A8A;
@@ -2018,6 +2032,19 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             if (m > 0 && !double.IsNaN(m)) return m;
         }
         return 1.0;
+    }
+
+    /// <summary>(loop 519) Stop the render loop while the overlay window is hidden. Hiding the
+    /// window (SHIFT+TAB) left this 16ms timer running, so <see cref="RenderFrame"/> kept doing the
+    /// full per-frame build — snapshot reads, draw-list construction, the throttled skill-panel
+    /// damage evaluations — for a window nobody can see, during gameplay, against a stated frame
+    /// budget. Idempotent.</summary>
+    public void PauseRendering() => _timer.Stop();
+
+    /// <summary>Resume the render loop when the overlay window is shown again. Idempotent.</summary>
+    public void ResumeRendering()
+    {
+        if (!_timer.IsEnabled) _timer.Start();
     }
 
     public void Dispose()

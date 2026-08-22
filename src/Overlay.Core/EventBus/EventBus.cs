@@ -164,7 +164,14 @@ public static class EventBus
         if (string.IsNullOrEmpty(subscriptionId)) return;
         lock (_lock)
         {
-            _subscriptions.Remove(subscriptionId);
+            if (_subscriptions.Remove(subscriptionId, out var sub))
+            {
+                // Stop any in-flight delivery (batch window / queued async) from reaching a
+                // torn-down handler, and dispose a pending batch timer so it does not fire at all.
+                sub.Active = false;
+                if (sub.Batch is { } batch)
+                    lock (batch) { batch.Timer?.Dispose(); batch.Timer = null; }
+            }
         }
     }
 
@@ -231,6 +238,7 @@ public static class EventBus
 
     private static void InvokeHandler(Subscription sub, Event evt, int newDepth)
     {
+        if (!sub.Active) return; // unsubscribed after this delivery was queued/scheduled (loop 520)
         int previous = _chainDepth.Value;
         _chainDepth.Value = newDepth;
         try
@@ -297,6 +305,13 @@ public static class EventBus
         public Action<Event> Handler { get; }
         public bool Async { get; }
         public BatchState? Batch { get; }
+
+        /// <summary>(loop 520) Cleared by <see cref="EventBus.Unsubscribe"/>. A batch window or an
+        /// already-queued async delivery holds this <see cref="Subscription"/> directly, so removing
+        /// it from <c>_subscriptions</c> alone did not stop a delivery in flight — the handler could
+        /// still fire up to a batch window later, after the component was torn down. Checked in
+        /// <see cref="EventBus.InvokeHandler"/>.</summary>
+        public volatile bool Active = true;
 
         public Subscription(string id, string pattern, Action<Event> handler, bool async, BatchOptions? batchOptions)
         {

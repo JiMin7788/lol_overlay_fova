@@ -31,16 +31,24 @@ public partial class HomeWindow : Window
 {
     /// <summary>Design size the UI is authored at; the responsive scale is relative to this.</summary>
     private const double BaseW = 1040;
-    /// <summary>700 of content + the 130px M29 ad slot reserved in XAML — grown by exactly the slot
-    /// height so the views above render at the same size they did before the banner existed.</summary>
+    /// <summary>Design height cap: 726 of content + the M29 ad row. (loop 528) BaseH stays 830 while
+    /// AdRowHeight dropped 130→104, so the 26px of trimmed ad margin moves to the content area — a
+    /// tall view (stats) shows that much more per screen. The window's real height follows content
+    /// (FitHeightToContent), so this is just the upper bound.</summary>
     private const double BaseH = 830;
-    /// <summary>The reserved M29 row (HomeWindow.xaml). Reclaimed — row collapsed and the design
-    /// height dropped back to 700 — when <see cref="AdSlotService.IsConfigured"/> is false, because
-    /// an unreachable slot is a black band at the window bottom, not a reflow guard.</summary>
-    private const double AdRowHeight = 130;
+    /// <summary>The reserved M29 row (HomeWindow.xaml): the 90px 728×90 banner plus 6/8 margin. Was
+    /// 130 (16/24 margin) — the slot AREA read much larger than the banner and ate content height.
+    /// Reclaimed to 0 when <see cref="AdSlotService.IsConfigured"/> is false.</summary>
+    private const double AdRowHeight = 104;
 
     /// <summary>Effective design height: <see cref="BaseH"/>, minus the ad row when it is reclaimed.</summary>
     private double _baseH = BaseH;
+
+    /// <summary>MinHeight from XAML, captured before the ad row adjusts it (loop 521).</summary>
+    private double _minHeightBase;
+
+    /// <summary>Whether the ad row is currently reserved (a creative is showing).</summary>
+    private bool _adReserved = true;
 
     private readonly AppComposition _composition;
 
@@ -92,23 +100,18 @@ public partial class HomeWindow : Window
 
         MainContent.Content = _homeView;
 
-        // M29: the one ad slot. When an endpoint IS configured it stays dormant while a game is
-        // live and hidden when there is nothing to show, and the reserved row keeps the layout
-        // above it fixed. When none is configured the row is reclaimed instead (see below).
+        // M29: the one ad slot. (loop 521) The row is reclaimed WHENEVER there is nothing to show —
+        // no endpoint, an unfilled/failed slot, or in-game dormancy — so an empty slot never renders
+        // as a black band clipping the content (the previous behavior reserved it unconditionally
+        // while configured). It is restored the moment a creative actually loads, which shifts the
+        // views up once; the user preferred no dead band over no shift.
+        _minHeightBase = MinHeight;
+        SetAdSlotReserved(false); // start collapsed; a loaded creative expands it
         if (_composition.Ads.IsConfigured)
         {
             _adBanner = new AdBanner(_composition.Ads);
+            _adBanner.FilledChanged += SetAdSlotReserved;
             AdSlot.Content = _adBanner;
-        }
-        else
-        {
-            // No endpoint (the default): the slot can never fill, so the reservation only ever
-            // renders as an empty band under the content and pushes the design height 130px past
-            // what the views need — which is what clipped them on shorter work areas.
-            AdRow.Height = new GridLength(0);
-            AdSlot.Visibility = Visibility.Collapsed;
-            _baseH = BaseH - AdRowHeight;
-            MinHeight -= AdRowHeight;
         }
 
         // M33: champ-select assistant panel (only when the kill switch left the connector alive).
@@ -145,20 +148,9 @@ public partial class HomeWindow : Window
                 setRecBracket: v => _composition.Config.Set("champSelect.recBracket", v),
                 recBracket: bracket);
 
-            // 2026-07-25 user request: entering champ select raises the dashboard so the rune
-            // panel is in view without alt-tabbing. Edge-triggered (enter only) so the window is
-            // not re-stolen on every snapshot while the user works elsewhere mid-pick.
-            bool wasInChampSelect = false;
-            lcu.ChampSelectChanged += snap => Dispatcher.BeginInvoke(new Action(() =>
-            {
-                bool entered = snap.InChampSelect && !wasInChampSelect;
-                wasInChampSelect = snap.InChampSelect;
-                if (!entered) return;
-                if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-                Show();
-                Activate();
-                Topmost = true; Topmost = false; // reliable raise without staying topmost
-            }));
+            // (2026-08-22 user request) The dashboard no longer force-raises itself on champ-select
+            // entry — it was stealing foreground focus. The overlay still appears on GAME.CONNECTED
+            // and the user brings the dashboard up themselves when they want it.
 
             // First-run Flash-key question: ONCE at app start, never again while the setting
             // holds a value (2026-07-25 request; replaces the old in-champ-select prompt).
@@ -180,8 +172,30 @@ public partial class HomeWindow : Window
         _connSub = EventBus.Subscribe("GAME.CONNECTED", _ => Dispatcher.Invoke(OnGameConnected));
         _discSub = EventBus.Subscribe("GAME.DISCONNECTED", _ => Dispatcher.Invoke(OnGameDisconnected));
 
-        Loaded += (_, _) => ApplyResponsiveScale();
+        Loaded += (_, _) =>
+        {
+            ApplyResponsiveScale();
+            // (loop 524) Kick the ad load from HERE — the banner starts in a collapsed row, and a
+            // collapsed control's own Loaded event does not reliably fire, so it would never fetch.
+            _adBanner?.EnsureStarted(this);
+        };
         Closed += OnClosed;
+    }
+
+    /// <summary>(loop 521) Reserve or reclaim the bottom ad row. Reserved only while a creative is
+    /// actually on screen; reclaimed otherwise so an empty slot never shows as a black band under
+    /// the content. Idempotent, and re-applies the responsive scale so the window height follows.</summary>
+    private void SetAdSlotReserved(bool reserved)
+    {
+        AppComposition.AdLog($"SetAdSlotReserved({reserved}) (was {_adReserved})");
+        if (reserved == _adReserved) return;
+        _adReserved = reserved;
+
+        AdRow.Height = reserved ? new GridLength(AdRowHeight) : new GridLength(0);
+        AdSlot.Visibility = reserved ? Visibility.Visible : Visibility.Collapsed;
+        _baseH = reserved ? BaseH : BaseH - AdRowHeight;
+        MinHeight = reserved ? _minHeightBase : _minHeightBase - AdRowHeight;
+        if (IsLoaded) ApplyResponsiveScale(); // before load, the Loaded handler sizes the window
     }
 
     // ── Responsive scale ────────────────────────────────────────────────────
@@ -204,6 +218,60 @@ public partial class HomeWindow : Window
         // Re-center in the work area (CenterScreen only fires once, before we resize).
         Left = wa.Left + (wa.Width - Width) / 2;
         Top = wa.Top + (wa.Height - Height) / 2;
+
+        // (loop 527) _baseH*scale is a design MAX; most views' real content is shorter, leaving a
+        // tall band of empty near-black window background below them. Shrink the window to the
+        // current view's rendered content once layout settles (never grow — a view taller than the
+        // design height keeps it and scrolls, via MainContent's stretch, so no empty band either way).
+        ScheduleFitToContent();
+    }
+
+    private void ScheduleFitToContent()
+        => Dispatcher.BeginInvoke(new Action(FitHeightToContent), System.Windows.Threading.DispatcherPriority.Loaded);
+
+    private System.Windows.Controls.ScrollViewer? _fitSv;
+
+    private void FitHeightToContent()
+    {
+        if (!IsLoaded) return;
+        // The current view's OWN root ScrollViewer (each view's root element) — NOT a visual-tree
+        // search, which could return an inner list scroller (e.g. the champ-select rune list) whose
+        // large extent would balloon the window.
+        var sv = (MainContent.Content as System.Windows.Controls.ContentControl)?.Content
+                 as System.Windows.Controls.ScrollViewer;
+        if (sv is null || sv.ViewportHeight <= 0) return;
+
+        // Views load their content asynchronously (the stats list fills after the view is shown), so
+        // a one-shot fit would shrink to the empty view and, being one-directional, never grow back —
+        // leaving the finished list clipped under the ad. Re-fit whenever this view's content height
+        // changes.
+        if (!ReferenceEquals(sv, _fitSv))
+        {
+            if (_fitSv is not null) _fitSv.ScrollChanged -= OnFitScrollChanged;
+            _fitSv = sv;
+            _fitSv.ScrollChanged += OnFitScrollChanged;
+        }
+
+        var wa = SystemParameters.WorkArea;
+        double scale = RootScale.ScaleY > 0 ? RootScale.ScaleY : 1.0;
+        double designH = Math.Min(_baseH * scale, wa.Height);   // the authored height — never exceed it
+
+        // empty > 0: viewport has a band of empty background below the content → shrink to remove it.
+        // empty < 0: content is taller than the viewport → grow back toward the design height (capped,
+        // so a very tall view just uses the full design height and scrolls, never balloons the window).
+        double empty = sv.ViewportHeight - sv.ExtentHeight;
+        if (double.IsNaN(empty)) return;
+        double target = Math.Min(Math.Max(Height - empty * scale, MinHeight), designH);
+        if (Math.Abs(target - Height) < 1.0) return;
+        Height = target;
+        Top = wa.Top + Math.Max(0, (wa.Height - Height) / 2);
+    }
+
+    private void OnFitScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
+    {
+        // Only the content GROWING/SHRINKING matters (not the scroll position), and only if it did
+        // not just reach the design height already.
+        if (Math.Abs(e.ExtentHeightChange) > 0.5) ScheduleFitToContent();
     }
 
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
@@ -278,6 +346,9 @@ public partial class HomeWindow : Window
         // (2026-07-25 feedback: they used to follow the user across every tab).
         HomeDashboardExtras.Visibility = sectionKey == "nav.home"
             ? Visibility.Visible : Visibility.Collapsed;
+
+        // (loop 527) Different views have different content heights — re-fit the window to this one.
+        if (IsLoaded) { ApplyResponsiveScale(); ScheduleFitToContent(); }
     }
 
     // ── Game state → overlay + status pill ─────────────────────────────────
@@ -342,7 +413,17 @@ public partial class HomeWindow : Window
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[HomeWindow] ShowOverlay failed: {ex}");
+            // (loop 519) This used to vanish into Debug.WriteLine, which is invisible in a release
+            // build — so a corrupt/missing Config/overlay-config.json (OverlayConfigLoader.Load
+            // throws by design, "fail loud") made the overlay silently never appear AND left the
+            // combo hotkeys unwired (both happen inside this try), with zero recorded evidence. The
+            // ctor failing also leaves a half-built _overlay that must not be reused. Route through
+            // the same file log + dialog the global handlers use, and reset so a later retry (config
+            // fixed, toggle pressed again) can rebuild cleanly.
+            try { _overlay?.Close(); } catch { /* half-built window; best-effort */ }
+            _overlay = null;
+            _hotkeysWired = false;
+            App.Report("ShowOverlay", ex, showDialog: true);
         }
 
         UpdatePreviewButton();
@@ -382,13 +463,24 @@ public partial class HomeWindow : Window
         if (_composition.LatestSnapshot?.HasData == true) return; // real game running → not a preview
 
         var combo = new Overlay.Core.Combo.ComboResult(
-            TotalDamage: 1234, TotalMana: 0, ManaSufficient: true, KillThresholdHP: 0,
+            TotalDamage: 1234, TotalMana: 0, ManaSufficient: true, KillThresholdHP: 1500,
             IsLethal: true, NodeBreakdown: Array.Empty<Overlay.Core.Combo.NodeBreakdownEntry>(),
-            TotalCastTime: 0);
-        // UI.COMBO_RESULT carries a ComboHudResult wrapper (T4): sample target + command string
-        // so the preview shows the full redesigned card (portrait + command line), not a toast.
+            TotalCastTime: 0, RangeMin: 980, RangeMax: 1560);
+        // UI.COMBO_RESULT carries a ComboHudResult wrapper: it must be populated the way a LIVE combo
+        // is, or the preview renders the card's old shape — CasterChampion drives the ability ICONS
+        // (empty ⇒ bare letter chips), and the structured Sequence drives the redesigned chip row
+        // (null ⇒ the legacy CommandLabel-parse fallback). Both are set here so the preview matches
+        // what a real game shows.
+        var sequence = new List<Overlay.Core.Combo.ComboSequenceToken>
+        {
+            new("Q", IsAbility: true),
+            new("A", IsAbility: false),
+            new("W", IsAbility: true),
+            new("R", IsAbility: true),
+        };
         var comboHud = new Overlay.Core.Combo.ComboHudResult(combo, "Zed", "Q-A-W-R",
-            TargetArmor: 40, TargetMr: 32);
+            TargetArmor: 40, TargetMr: 32, TargetMaxHp: 2100, TargetLevel: 11,
+            Sequence: sequence, CasterChampion: "Zed", ComboName: "미리보기");
 
         EventBus.Publish("UI.COMBO_RESULT", comboHud, source: "HomeWindow.Preview");
         EventBus.Publish("UI.ITEM_ALERT", "[미리보기] 루덴스 완성", source: "HomeWindow.Preview");

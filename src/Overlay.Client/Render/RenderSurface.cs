@@ -52,6 +52,9 @@ public sealed class RenderSurface : FrameworkElement
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
-        DrawCommandRenderer.Render(drawingContext, _frame);
+        // (loop 520) Pass the real per-DIP pixel density so FormattedText is laid out for the
+        // active display scaling. The renderer hardcoded 1.0, which formats glyphs for 96 dpi and
+        // then lets WPF scale them — slightly soft/mispositioned HUD text at 125%/150%.
+        DrawCommandRenderer.Render(drawingContext, _frame, VisualTreeHelper.GetDpi(this).PixelsPerDip);
     }
 }

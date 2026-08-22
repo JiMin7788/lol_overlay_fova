@@ -1,11 +1,12 @@
 {
-  "_note": "Curated (T3.1). P (Petricite Burst): after casting a spell Sylas's next basic attacks deal MAGIC AoE damage (PassiveDamage = 1.3*total AD + 0.3*AP). Curated as a P passive node. Q/W/E kept as the auto first-pass magic picks.",
+  "_note": "Curated (T3.1). P (Petricite Burst): after casting a spell Sylas's next basic attacks deal MAGIC AoE damage (PassiveDamage = 1.3*total AD + 0.3*AP). Curated as a P passive node. Q/W/E kept as the auto first-pass magic picks. GOLDEN: GoldenSylasTests pins PassiveDamage = 1.3*totalAD + 0.3*AP (260/30/290 at AD200/AP100 points); the empowered attack REPLACES the physical basic attack with this Magic value.",
   "P": {
     "hits": [
       {
         "type": "Magic",
         "calc": "PassiveDamage",
-        "count": 1
+        "count": 1,
+        "replacesBasicAttack": true
       }
     ]
   },

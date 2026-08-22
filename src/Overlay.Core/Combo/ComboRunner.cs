@@ -346,7 +346,7 @@ public sealed class ComboRunner : IDisposable
 
             // 3b. Derive the command string from the USER-BUILT node order, BEFORE ApplyBinDamage
             //     expands curated skills into per-hit nodes (which would duplicate slots).
-            string commandLabel = BuildCommandLabel(graph);
+            string commandLabel = BuildCommandLabel(graph, championId);
             // (M28 §3) Structured sequence (same order/skip rules as commandLabel) carrying each node's
             // above-floor knob, so the overlay can show the assumption visual language. Built from the
             // pre-expansion user graph, whose nodes still carry the UserConditionMet/UserDistanceFraction/
@@ -689,7 +689,7 @@ public sealed class ComboRunner : IDisposable
                 {
                     if (effect.Trigger == BonusTrigger.OnHit)
                         onHitBonuses.Add(new BonusSpec(bonusSlot, hit, effect.AlwaysOn, effect.MaxProcs));
-                    else if (effect.Trigger == BonusTrigger.OnAbility) onAbilityBonuses.Add(new BonusSpec(bonusSlot, hit));
+                    else if (effect.Trigger == BonusTrigger.OnAbility) onAbilityBonuses.Add(new BonusSpec(bonusSlot, hit, AppliesTo: effect.AppliesTo));
                 }
             }
         }
@@ -743,6 +743,13 @@ public sealed class ComboRunner : IDisposable
         // curated hits don't set All-Out fields — the flag simply has no effect there.
         bool allOut = false;
 
+        // (loop 536) Sylas Petricite Burst: a P hit flagged replacesBasicAttack turns the NEXT auto
+        // after any spell cast into that empowered magic attack instead of a physical one. Non-null
+        // only for a champion curated this way; re-armed on every spell cast, spent by the swapped AA.
+        SkillHit? empoweredAutoHit = SkillDamageDb.GetHits(champion.Id, "P")
+            ?.FirstOrDefault(h => h.ReplacesBasicAttack);
+        bool empoweredArmed = false;
+
         foreach (var node in graph.Nodes)
         {
             // Auto-attack node: the palette template carries 0 damage. The Live Client API gives
@@ -751,14 +758,35 @@ public sealed class ComboRunner : IDisposable
             // "기본공격 = 0" gap the user reported.
             if (node.NodeType == ComboNodeType.Aa)
             {
-                rewritten.Add(node with
+                // (loop 536) Petricite Burst swap: an auto that follows a spell cast (armed) deals
+                // the P empowered-attack value as MAGIC, replacing the physical total-AD auto — the
+                // P calc (e.g. 1.3×AD + 0.3×AP) already carries its own AD scaling, so the ratios
+                // stay zero. One swap is spent per armed auto; a later auto with no fresh cast is a
+                // normal physical attack. On-hit riders below still fire (it is still a basic attack).
+                if (empoweredArmed && empoweredAutoHit is { } emp
+                    && SkillDamage.ComputeCalcDamage(champion, "P", emp.Calc, snap.Stats, level) is double empDmg)
                 {
-                    Damage = snap.Stats.AttackDamage,
-                    RatioAD = 0,
-                    RatioBonusAD = 0,
-                    RatioAP = 0,
-                    DamageType = ComboDamageType.Physical,
-                });
+                    empoweredArmed = false;
+                    rewritten.Add(node with
+                    {
+                        Damage = empDmg,
+                        RatioAD = 0,
+                        RatioBonusAD = 0,
+                        RatioAP = 0,
+                        DamageType = MapHitType(emp.Type),
+                    });
+                }
+                else
+                {
+                    rewritten.Add(node with
+                    {
+                        Damage = snap.Stats.AttackDamage,
+                        RatioAD = 0,
+                        RatioBonusAD = 0,
+                        RatioAP = 0,
+                        DamageType = ComboDamageType.Physical,
+                    });
+                }
                 changed = true;
                 // (M23 Phase 2 Step 3) ONE per-AA bonus-effect pass: each source below is gated by
                 // its classified BonusEffect Condition (see ConditionMet) instead of an ad-hoc
@@ -886,6 +914,9 @@ public sealed class ComboRunner : IDisposable
             {
                 abilityCastSeen = true;
                 castSlots.Add(slot);
+                // (loop 536) Any spell cast (re)arms Sylas's empowered next auto — the charge does
+                // not stack, so a second cast before the auto lands just keeps it armed.
+                empoweredArmed = true;
             }
 
             var hits = SkillDamageDb.GetHits(champion.Id, slot);
@@ -941,7 +972,18 @@ public sealed class ComboRunner : IDisposable
             if (selfBonuses.Count > 0)
                 changed |= AppendBonusHits(rewritten, node, champion, selfBonuses, snap.Stats, level, defenderMaxHp, "self");
             if (!slot.Equals("P", StringComparison.OrdinalIgnoreCase) && onAbilityBonuses.Count > 0)
-                changed |= AppendBonusHits(rewritten, node, champion, onAbilityBonuses, snap.Stats, level, defenderMaxHp, "onAbility");
+            {
+                // Honor appliesTo (loop 475): an on-ability rider curated to ride only certain slots
+                // — e.g. Akali's P (Assassin's Mark), which rides her NEXT BASIC ATTACK ("AA"), not
+                // the ability that spawned the ring — must not be auto-appended to an ability it does
+                // not apply to. Null/empty appliesTo keeps the default (every ability cast), so only
+                // the explicitly-restricted effects are filtered out here.
+                var applicable = onAbilityBonuses.FindAll(b =>
+                    b.AppliesTo is not { Length: > 0 }
+                    || Array.Exists(b.AppliesTo, s => s.Equals(slot, StringComparison.OrdinalIgnoreCase)));
+                if (applicable.Count > 0)
+                    changed |= AppendBonusHits(rewritten, node, champion, applicable, snap.Stats, level, defenderMaxHp, "onAbility");
+            }
 
             // User-attached bonus effects on this skill node (manual sub-icons, T3.3/T8). Merged with
             // the curated ones above via the same AppendBonusHits path (no double-count: curated and
@@ -1070,7 +1112,7 @@ public sealed class ComboRunner : IDisposable
 
     /// <summary>A bonus hit plus the skill slot whose BIN spell holds its calc.</summary>
     private readonly record struct BonusSpec(string CalcSlot, SkillHit Hit, bool AlwaysOn = false,
-        int MaxProcs = 0);
+        int MaxProcs = 0, string[]? AppliesTo = null);
 
     /// <summary>Expands one curated skill node into its per-(cast×hit×count) nodes, each with the
     /// hit's curated damage type and resolved raw BIN number. <paramref name="castCount"/> &gt; 1
@@ -1370,7 +1412,11 @@ public sealed class ComboRunner : IDisposable
         // own independent fields, not HpPercentDataValue/HpPercentCalc/HpPercent.
         if (hit.IsDurationScaled)
         {
-            double seconds = Math.Clamp(userHitDurationSeconds ?? 0, 0, hit.MaxDurationSeconds!.Value);
+            // A root-locked DoT (GuaranteedSeconds set) forces a floor of exposure the target cannot
+            // escape, so an unset knob resolves to that guaranteed window rather than the escapable
+            // zone's 0. The knob still overrides it and the whole thing clamps to the real max.
+            double seconds = Math.Clamp(
+                userHitDurationSeconds ?? hit.GuaranteedSeconds ?? 0, 0, hit.MaxDurationSeconds!.Value);
             // FLAT per-second DoT (PerSecondCalc, e.g. Heimerdinger Q turret): resolve the per-second
             // number LIVE from the BIN so it tracks patch + AP, then scale by exposure seconds. Tried
             // before the %HP rate. If the calc can't resolve, drop the hit (return false) rather than
@@ -1820,11 +1866,26 @@ public sealed class ComboRunner : IDisposable
     private static bool IsAbilitySlot(string id)
         => id is "Q" or "W" or "E" or "R" or "P";
 
+    /// <summary>Whether a node's slot is an ability KEYSTROKE that earns a sequence chip: a bare
+    /// canonical letter, or a curated variant/multi-cast sub-slot (Akali E2, Aatrox Q2/Q3) that has
+    /// its own hits. Mirrors the damage-expansion gate (<c>isExpandableSkill</c>) so the overlay
+    /// sequence and the computed damage agree on what counts as a cast; item/rune/execute nodes
+    /// (no canonical letter, no curated hits) still earn no token.</summary>
+    private static bool IsKeystrokeSlot(string championId, string slot)
+        => IsAbilitySlot(slot) || SkillDamageDb.GetHits(championId, slot) is not null;
+
+    /// <summary>A numbered sub-cast of a base ability — a canonical letter followed by digits, e.g.
+    /// "E2" (Akali), "Q2"/"Q3" (Aatrox): an EXTRA cast of the same ability, folded into the base
+    /// slot's per-skill total. A named variant ("RWall", "QCannon") is an alternate FORM, not this.</summary>
+    private static bool IsMultiCastSubSlot(string slot)
+        => slot.Length >= 2 && slot[0] is 'Q' or 'W' or 'E' or 'R'
+           && slot.Skip(1).All(char.IsDigit);
+
     /// <summary>Human-readable command string of the combo's ability sequence in node order:
     /// each ability slot (Q/W/E/R) uppercased, an auto-attack as "A"; non-ability, non-AA nodes
     /// (item/rune/passive/execute) are skipped so the string stays readable. Joined with '-',
     /// e.g. nodes Q_0, AA_0, W_0 → "Q-A-W". Empty when the combo has no ability/AA nodes.</summary>
-    private static string BuildCommandLabel(ComboGraph graph)
+    private static string BuildCommandLabel(ComboGraph graph, string championId)
     {
         var tokens = new List<string>(graph.Nodes.Count);
         foreach (var node in graph.Nodes)
@@ -1843,7 +1904,7 @@ public sealed class ComboRunner : IDisposable
             }
 
             var slot = SlotOf(node.Id);
-            if (IsAbilitySlot(slot))
+            if (IsKeystrokeSlot(championId, slot))
                 tokens.Add(slot.ToUpperInvariant());
             // item/rune/passive/execute nodes carry no keystroke token — skipped.
         }
@@ -1882,7 +1943,11 @@ public sealed class ComboRunner : IDisposable
                 continue;
             }
             var slot = SlotOf(node.Id);
-            if (!IsAbilitySlot(slot)) continue; // item/rune/passive/execute — no keystroke token
+            // A multi-cast sub-slot (Akali E2, Aatrox Q2/Q3) is a real keystroke but is not a bare
+            // canonical letter, so — exactly as the damage-expansion gate does (isExpandableSkill) —
+            // it is recognised by being a curated slot, not only by IsAbilitySlot. Without this the
+            // second cast onward is dropped from the overlay sequence (no chip, no icon).
+            if (!IsKeystrokeSlot(championId, slot)) continue; // item/rune/passive/execute — no token
             var (knob, fraction, count) = KnobFor(node, championId, slot);
             tokens.Add(new ComboSequenceToken(slot.ToUpperInvariant(), IsAbility: true, knob, fraction, count));
         }
@@ -2436,23 +2501,40 @@ public sealed class ComboRunner : IDisposable
                 out string targetChampion, out bool defenderIsFallback, out _, out int _, out _);
             if (string.IsNullOrEmpty(targetChampion)) return null; // no living/designated target
 
-            var slots = new List<SkillSlotDamage>(SkillPanelSlots.Length);
-            foreach (var slot in SkillPanelSlots)
+            // Damage of ONE curated slot (or the AA), at the player's real rank vs the resolved target.
+            double SlotDamage(string s)
             {
-                double dmg = 0;
                 try
                 {
-                    var node = slot == "A"
+                    var node = s == "A"
                         ? new ComboNode("A_0", ComboNodeType.Aa, "AA", 0, 0, 0, ComboDamageType.Physical, 1.0, 0, 0, 0, 0, 0)
-                        : new ComboNode(slot + "_0", slot == "P" ? ComboNodeType.Passive : ComboNodeType.Skill, slot,
+                        : new ComboNode(s + "_0", s == "P" ? ComboNodeType.Passive : ComboNodeType.Skill, s,
                                         0, 0, 0, ComboDamageType.Physical, 0, 0, 0, 0, 0, 0);
                     var graph = _engine.BuildGraph(new[] { node });
                     // The auto-attack is a bare AD node (RatioAD=1) resolved by the engine; abilities/passive
                     // get their real curated BIN damage filled in first.
-                    var resolved = slot == "A" ? graph : ApplyBinDamage(graph, championId, snap, context.Defender.MaxHP);
-                    dmg = _engine.Execute(resolved, context).TotalDamage;
+                    var resolved = s == "A" ? graph : ApplyBinDamage(graph, championId, snap, context.Defender.MaxHP);
+                    return _engine.Execute(resolved, context).TotalDamage;
                 }
-                catch { dmg = 0; }
+                catch { return 0; }
+            }
+
+            // A multi-cast ability is curated as a base slot plus numbered sub-slots that are extra
+            // casts of the SAME ability in one rotation (Akali E = E + E2, Aatrox Q = Q + Q2 + Q3).
+            // The per-skill panel shows one box per key, so those belong FOLDED INTO the base slot's
+            // number, not dropped (they were, being outside SkillPanelSlots) nor listed separately.
+            // Only the "letter + digit" pattern is folded; a NAMED variant ("RWall", "QCannon") is an
+            // alternate FORM, not an additional cast, so it is deliberately not summed here.
+            var subSlots = SkillDamageDb.GetCuratedSlotKeys(championId)
+                .Where(IsMultiCastSubSlot).ToArray();
+
+            var slots = new List<SkillSlotDamage>(SkillPanelSlots.Length);
+            foreach (var slot in SkillPanelSlots)
+            {
+                double dmg = SlotDamage(slot);
+                if (slot is "Q" or "W" or "E" or "R")
+                    foreach (var sub in subSlots)
+                        if (sub[0] == slot[0]) dmg += SlotDamage(sub);
                 slots.Add(new SkillSlotDamage(slot, dmg));
             }
 

@@ -219,6 +219,7 @@ public partial class MainWindow : Window
         SourceInitialized += OnSourceInitialized;
         Loaded += OnLoaded;
         Closed += OnClosed;
+        IsVisibleChanged += OnVisibilityChanged;
 
         // M19 whole-window drag-to-move used to be wired here (OnOverlayMouseDown → DragMove()).
         // M02 pending-change #1 (modular per-element HUD positioning) replaces that monolithic
@@ -381,6 +382,29 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>(loop 519) Pause every per-frame/poll timer while the overlay window is hidden
+    /// (SHIFT+TAB toggle-off), resume on re-show. Hiding the window used to leave the 16ms
+    /// OverlayHost frame build, the 30ms click-through poll and the 400ms game-window follow all
+    /// running against an invisible window during gameplay — pure spend against the frame budget.
+    /// Guarded on the timers existing (OnLoaded may not have run yet).</summary>
+    private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.NewValue is not bool visible) return;
+        if (visible)
+        {
+            UpdateGeometry();               // re-place immediately; the follow tick was stopped
+            _overlayHost?.ResumeRendering();
+            _trackTimer?.Start();
+            _targetClickTimer?.Start();
+        }
+        else
+        {
+            _overlayHost?.PauseRendering();
+            _trackTimer?.Stop();
+            _targetClickTimer?.Stop();
+        }
+    }
+
     /// <summary>Appends one framedrop.log line: totals + rate since the meter started.</summary>
     private void LogFrameDrop(string tag)
     {
@@ -477,6 +501,7 @@ public partial class MainWindow : Window
             _frameMeterTimer = null;
         }
 
+        IsVisibleChanged -= OnVisibilityChanged;
         _trackTimer?.Stop();
         _trackTimer = null;
         _targetClickTimer?.Stop();

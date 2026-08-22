@@ -73,7 +73,9 @@ public static class DDragonIconProvider
     public static string? ItemIconPathOrNull(string itemId)
     {
         if (string.IsNullOrWhiteSpace(itemId)) return null;
-        var path = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "item", itemId + ".png");
+        var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "item");
+        if (!StaysWithin(dir, itemId + ".png")) return null;
+        var path = Path.Combine(dir, itemId + ".png");
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
         _ = LoadItemIconAsync(itemId); // background fetch; the icon appears on a subsequent frame
         return null;
@@ -95,7 +97,9 @@ public static class DDragonIconProvider
     public static string? SummonerIconPathOrNull(string spellId)
     {
         if (string.IsNullOrWhiteSpace(spellId)) return null;
-        var path = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "spell", spellId + ".png");
+        var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "spell");
+        if (!StaysWithin(dir, spellId + ".png")) return null;
+        var path = Path.Combine(dir, spellId + ".png");
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
         _ = LoadSummonerIconAsync(spellId); // background fetch; the icon appears on a subsequent frame
         return null;
@@ -187,6 +191,7 @@ public static class DDragonIconProvider
     public static string? ChampionCircleIconPathOrNull(string championId)
     {
         if (string.IsNullOrWhiteSpace(championId)) return null;
+        if (!StaysWithin(CircleIconDir, championId + ".png")) return null;
         var path = Path.Combine(CircleIconDir, championId + ".png");
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
         _ = EnsureChampionCircleIconAsync(championId); // background fetch; ready on a later call
@@ -218,6 +223,7 @@ public static class DDragonIconProvider
     private static async Task EnsureChampionCircleIconCoreAsync(
         string key, string championId, CancellationToken ct)
     {
+        if (!StaysWithin(CircleIconDir, championId + ".png")) { EnsureInFlight.TryRemove(key, out _); return; }
         var path = Path.Combine(CircleIconDir, championId + ".png");
         try
         {
@@ -257,10 +263,33 @@ public static class DDragonIconProvider
     private static Task<ImageSource?> LoadAsync(
         string memoryKey, string diskDir, string fileName, string url, CancellationToken ct)
     {
+        // (loop 520) The icon ids/filenames are data-derived (Live Client API responses, cached
+        // Data Dragon JSON). A compromised CDN or poisoned local cache could smuggle a path
+        // separator or ".." into one and write outside the cache dir; verify the resolved file
+        // stays under it. Hardening, not an active hole (upstream is trusted-ish).
+        if (!StaysWithin(diskDir, fileName)) return Task.FromResult<ImageSource?>(null);
         if (MemoryCache.TryGetValue(memoryKey, out var cached)) return Task.FromResult<ImageSource?>(cached);
         if (FailedUntil.TryGetValue(memoryKey, out var until) && Environment.TickCount64 < until)
             return Task.FromResult<ImageSource?>(null);
         return InFlight.GetOrAdd(memoryKey, _ => LoadCoreAsync(memoryKey, diskDir, fileName, url, ct));
+    }
+
+    /// <summary>True when <paramref name="diskDir"/>/<paramref name="fileName"/> resolves to a path
+    /// still inside <paramref name="diskDir"/> — i.e. the filename introduced no separator or
+    /// traversal that would escape the cache directory.</summary>
+    private static bool StaysWithin(string diskDir, string fileName)
+    {
+        try
+        {
+            string baseFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(diskDir))
+                              + Path.DirectorySeparatorChar;
+            string full = Path.GetFullPath(Path.Combine(diskDir, fileName));
+            return full.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false; // malformed path chars, etc. → treat as unsafe
+        }
     }
 
     private static async Task<ImageSource?> LoadCoreAsync(

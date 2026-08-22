@@ -41,24 +41,30 @@ public class FileTierStatsSourceTests : IDisposable
         }
     }
 
-    /// <summary>Current aggregation output: counts only, one block per seed tier.</summary>
+    /// <summary>Current aggregation output: counts only, one block per seed tier. Both champions
+    /// carry an UNKNOWN role (Riot left teamPosition empty on those games) that the "전체" total
+    /// must EXCLUDE: the champion-wide <c>games</c>/<c>duration</c> include it, the classified lanes
+    /// do not, and the overall row is the sum of the lanes.</summary>
     private const string SampleJson = """
         {"patch": "16.15", "seedTiers": ["DIAMOND"],
          "byTier": {
           "DIAMOND": {
             "matches": 6903,
-            "roleSlots": {"TOP": 13806, "MIDDLE": 13806, "UTILITY": 13806},
+            "roleSlots": {"TOP": 13806, "MIDDLE": 13806, "UTILITY": 13806, "UNKNOWN": 500},
             "champions": {
-              "37": {"name": "Sona", "games": 69, "wins": 41, "bans": 14,
-                     "duration": {"lt25": [27, 14], "b25to32": [24, 15], "gt32": [18, 12]},
+              "37": {"name": "Sona", "games": 72, "wins": 42, "bans": 14,
+                     "duration": {"lt25": [32, 16], "b25to32": [22, 14], "gt32": [18, 12]},
                      "roles": {"UTILITY": {"games": 65, "wins": 39,
                                            "duration": {"lt25": [25, 13], "b25to32": [22, 14],
                                                         "gt32": [18, 12]}},
-                               "MIDDLE": {"games": 4, "wins": 2, "duration": {"lt25": [4, 2]}}}},
+                               "MIDDLE": {"games": 4, "wins": 2, "duration": {"lt25": [4, 2]}},
+                               "UNKNOWN": {"games": 3, "wins": 1, "duration": {"lt25": [3, 1]}}}},
               "266": {"name": "Aatrox", "games": 612, "wins": 300, "bans": 759,
                       "duration": {"lt25": [200, 95]},
                       "roles": {"TOP": {"games": 562, "wins": 275,
-                                        "duration": {"lt25": [180, 85]}}}}
+                                        "duration": {"lt25": [180, 85]}},
+                                "UNKNOWN": {"games": 50, "wins": 25,
+                                            "duration": {"lt25": [20, 10]}}}}
             }}
          }}
         """;
@@ -73,21 +79,26 @@ public class FileTierStatsSourceTests : IDisposable
         var rows = source.All("diamond_plus");
         Assert.Equal(2, rows.Count);
 
+        // "전체" is the sum of the classified lanes (UTILITY 65 + MIDDLE 4 = 69), NOT the
+        // champion-wide 72 that includes 3 unclassified games.
         var sona = rows.Single(r => r.ChampionKey == 37);
         Assert.Equal("Sona", sona.Name);
+        Assert.Equal(69, sona.Games);
         Assert.Equal(41.0 / 69, sona.WinRate, 6);
         Assert.Equal(69.0 / 6903, sona.PickRate, 8);
-        Assert.Equal(14.0 / 6903, sona.BanRate, 8);
-        Assert.Equal(27, sona.Under25.Games);
-        Assert.Equal(14.0 / 27, sona.Under25.WinRate, 6);
+        Assert.Equal(14.0 / 6903, sona.BanRate, 8);       // bans precede positions: champion-wide
+        Assert.Equal(29, sona.Under25.Games);             // 25 (UTILITY) + 4 (MIDDLE), not 32
+        Assert.Equal(15.0 / 29, sona.Under25.WinRate, 6);
         Assert.Equal(12.0 / 18, sona.Over32.WinRate, 6);
 
-        // Aatrox has only the lt25 bucket → the others are the EMPTY bucket (0 games), which the
-        // renderer contract turns into a dash — never a 0% claim.
+        // Aatrox's TOP lane carries only the lt25 bucket → the others are the EMPTY bucket (0
+        // games), which the renderer contract turns into a dash. Its 50 unclassified games are
+        // excluded, so the overall row is the 562 TOP games, not 612.
         var aatrox = rows.Single(r => r.ChampionKey == 266);
+        Assert.Equal(562, aatrox.Games);
         Assert.Equal(0, aatrox.From25To32.Games);
         Assert.Equal(0, aatrox.Over32.Games);
-        Assert.Equal(200, aatrox.Under25.Games);
+        Assert.Equal(180, aatrox.Under25.Games);
     }
 
     [Fact]
@@ -119,6 +130,7 @@ public class FileTierStatsSourceTests : IDisposable
         var support = source.All("all", "UTILITY");
         var sona = Assert.Single(support);              // Aatrox never played support → absent
         Assert.Equal(37, sona.ChampionKey);
+        Assert.Equal("UTILITY", sona.Role);             // role-filtered rows are tagged with the lane
         Assert.Equal(65, sona.Games);                    // the lane's sample, not the champion's 69
         Assert.Equal(39.0 / 65, sona.WinRate, 6);
         Assert.Equal(65.0 / 13806, sona.PickRate, 8);    // denominator = support slots
@@ -133,9 +145,26 @@ public class FileTierStatsSourceTests : IDisposable
         WritePatch("16.15", runeChampions: 5, tiersJson: SampleJson);
         var source = new FileTierStatsSource(_root);
 
-        // roleSlots names TOP/MIDDLE/UTILITY; JUNGLE and BOTTOM are absent from this sample and
-        // must not be offered as choices.
+        // roleSlots names TOP/MIDDLE/UTILITY/UNKNOWN; JUNGLE and BOTTOM are absent from this sample
+        // and must not be offered, and UNKNOWN is the unclassified bucket — never a browsable lane.
         Assert.Equal(new[] { "TOP", "MIDDLE", "UTILITY" }, source.Roles("all"));
+    }
+
+    [Fact]
+    public void OverallExcludesUnclassifiedGames_AndUnknownIsNotALane()
+    {
+        WritePatch("16.15", runeChampions: 5, tiersJson: SampleJson);
+        var source = new FileTierStatsSource(_root);
+
+        // The overall row sums the real lanes only: Sona's 3 and Aatrox's 50 unclassified games
+        // are gone, so the totals equal what the lane tabs add up to.
+        var all = source.All("all");
+        Assert.Equal(69, all.Single(r => r.ChampionKey == 37).Games);
+        Assert.Equal(562, all.Single(r => r.ChampionKey == 266).Games);
+
+        // UNKNOWN is neither listed as a lane nor answerable as one.
+        Assert.DoesNotContain("UNKNOWN", source.Roles("all"));
+        Assert.Empty(source.All("all", "UNKNOWN"));
     }
 
     /// <summary>Two tiers with deliberately different sample sizes and win rates, so a bracket

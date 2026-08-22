@@ -284,6 +284,41 @@ public class LiveClientPollerTests
     }
 
     [Fact]
+    public void Parse_NullNumericField_DefaultsThatFieldAndStillSucceeds()
+    {
+        // (loop 520) The Live Client API can serve partial data during game load. A raw GetDouble on
+        // a null token used to THROW, aborting the whole tick; three such ticks publish a false
+        // GAME.DISCONNECTED mid-game. The parse must now tolerate a null number field: default it,
+        // keep every other field, and return true.
+        var json = """
+        {
+          "activePlayer": {
+            "championStats": {
+              "currentHealth": null,
+              "maxHealth": 1500,
+              "attackDamage": null,
+              "abilityPower": 42
+            },
+            "level": null
+          },
+          "allPlayers": [],
+          "events": { "Events": [] },
+          "gameData": { "gameTime": 60 }
+        }
+        """;
+        var snap = new GameSnapshot();
+
+        bool ok = LiveDataParser.Parse(Encoding.UTF8.GetBytes(json), snap);
+
+        Assert.True(ok);
+        Assert.Equal(0, snap.Stats.CurrentHealth);   // null → default
+        Assert.Equal(1500, snap.Stats.MaxHealth);    // sibling fields survive
+        Assert.Equal(0, snap.Stats.AttackDamage);
+        Assert.Equal(42, snap.Stats.AbilityPower);
+        Assert.Equal(0, snap.Level);
+    }
+
+    [Fact]
     public void Parse_InhibKilledEvent_CapturesIdKillerAndTime_IntoInhibEvents()
     {
         var json = SamplePayload(

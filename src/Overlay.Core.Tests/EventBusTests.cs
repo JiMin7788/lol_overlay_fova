@@ -214,6 +214,23 @@ public class EventBusTests
         }
     }
 
+    [Fact]
+    public void Unsubscribe_DuringABatchWindow_PreventsTheCoalescedDelivery()
+    {
+        // (loop 520) A pending batch window holds the subscription directly. Unsubscribe only
+        // removed it from the registry, so the batch timer still fired the handler up to a window
+        // later — a torn-down component receiving an event post-Dispose. It must not fire now.
+        int deliveries = 0;
+        string id = EventBus.EventBus.Subscribe("GAME.LATE", _ => Interlocked.Increment(ref deliveries),
+            new SubscribeOptions { Batch = new BatchOptions { WindowMilliseconds = 200 } });
+
+        EventBus.EventBus.Publish("GAME.LATE", 1, "TestSource"); // opens the batch window
+        EventBus.EventBus.Unsubscribe(id);                       // ...then leave before it elapses
+
+        Thread.Sleep(400); // well past the 200ms window
+        Assert.Equal(0, deliveries);
+    }
+
     private sealed class RecordingLogger : IEventBusLogger
     {
         private readonly List<string> _sink;

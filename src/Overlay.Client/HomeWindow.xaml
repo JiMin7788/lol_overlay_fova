@@ -5,7 +5,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         mc:Ignorable="d"
         Title="Fova"
-        Width="1040" Height="830" MinWidth="900" MinHeight="730"
+        Width="1040" Height="830" MinWidth="900" MinHeight="400"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Bg}"
         FontFamily="{StaticResource AppFont}"
@@ -166,13 +166,12 @@
                      is looking at the client anyway. -->
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
-                <!-- M29 ad slot: a FIXED reserved 130px (90px 728x90 leaderboard + 16/24 margins).
-                     The window is 130px taller than the design height it had before the slot
-                     existed (700 -> 830), so the content row — every view — keeps exactly the
-                     size it had. Reserved unconditionally: an empty, failed, or in-game-dormant
-                     slot hides its contents but never gives the space back, so the UI above never
-                     shifts. -->
-                <RowDefinition x:Name="AdRow" Height="130" />
+                <!-- M29 ad slot: 130px (90px 728x90 leaderboard + 16/24 margins) reserved ONLY while
+                     a creative is on screen. (loop 521) The height is driven from code-behind
+                     (SetAdSlotReserved): an empty, failed, or in-game-dormant slot reclaims the row
+                     to 0 so it never renders as a black band clipping the content, and it expands
+                     back the moment a creative loads. Starts at 0. -->
+                <RowDefinition x:Name="AdRow" Height="0" />
             </Grid.RowDefinitions>
 
             <!-- Header bar -->
@@ -213,11 +212,12 @@
             </StackPanel>
 
             <!-- Active view host -->
-            <ContentControl x:Name="MainContent" Grid.Row="2" Margin="28,20,28,24" />
+            <ContentControl x:Name="MainContent" Grid.Row="2" Margin="28,20,28,24"
+                            VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" />
 
             <!-- Ad slot host; the AdBanner control is inserted in code-behind (it needs the
                  AppComposition's AdSlotService). -->
-            <ContentControl x:Name="AdSlot" Grid.Row="3" Margin="28,16,28,24" />
+            <ContentControl x:Name="AdSlot" Grid.Row="3" Margin="28,6,28,8" />
         </Grid>
     </Grid>
 </Window>

@@ -210,6 +210,10 @@ public sealed class LiveClientPoller : IAsyncDisposable, IDisposable
         return buffer;
     }
 
+    /// <summary>Hard ceiling on the receive buffer (loop 520). Real allgamedata is ~100-300 KB;
+    /// this caps the read at ~8 MB against a malicious/rogue writer on the unauthenticated port.</summary>
+    private const int MaxReceiveBufferSize = 8 * 1024 * 1024;
+
     /// <summary>Reads the entire response body into the pooled buffer, growing it
     /// (back into the pool) if the body is larger than the current rental. Returns
     /// the (possibly grown) buffer and the number of bytes read.</summary>
@@ -222,6 +226,14 @@ public sealed class LiveClientPoller : IAsyncDisposable, IDisposable
         {
             if (total == buffer.Length)
             {
+                // (loop 520) Cap the growth. Port 2999 is unauthenticated and, when no game is
+                // running, free for any local process to bind; without a ceiling a fast local
+                // writer could grow this toward OOM inside one request window. Real allgamedata is
+                // ~100-300 KB; 8 MB is orders of magnitude of headroom. At the cap, STOP READING
+                // rather than throw — a truncated body fails Parse and counts as a normal poll
+                // failure, and stopping avoids returning an intermediate pooled buffer that
+                // RunAsync's own finally would then return a second time.
+                if (buffer.Length >= MaxReceiveBufferSize) break;
                 byte[] bigger = ArrayPool<byte>.Shared.Rent(buffer.Length * 2);
                 Array.Copy(buffer, bigger, total);
                 ArrayPool<byte>.Shared.Return(buffer);

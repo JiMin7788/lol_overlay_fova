@@ -2824,8 +2824,11 @@ public partial class ComboSettingsView : UserControl
         {
             box.Child = new Image { Source = _flashIcon, Stretch = Stretch.UniformToFill };
         }
-        else if (_icons.TryGetValue(slot, out var icon))
+        else if (TryResolveSlotIcon(slot, out var icon))
         {
+            // TryResolveSlotIcon (not a plain _icons lookup) so a multi-cast sub-slot / variant —
+            // "E2" (Akali E), "Q2"/"Q3" (Aatrox Q), "RWall" — falls back to its base ability's art
+            // instead of a letter badge, matching the palette/sequence chips (BuildChipContent).
             box.Child = new Image { Source = icon, Stretch = Stretch.UniformToFill };
         }
         else

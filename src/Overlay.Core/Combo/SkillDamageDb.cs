@@ -560,6 +560,14 @@ public sealed class SkillHit
     [JsonPropertyName("calc")]
     public string Calc { get; init; } = string.Empty;
 
+    /// <summary>(loop 536) On a P (passive) hit: this is an empowered basic attack that REPLACES the
+    /// next auto after Sylas casts any ability — Petricite Burst. When a spell was cast earlier in
+    /// the combo, the next AA's physical damage is swapped for this hit's (magic) value instead of
+    /// being added on top, and one such swap is spent per armed auto. Inert on any hit that does not
+    /// set it, and on any champion whose P is not curated this way.</summary>
+    [JsonPropertyName("replacesBasicAttack")]
+    public bool ReplacesBasicAttack { get; init; }
+
     /// <summary>(M22 multi-form) Optional BIN spell leaf-name whose <c>mSpellCalculations</c> holds
     /// this hit's <see cref="Calc"/> (and any %HP/flat/per-second calc) — for a transform/stance/
     /// weapon/sub-spell ability that lives in its OWN BIN spell object rather than the node's base
@@ -933,6 +941,18 @@ public sealed class SkillHit
     /// <see cref="PerSecondHpPercent"/>). Null (default) = not a duration-scaled hit.</summary>
     [JsonPropertyName("maxDurationSeconds")]
     public double? MaxDurationSeconds { get; init; }
+
+    /// <summary>GUARANTEED exposure seconds for a duration-scaled hit whose target CANNOT escape the
+    /// zone during that window — an ability that ROOTS/immobilizes on impact (Mel E "Solar Snare").
+    /// Unlike an escapable zone, this exposure is not an inference beyond Last Seen (P2): the mechanic
+    /// itself locks the target in the field, so the DoT it forces IS dealt. Used as the default
+    /// exposure when the node's <see cref="ComboNode.UserHitDurationSeconds"/> is unset, so the
+    /// resolved damage — and the range floor — already include the guaranteed DoT instead of the
+    /// escapable-zone default of 0. Still clamped to <see cref="MaxDurationSeconds"/>, which stays the
+    /// ceiling the exposure knob can raise it to (angle/position variance up to the full field).
+    /// Null (default) = no guaranteed floor, i.e. the ordinary escapable-zone behaviour.</summary>
+    [JsonPropertyName("guaranteedSeconds")]
+    public double? GuaranteedSeconds { get; init; }
 
     /// <summary>True when this hit is a duration-scaled, user-controlled partial-damage hit (see
     /// <see cref="PerSecondHpPercent"/>) rather than an assumed-landed single hit. Inferred from BOTH

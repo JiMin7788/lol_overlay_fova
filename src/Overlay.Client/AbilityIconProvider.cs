@@ -138,11 +138,26 @@ public static class AbilityIconProvider
     /// <c>DDragonIconProvider.SummonerIconPathOrNull</c>'s HUD-render-loop contract: on a miss it kicks off
     /// a background prepare (resolve the champion's slot filenames + download the icon PNGs) so the icon
     /// appears on a later frame, and the caller falls back to the key letter until then.</summary>
+    /// <summary>The canonical ability letter (P/Q/W/E/R) that owns <paramref name="slot"/>'s icon, or
+    /// null when the slot has no ability icon of its own (AA, Ignite, Flash, empty). A multi-cast
+    /// sub-slot or named variant shares its base ability's art — "E2"/"Q3" (Akali E, Aatrox Q),
+    /// "RWall"/"WBite" (Irelia/Briar) all resolve to R/W/E — so the overlay draws an icon there
+    /// instead of nothing, matching the editor's <c>TryResolveSlotIcon</c> fallback.</summary>
+    internal static string? CanonicalIconSlot(string slot)
+    {
+        if (string.IsNullOrWhiteSpace(slot)) return null;
+        slot = slot.ToUpperInvariant();
+        if (slot is "P" or "Q" or "W" or "E" or "R") return slot;
+        // Canonical slots are single letters, so a longer key starting with one is a variant of it.
+        char b = slot[0];
+        return b is 'P' or 'Q' or 'W' or 'E' or 'R' ? b.ToString() : null;
+    }
+
     public static string? AbilityIconPathOrNull(string championId, string slot)
     {
-        if (string.IsNullOrWhiteSpace(championId) || string.IsNullOrWhiteSpace(slot)) return null;
-        slot = slot.ToUpperInvariant();
-        if (slot is not ("P" or "Q" or "W" or "E" or "R")) return null;
+        if (string.IsNullOrWhiteSpace(championId)) return null;
+        if (CanonicalIconSlot(slot) is not { } canonical) return null;
+        slot = canonical;
 
         if (!SlotFulls.TryGetValue(championId, out var fulls))
         {

@@ -27,7 +27,13 @@ public sealed record TierRow(
     double BanRate,
     DurationBucket Under25,
     DurationBucket From25To32,
-    DurationBucket Over32);
+    DurationBucket Over32)
+{
+    /// <summary>The lane this row describes, or "" for a champion-wide (all-lane) row. Set on
+    /// role-filtered rows so the "전체" view — which is the union of the lane rows — can label
+    /// which lane each row is, and pull that lane's counters.</summary>
+    public string Role { get; init; } = "";
+}
 
 /// <summary>
 /// The dashboard statistics view's data: champion win/pick/ban rates + duration-bucket win
@@ -49,6 +55,11 @@ public sealed class FileTierStatsSource
 {
     /// <summary>Passed as the role argument to mean "every position".</summary>
     public const string AllRoles = "";
+
+    /// <summary>Riot leaves <c>teamPosition</c> empty on a minority of ranked games; the pipeline
+    /// files those under this pseudo-role. It is not a browsable lane and is excluded from the
+    /// "전체" total, which is the sum of the real lanes and nothing else.</summary>
+    private const string UnknownRole = "UNKNOWN";
 
     /// <summary>Display order for positions; anything else (e.g. UNKNOWN) sorts after these.</summary>
     private static readonly string[] RoleOrder = { "TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY" };
@@ -139,7 +150,9 @@ public sealed class FileTierStatsSource
         Load();
         var block = Compose(bracket);
         if (block is null) return Array.Empty<string>();
-        var roles = new List<string>(block.RoleSlots.Keys);
+        var roles = new List<string>(block.RoleSlots.Count);
+        foreach (var role in block.RoleSlots.Keys)
+            if (!role.Equals(UnknownRole, StringComparison.OrdinalIgnoreCase)) roles.Add(role);
         roles.Sort(static (a, b) =>
         {
             int ia = Array.IndexOf(RoleOrder, a), ib = Array.IndexOf(RoleOrder, b);
@@ -158,15 +171,40 @@ public sealed class FileTierStatsSource
         var block = Compose(bracket);
         if (block is null) return Array.Empty<TierRow>();
 
+        // The unclassified bucket is not a browsable lane: a request for it answers nothing rather
+        // than surfacing the games "전체" deliberately excludes.
+        if (role.Equals(UnknownRole, StringComparison.OrdinalIgnoreCase)) return Array.Empty<TierRow>();
+
         var rows = new List<TierRow>(block.Champions.Count);
         foreach (var c in block.Champions)
         {
             double banRate = block.Matches > 0 ? (double)c.Bans / block.Matches : 0;
             if (role.Length == 0)
             {
-                rows.Add(new TierRow(c.Key, c.Name, c.Games, (double)c.Wins / c.Games,
-                                     block.Matches > 0 ? (double)c.Games / block.Matches : 0,
-                                     banRate, c.Under25, c.From25To32, c.Over32));
+                // "전체" is the sum of the CLASSIFIED lanes only — the games Riot assigned a
+                // position — so the overall row equals what the lane tabs add up to, never a larger
+                // champion-wide total padded by unclassified games.
+                var t = ClassifiedTotals(c);
+                if (c.Roles.Count == 0)
+                {
+                    // Legacy file with no per-lane breakdown: there are no lanes to sum, so keep the
+                    // champion-wide total rather than dropping the row.
+                    rows.Add(new TierRow(c.Key, c.Name, c.Games, (double)c.Wins / c.Games,
+                                         block.Matches > 0 ? (double)c.Games / block.Matches : 0,
+                                         banRate, c.Under25, c.From25To32, c.Over32));
+                    continue;
+                }
+                if (t.Games <= 0) continue;   // only ever appeared unclassified → excluded
+                // Legacy per-role stats carry no duration curve; fall back to the champion-level
+                // curve so the overall row still shows one (its small unclassified share is
+                // tolerable there, and modern files sum the real lanes exactly).
+                bool laneDuration = t.Under25.Games + t.From25To32.Games + t.Over32.Games > 0;
+                rows.Add(new TierRow(c.Key, c.Name, t.Games, (double)t.Wins / t.Games,
+                                     block.Matches > 0 ? (double)t.Games / block.Matches : 0,
+                                     banRate,
+                                     laneDuration ? t.Under25 : c.Under25,
+                                     laneDuration ? t.From25To32 : c.From25To32,
+                                     laneDuration ? t.Over32 : c.Over32));
                 continue;
             }
             if (!c.Roles.TryGetValue(role, out var r) || r.Games <= 0) continue;
@@ -176,9 +214,29 @@ public sealed class FileTierStatsSource
                 ? (double)r.Games / slots
                 : 0;
             rows.Add(new TierRow(c.Key, c.Name, r.Games, (double)r.Wins / r.Games, pick, banRate,
-                                 r.Under25, r.From25To32, r.Over32));
+                                 r.Under25, r.From25To32, r.Over32) { Role = role });
         }
         return rows;
+    }
+
+    /// <summary>Sums a champion's real lanes — every role except <see cref="UnknownRole"/> — into
+    /// the totals the "전체" row shows. Counts add exactly; the duration buckets carry games+wins
+    /// so their rate is re-derived, never averaged.</summary>
+    private static (int Games, int Wins, DurationBucket Under25, DurationBucket From25To32, DurationBucket Over32)
+        ClassifiedTotals(Champ c)
+    {
+        int games = 0, wins = 0;
+        Counted u = default, m = default, o = default;
+        foreach (var (role, r) in c.Roles)
+        {
+            if (role.Equals(UnknownRole, StringComparison.OrdinalIgnoreCase)) continue;
+            games += r.Games;
+            wins += r.Wins;
+            Add(ref u, r.Under25);
+            Add(ref m, r.From25To32);
+            Add(ref o, r.Over32);
+        }
+        return (games, wins, u, m, o);
     }
 
     // ── bracket composition ─────────────────────────────────────────────────────

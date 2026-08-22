@@ -221,16 +221,19 @@ public sealed class AppComposition : IDisposable
     {
         // M29: the slot subscribes to GAME.CONNECTED here — before Start() — so the in-game
         // dormancy rule holds even if a game is already running when the app launches.
-        _ads = new AdSlotService(GetBool("ads.enabled", true), GetString("ads.endpoint", DefaultAdEndpoint));
-        // Since loop 513 the endpoint has a real default: the house manifest served from the public
-        // repo (ads/ on lol_overlay_fova main, regenerated with tools/make_ad_manifest.py). Setting
-        // "ads": { "endpoint": "" } in user_config.json still nulls it — AdSlotService nulls a blank
-        // endpoint, IsConfigured goes false, and HomeWindow collapses the whole row — so the log
-        // line below stays: silence reads as a bug, say it once at startup instead.
-        // (tools/ad_test_server.py serves a local manifest if you want to test the slot offline.)
-        if (!_ads.IsConfigured && GetBool("ads.enabled", true))
-            Log("ads: enabled but no ads.endpoint configured — the slot is collapsed and will "
-                + "never fill. This is configuration, not a failure.");
+        // (loop 525) The endpoint defaults to the house manifest in the public repo. loop 513 only
+        // applied that default when the KEY WAS ABSENT — but every shipped user_config.json writes
+        // "ads": { "endpoint": "" }, a present-but-empty value, so GetString returned "" and the
+        // slot silently never configured (the real reason no banner ever showed in Release / a fresh
+        // install). Treat empty/whitespace the same as absent. To turn ads OFF, set
+        // "ads": { "enabled": false } — an empty endpoint no longer means "disabled".
+        var endpoint = GetString("ads.endpoint", DefaultAdEndpoint);
+        if (string.IsNullOrWhiteSpace(endpoint)) endpoint = DefaultAdEndpoint;
+        bool adsEnabled = GetBool("ads.enabled", true);
+        _ads = new AdSlotService(adsEnabled, endpoint);
+        AdLog(_ads.IsConfigured
+            ? $"ctor: configured, endpoint={endpoint}"
+            : $"ctor: NOT configured (enabled={adsEnabled}, endpoint='{endpoint}')");
 
         // M33: champ-select assistant. Kill switch champSelect.enabled (default true); when off,
         // neither the connector loop nor the HOME panel ever exists.
@@ -534,7 +537,7 @@ public sealed class AppComposition : IDisposable
     {
         try
         {
-            _hotkeyHook = new LowLevelHotkeyHook();
+            _hotkeyHook = new LowLevelHotkeyHook { Log = Log };
             _hotkeys = new HotkeyRegistry(_hotkeyHook);
             _hotkeyHook.HotkeyPressed += id => _hotkeys.FireByOsId(id);
 
@@ -788,6 +791,22 @@ public sealed class AppComposition : IDisposable
 
     private static void Log(string message)
         => Debug.WriteLine($"[AppComposition] {message}");
+
+    /// <summary>(loop 525) Ad-slot diagnostics to <c>logs/ads.log</c> next to the exe — Debug.WriteLine
+    /// is invisible in a normal run, so this is how we can actually see whether the slot configured,
+    /// fetched, decoded and showed. Never throws.</summary>
+    private static readonly string AdLogPath =
+        Path.Combine(AppContext.BaseDirectory, "logs", "ads.log");
+
+    internal static void AdLog(string message)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(AdLogPath)!);
+            File.AppendAllText(AdLogPath, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
+        }
+        catch { /* diagnostics must never crash */ }
+    }
 
     /// <summary>M31 diagnostic sink for the minimap-vision pipeline. Writes to
     /// <c>logs/minimap-vision.log</c> (next to the exe) AS WELL AS Debug — because the capture/detect

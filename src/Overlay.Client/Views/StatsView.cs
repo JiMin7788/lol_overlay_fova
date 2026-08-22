@@ -40,16 +40,21 @@ public sealed class StatsView : UserControl
     private const double SmoothK = 10;
 
     private FileTierStatsSource? _source;
+    private FileMatchupSource? _matchups;
     private AppComposition? _composition;
 
     private readonly StackPanel _list = new() { Margin = new Thickness(0, 0, 16, 24) };
     private readonly TextBlock _meta = new() { FontSize = 12, Margin = new Thickness(0, 3, 0, 10) };
     private readonly TextBlock _note = new() { FontSize = 11, Margin = new Thickness(2, 8, 0, 8) };
+    /// <summary>One width for every control on the filter row — the three dropdowns and the search
+    /// box — so the row reads as a set rather than four different sizes.</summary>
+    private const double FilterWidth = 120;
+
     private readonly StackPanel _laneTabs = new() { Orientation = Orientation.Horizontal };
-    private readonly ComboBox _bracketBox = new() { MinWidth = 116 };
-    private readonly ComboBox _sortBox = new() { MinWidth = 110 };
-    private readonly ComboBox _pickBox = new() { MinWidth = 104 };
-    private readonly TextBox _searchBox = new() { Width = 132 };
+    private readonly ComboBox _bracketBox = new() { MinWidth = FilterWidth };
+    private readonly ComboBox _sortBox = new() { MinWidth = FilterWidth };
+    private readonly ComboBox _pickBox = new() { MinWidth = FilterWidth };
+    private readonly TextBox _searchBox = new() { Width = FilterWidth };
 
     private List<string> _brackets = new();
     private readonly HashSet<string> _thinBrackets = new(StringComparer.OrdinalIgnoreCase);
@@ -150,8 +155,33 @@ public sealed class StatsView : UserControl
             bar.Children.Add(box);
         }
         _searchBox.SetResourceReference(StyleProperty, "ThemedTextBox");
-        bar.Children.Add(_searchBox);
+        bar.Children.Add(SearchField());
         return bar;
+    }
+
+    /// <summary>The search box with a "검색" watermark behind it, shown only while the box is empty,
+    /// so the field is recognisable as a search at a glance. The hint takes no hits, so typing and
+    /// focus are unaffected.</summary>
+    private UIElement SearchField()
+    {
+        var hint = new TextBlock
+        {
+            Text = Localization.L("stats.filter.searchHint"),
+            IsHitTestVisible = false,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(8, 0, 0, 0),
+            FontSize = 12,
+        };
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        void Sync() => hint.Visibility =
+            _searchBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        Sync();
+        _searchBox.TextChanged += (_, _) => Sync();
+
+        var host = new Grid { Width = FilterWidth };
+        host.Children.Add(_searchBox);
+        host.Children.Add(hint);
+        return host;
     }
 
     /// <summary>Wires the data source from config (same rec dir as every other rec consumer).
@@ -162,7 +192,10 @@ public sealed class StatsView : UserControl
         _composition = composition;
         if (composition.Config.Get("champSelect.recDir") is string recDir
             && !string.IsNullOrWhiteSpace(recDir))
+        {
             _source = new FileTierStatsSource(recDir);
+            _matchups = new FileMatchupSource(recDir);
+        }
     }
 
     /// <summary>Called on tab entry (HomeWindow nav). First call builds the table.</summary>
@@ -311,7 +344,7 @@ public sealed class StatsView : UserControl
         // after ranking, because the RANK NUMBER is positional: a search should show a champion's
         // place in the lane, not renumber it to 1.
         var peers = new List<TierRow>();
-        foreach (var row in _source?.All(bracket, lane) ?? Array.Empty<TierRow>())
+        foreach (var row in RowsFor(bracket, lane))
             if (row.PickRate >= pickFloor) peers.Add(row);
 
         var ranked = ChampionGrade.Rank(peers);
@@ -332,16 +365,61 @@ public sealed class StatsView : UserControl
         int sortIdx = Math.Clamp(_sortBox.SelectedIndex, 0, Sorts.Length - 1);
         if (sortIdx != 0) shown.Sort((a, b) => Sorts[sortIdx].Cmp(a.Row, b.Row));
 
-        _list.Children.Add(HeaderRow(lane));
+        _list.Children.Add(HeaderRow());
         for (int i = 0; i < shown.Count; i++)
             _list.Children.Add(ChampionRow(i + 1, shown[i]));
     }
 
-    /// <summary>Search matches either the localized display name or the canonical id, so "가렌"
-    /// and "Garen" both find the same row whatever the UI language is.</summary>
+    /// <summary>Rows for the current view. A lane tab shows that lane's rows; "전체" is the UNION of
+    /// every lane's rows — each champion appears once per lane it plays, and a "전체" row is
+    /// literally the same row its lane tab shows, never a separately pooled number.</summary>
+    private IEnumerable<TierRow> RowsFor(string bracket, string lane)
+    {
+        if (_source is null) return Array.Empty<TierRow>();
+        if (lane.Length != 0) return _source.All(bracket, lane);
+        var union = new List<TierRow>();
+        foreach (var role in _source.Roles(bracket)) union.AddRange(_source.All(bracket, role));
+        return union;
+    }
+
+    /// <summary>Search matches three ways, so a Korean player never has to switch IME to find a
+    /// champion: the localized display name ("가렌"), the canonical id ("Garen"), and the Korean
+    /// name typed on a QWERTY keyboard with the IME still off — "잭스" comes out as "wortm", which
+    /// this maps back by rendering the Korean name to its 2-beolsik keystrokes and matching that.</summary>
     private static bool Matches(TierRow row, string needle)
-        => Localization.ChampionName(row.Name).Contains(needle, StringComparison.OrdinalIgnoreCase)
-           || row.Name.Contains(needle, StringComparison.OrdinalIgnoreCase);
+    {
+        string ko = Localization.ChampionName(row.Name);
+        if (ko.Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
+        if (row.Name.Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
+        return QwertyFromHangul(ko).Contains(needle, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // 2-beolsik (두벌식) keystrokes for each jamo, in Unicode composition order. Doubled jamo use
+    // their shifted key (ㄲ→R); matching is case-insensitive so an un-shifted "r" still finds it.
+    private const string Cho = "r,R,s,e,E,f,a,q,Q,t,T,d,w,W,c,z,x,v,g";
+    private static readonly string[] Jung =
+        "k,o,i,O,j,p,u,P,h,hk,ho,hl,y,n,nj,np,nl,b,m,ml,l".Split(',');
+    private static readonly string[] Jong =
+        (",r,R,rt,s,sw,sg,e,f,fr,fa,fq,ft,fx,fv,fg,a,q,qt,t,T,d,w,c,z,x,v,g").Split(',');
+    private static readonly string[] ChoKeys = Cho.Split(',');
+
+    /// <summary>Renders a Korean string to the QWERTY keys a two-set keyboard would produce for it,
+    /// leaving non-Hangul characters as-is. Used only to make the "IME-off" search spelling
+    /// matchable; it is a fuzzy aid, not a reversible transliteration.</summary>
+    private static string QwertyFromHangul(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length * 2);
+        foreach (char ch in text)
+        {
+            int i = ch - 0xAC00;
+            if (i is >= 0 and < 11172)
+            {
+                sb.Append(ChoKeys[i / 588]).Append(Jung[(i % 588) / 28]).Append(Jong[i % 28]);
+            }
+            else sb.Append(ch);
+        }
+        return sb.ToString();
+    }
 
     private static TextBlock Note(string lkey)
     {
@@ -364,7 +442,8 @@ public sealed class StatsView : UserControl
         new(54),                          // score
         new(62), new(62), new(62),        // win / pick / ban
         new(66),                          // sample
-        new(72), new(72), new(72),        // duration buckets
+        new(92),                          // duration win-rate graph (3 buckets in one cell)
+        new(60), new(60),                 // favourable / unfavourable lane opponents
     };
 
     private static Grid Row()
@@ -389,23 +468,26 @@ public sealed class StatsView : UserControl
         return tb;
     }
 
-    private static UIElement HeaderRow(string lane)
+    private static UIElement HeaderRow()
     {
         var g = Row();
         g.Margin = new Thickness(8, 0, 8, 6);
-        // Under a lane filter the pick rate is per-lane-slot and the ban rate is not per-lane at
-        // all; the headers carry that difference so the two columns are not read on one basis.
+        // Every displayed row is now lane-scoped (a lane tab, or one lane's row inside "전체"), so
+        // the pick rate is always per-lane-slot and the ban rate is always the champion-wide value
+        // (bans precede positions); the headers say so on one consistent basis.
         string[] keys = { "stats.col.rank", "stats.col.grade", "", "stats.col.champion",
                           "stats.col.score", "stats.col.win",
-                          lane.Length == 0 ? "stats.col.pick" : "stats.col.pick.role",
-                          lane.Length == 0 ? "stats.col.ban" : "stats.col.ban.all",
+                          "stats.col.pick.role",
+                          "stats.col.ban.all",
                           "stats.col.sample",
-                          "stats.col.lt25", "stats.col.mid", "stats.col.gt32" };
+                          "stats.col.durgraph",
+                          "stats.col.favor", "stats.col.unfavor" };
         for (int c = 0; c < keys.Length; c++)
         {
             if (keys[c].Length == 0) continue;
             var cell = Cell(Localization.L(keys[c]), c, "TextDim", bold: true);
             if (c is 1 or 4) cell.ToolTip = Localization.L("stats.grade.tip");
+            else if (c is 10 or 11) cell.ToolTip = Localization.L("stats.counter.headerTip");
             g.Children.Add(cell);
         }
         return g;
@@ -427,22 +509,33 @@ public sealed class StatsView : UserControl
         Grid.SetColumn(icon, 2);
         g.Children.Add(icon);
 
-        g.Children.Add(Cell(Localization.ChampionName(row.Name), 3, bold: true));
+        // In "전체" the same champion appears once per lane, so each row names its lane; a lane tab
+        // needs no such tag because the tab already says which lane it is.
+        string name = Localization.ChampionName(row.Name);
+        if (SelectedLane.Length == 0 && row.Role.Length != 0)
+            name += "  " + LaneLabel(row.Role);
+        g.Children.Add(Cell(name, 3, bold: true));
         // A gated row shows a score its letter does not match — that is the whole point of the
         // gate — so it is marked and says why on hover rather than looking like a sorting bug.
-        var score = Cell(graded.Score.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture)
+        var score = Cell(graded.Score.ToString("0.0", CultureInfo.InvariantCulture)
                          + (graded.Gated ? "*" : ""), 4, "TextDim");
         if (graded.Gated)
             score.ToolTip = Localization.F("stats.grade.gated",
-                graded.LowerEdge.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture));
+                graded.LowerEdge.ToString("0.0", CultureInfo.InvariantCulture));
         g.Children.Add(score);
         g.Children.Add(Cell($"{row.WinRate:P2}", 5, RateColorKey(row.WinRate, row.Games)));
         g.Children.Add(Cell($"{row.PickRate:P2}", 6, "TextDim"));
         g.Children.Add(Cell($"{row.BanRate:P2}", 7, "TextDim"));
         g.Children.Add(Cell(row.Games.ToString("N0", CultureInfo.CurrentCulture), 8, "TextDim"));
-        g.Children.Add(DurationCell(row.Under25, 9));
-        g.Children.Add(DurationCell(row.From25To32, 10));
-        g.Children.Add(DurationCell(row.Over32, 11));
+        g.Children.Add(DurationGraph(row, 9));
+
+        // Counters are per-lane. Each row carries its own lane (its Role, or the selected lane),
+        // so a "전체" row shows that lane's counters. Both cells are blank when the pooled sample
+        // held no qualifying matchup — a common, honest outcome on a thin patch.
+        string counterLane = row.Role.Length != 0 ? row.Role : SelectedLane;
+        var set = counterLane.Length != 0 ? _matchups?.Get(counterLane, row.ChampionKey) : null;
+        g.Children.Add(CounterCell(set?.Best, 10));
+        g.Children.Add(CounterCell(set?.Worst, 11));
 
         var host = new Border
         {
@@ -499,11 +592,86 @@ public sealed class StatsView : UserControl
         _ => "TextDim",
     };
 
-    private static TextBlock DurationCell(DurationBucket b, int col)
+    /// <summary>The three game-length buckets and how to pull each from a row, left-to-right in
+    /// ascending game length — the reading order of the mini bar chart.</summary>
+    private static readonly (string LabelKey, Func<TierRow, DurationBucket> Pick)[] DurBuckets =
     {
-        // Empty bucket shows a dash — "0%" would read as a measured catastrophic rate.
-        if (b.Games == 0) return Cell("–", col, "TextDim");
-        return Cell($"{b.WinRate:P0}", col, RateColorKey(b.WinRate, b.Games));
+        ("stats.col.lt25", r => r.Under25),
+        ("stats.col.mid",  r => r.From25To32),
+        ("stats.col.gt32", r => r.Over32),
+    };
+
+    private const double BarBand = 26, BarWidth = 16, BarMin = 3;
+
+    /// <summary>The game-length win curve as a compact three-bar chart (the reference sites' shape),
+    /// replacing three text columns: each bar's height maps the bucket's win rate across the 40–60%
+    /// band the tier list actually lives in, coloured by the same real-deviation rule as the win
+    /// column, and the exact rate + sample is on hover. Empty buckets are a dim stub, never 0%.</summary>
+    private static UIElement DurationGraph(TierRow row, int col)
+    {
+        var bars = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Height = BarBand,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        foreach (var (labelKey, pick) in DurBuckets)
+            bars.Children.Add(Bar(pick(row), Localization.L(labelKey)));
+        Grid.SetColumn(bars, col);
+        return bars;
+    }
+
+    private static UIElement Bar(DurationBucket b, string window)
+    {
+        bool empty = b.Games == 0;
+        // 50% sits mid-band; the bar saturates by 60% and bottoms out by 40%, so the visible
+        // range is the one that separates a strong bucket from a weak one.
+        double h = empty ? BarMin
+            : Math.Clamp((b.WinRate - 0.40) / 0.20, 0, 1) * (BarBand - BarMin) + BarMin;
+        var bar = new Border
+        {
+            Width = BarWidth,
+            Height = h,
+            CornerRadius = new CornerRadius(2, 2, 0, 0),
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, 4, 0),
+            ToolTip = empty
+                ? Localization.F("stats.dur.empty", window)
+                : Localization.F("stats.dur.tip", window,
+                    b.WinRate.ToString("P2", CultureInfo.CurrentCulture),
+                    b.Games.ToString("N0", CultureInfo.CurrentCulture)),
+        };
+        bar.SetResourceReference(Border.BackgroundProperty,
+            empty ? "TextDim" : RateColorKey(b.WinRate, b.Games));
+        return bar;
+    }
+
+    private const int MaxCounters = 3;
+
+    /// <summary>Up to <see cref="MaxCounters"/> lane opponents as small portraits, most extreme
+    /// matchup first, each naming its win rate and sample on hover. A null or empty list is a blank
+    /// cell — the champion simply has no counter on record for this lane and patch.</summary>
+    private UIElement CounterCell(IReadOnlyList<Matchup>? opponents, int col)
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        int n = opponents is null ? 0 : Math.Min(opponents.Count, MaxCounters);
+        for (int i = 0; i < n; i++)
+        {
+            var m = opponents![i];
+            var img = new Image { Width = 16, Height = 16, Margin = new Thickness(0, 0, 2, 0) };
+            img.ToolTip = Localization.F("stats.counter.tip",
+                Localization.ChampionName(m.Name),
+                m.WinRate.ToString("P0", CultureInfo.CurrentCulture),
+                m.Games.ToString("N0", CultureInfo.CurrentCulture));
+            _ = SetPortraitAsync(img, m.Name);
+            panel.Children.Add(img);
+        }
+        Grid.SetColumn(panel, col);
+        return panel;
     }
 
     /// <summary>Green/red only when the deviation is real: thin samples (&lt;30) stay neutral so a

@@ -54,8 +54,11 @@ public partial class App : Application
     }
 
     /// <summary>Best-effort crash reporter — logs to file and (optionally) shows a dialog.
-    /// Never throws: a failure inside the reporter must not mask the original crash.</summary>
-    private static void Report(string source, Exception? ex, bool showDialog)
+    /// Never throws: a failure inside the reporter must not mask the original crash.
+    /// Internal so deliberate, otherwise-silent failure sites (e.g. HomeWindow.ShowOverlay, where a
+    /// corrupt overlay-config.json used to vanish into Debug.WriteLine) can route through the same
+    /// file log + dialog surface the global handlers use.</summary>
+    internal static void Report(string source, Exception? ex, bool showDialog)
     {
         string text = ex?.ToString() ?? "(null exception object)";
         try

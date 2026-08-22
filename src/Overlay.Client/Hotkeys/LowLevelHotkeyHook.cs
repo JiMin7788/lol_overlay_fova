@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
+using Microsoft.Win32;
 using Overlay.Core.Hotkeys;
 
 namespace Overlay.Client.Hotkeys;
@@ -39,7 +41,18 @@ namespace Overlay.Client.Hotkeys;
 /// A low-level hook's callback is dispatched on the thread that installed it, and that thread
 /// must run a message pump. <c>AppComposition.WireHotkeys</c> runs on the WPF UI thread (which
 /// has a Dispatcher message pump), so the hook is installed there and the callback also runs on
-/// the UI thread — <see cref="HotkeyPressed"/> can be raised directly, no marshalling needed.
+/// the UI thread.
+///
+/// <para>(loop 518) The callback does NOT run <see cref="HotkeyPressed"/> synchronously. Windows
+/// silently UNHOOKS a WH_KEYBOARD_LL whose callback exceeds <c>LowLevelHooksTimeout</c> (~300 ms
+/// default) — no error, no event — and the handler here drives the full combo damage engine
+/// (under a lock, and it can block on a live-refresh compute), plus WPF show/hide and config
+/// fan-out. Any of those can exceed the budget on a busy UI thread and kill every hotkey until
+/// restart. So the callback only tracks modifiers and posts the fire via
+/// <see cref="Dispatcher.BeginInvoke(DispatcherPriority, Delegate)"/>, returning to
+/// <c>CallNextHookEx</c> in microseconds. The handler still runs on the UI thread, exactly as
+/// before — only the timing changes from sync to queued. A watchdog reinstalls the hook if
+/// Windows removes it anyway, and modifier state is resynced across session switches.</para>
 /// </summary>
 public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 {
@@ -83,7 +96,20 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     // Kept in a field so the GC never collects the delegate while the hook is installed.
     private readonly LowLevelKeyboardProc _proc;
-    private readonly IntPtr _hookHandle;
+    private IntPtr _hookHandle;
+
+    // The install thread's dispatcher — the fire is queued back onto it so the hook callback
+    // returns immediately (see class doc "THREADING"). Reinstalls must also run on this thread.
+    private readonly Dispatcher _dispatcher;
+    private readonly DispatcherTimer _watchdog;
+    private long _lastCallbackTick = Environment.TickCount64;
+    private bool _disposed;
+
+    // Watchdog: reinstall if the callback has been silent longer than this. In game the QWER keys
+    // fire constantly so this is never stale during play; it only elapses when truly idle, where a
+    // reinstall is harmless (and clears any modifier stuck by a missed key-up). Comfortably above
+    // any real idle-between-abilities gap so it never churns mid-fight.
+    private const long SilenceReinstallMs = 120_000;
 
     private readonly object _lock = new();
     // The ONLY persistent state: which combos are registered (both directions for O(1) lookup).
@@ -98,16 +124,35 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     /// <see cref="HotkeyRegistry.FireByOsId"/>.</summary>
     public event Action<int>? HotkeyPressed;
 
+    /// <summary>Optional sink for the rare watchdog/reinstall lines (wire to M18 logging).</summary>
+    public Action<string>? Log { get; init; }
+
     public LowLevelHotkeyHook()
     {
         _proc = HookCallback;
-        // LL hooks are global and do not live in a DLL; the module handle of the current process
-        // is the accepted value for hMod (dwThreadId 0 = all threads on this desktop).
-        _hookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(null), 0);
+        _dispatcher = Dispatcher.CurrentDispatcher; // the install thread's pump
+        _hookHandle = Install();
         if (_hookHandle == IntPtr.Zero)
             throw new InvalidOperationException(
                 $"SetWindowsHookEx(WH_KEYBOARD_LL) failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        // A user lock / UAC secure-desktop transition can eat a modifier's key-up (leaving it stuck
+        // "held") and can drop the hook; resync + reinstall on the way back is the concrete fix for
+        // both, cleaner than any keyboard-idle heuristic.
+        SystemEvents.SessionSwitch += OnSessionSwitch;
+
+        _watchdog = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(30),
+        };
+        _watchdog.Tick += (_, _) => WatchdogTick();
+        _watchdog.Start();
     }
+
+    private IntPtr Install()
+        // LL hooks are global and do not live in a DLL; the module handle of the current process
+        // is the accepted value for hMod (dwThreadId 0 = all threads on this desktop).
+        => SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(null), 0);
 
     public void Register(int osId, HotkeyCombo combo)
     {
@@ -129,8 +174,56 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     public void Dispose()
     {
+        _disposed = true;
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
+        _watchdog?.Stop();
         if (_hookHandle != IntPtr.Zero)
+        {
             UnhookWindowsHookEx(_hookHandle);
+            _hookHandle = IntPtr.Zero;
+        }
+    }
+
+    // ── watchdog + reinstall (defends the hook against a silent timeout removal) ──────────────
+
+    private void WatchdogTick()
+    {
+        if (_disposed) return;
+        // The callback timestamps itself on every key event; in game the ability keys keep it fresh,
+        // so a long silence means either genuine idle or a removed hook. Reinstalling covers the
+        // second and is harmless in the first (it also flushes any stuck modifier).
+        if (Environment.TickCount64 - _lastCallbackTick < SilenceReinstallMs) return;
+        Log?.Invoke("hotkeys: keyboard hook silent — reinstalling as a precaution");
+        Reinstall();
+    }
+
+    private void OnSessionSwitch(object? sender, SessionSwitchEventArgs e)
+    {
+        // Unlock / remote-connect: a modifier's key-up may have happened on the secure desktop and
+        // never reached us, and the hook itself can be lost. Marshal to the install thread.
+        if (e.Reason is SessionSwitchReason.SessionUnlock or SessionSwitchReason.SessionLogon
+                     or SessionSwitchReason.ConsoleConnect or SessionSwitchReason.RemoteConnect)
+            _dispatcher.BeginInvoke(new Action(Reinstall));
+    }
+
+    /// <summary>Clears stuck modifier state and reinstalls the hook. Idempotent; must run on the
+    /// install thread (the DispatcherTimer and the marshalled SessionSwitch handler both do).</summary>
+    public void Reinstall()
+    {
+        if (_disposed) return;
+        lock (_lock) _heldModifiers.Clear();
+
+        IntPtr old = _hookHandle;
+        IntPtr fresh = Install();
+        if (fresh == IntPtr.Zero)
+        {
+            // Keep the old handle if it happens to still be live; don't tear down what we have.
+            Log?.Invoke($"hotkeys: hook reinstall failed (Win32 {Marshal.GetLastWin32Error()}); keeping the existing hook");
+            return;
+        }
+        _hookHandle = fresh;
+        _lastCallbackTick = Environment.TickCount64;
+        if (old != IntPtr.Zero) UnhookWindowsHookEx(old);
     }
 
     /// <summary>True if <paramref name="modifier"/> is currently held, read from the SAME
@@ -149,6 +242,7 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
+        _lastCallbackTick = Environment.TickCount64; // watchdog heartbeat (see WatchdogTick)
         // nCode < 0 means "just pass it on, don't process" per the hook contract.
         if (nCode >= 0)
         {
@@ -183,8 +277,11 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
             if (!_comboToOsId.TryGetValue(pressed, out osId)) return;
         }
 
-        // On the install (UI) thread already — invoke directly.
-        HotkeyPressed?.Invoke(osId);
+        // (loop 518) Queue the fire instead of running the (potentially slow) handler on the hook
+        // stack — see class doc "THREADING". BeginInvoke returns immediately; the handler runs on
+        // this same UI thread once the callback has returned to CallNextHookEx.
+        int id = osId;
+        _dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => HotkeyPressed?.Invoke(id)));
     }
 
     private void OnKeyUp(uint vkCode)

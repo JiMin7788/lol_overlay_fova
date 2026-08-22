@@ -75,19 +75,19 @@ internal static class DrawCommandRenderer
     /// method just iterates — the painter's-algorithm ordering is the queue's
     /// responsibility, not this layer's.
     /// </summary>
-    public static void Render(DrawingContext dc, IReadOnlyList<DrawCommand> commands)
+    public static void Render(DrawingContext dc, IReadOnlyList<DrawCommand> commands, double pixelsPerDip = 1.0)
     {
         for (int i = 0; i < commands.Count; i++)
-            Draw(dc, commands[i]);
+            Draw(dc, commands[i], pixelsPerDip);
     }
 
-    private static void Draw(DrawingContext dc, in DrawCommand cmd)
+    private static void Draw(DrawingContext dc, in DrawCommand cmd, double pixelsPerDip)
     {
         var b = cmd.Bounds;
         switch (cmd.Type)
         {
             case DrawCommandType.Text:
-                DrawText(dc, cmd);
+                DrawText(dc, cmd, pixelsPerDip);
                 break;
 
             case DrawCommandType.Rect:
@@ -106,7 +106,7 @@ internal static class DrawCommandRenderer
 
             case DrawCommandType.Line:
                 // Bounds convention: segment from (X,Y) to (X+Width, Y+Height).
-                dc.DrawLine(new Pen(Brush(cmd.Style), 1.0),
+                dc.DrawLine(LinePen(cmd.Style),
                             new Point(b.X, b.Y),
                             new Point(b.X + b.Width, b.Y + b.Height));
                 break;
@@ -127,7 +127,7 @@ internal static class DrawCommandRenderer
         }
     }
 
-    private static void DrawText(DrawingContext dc, in DrawCommand cmd)
+    private static void DrawText(DrawingContext dc, in DrawCommand cmd, double pixelsPerDip)
     {
         if (string.IsNullOrEmpty(cmd.Content)) return;
         var b = cmd.Bounds;
@@ -140,7 +140,7 @@ internal static class DrawCommandRenderer
             typeface,
             cmd.Style.FontSize > 0 ? cmd.Style.FontSize : 12.0,
             Brush(cmd.Style),
-            pixelsPerDip: 1.0);
+            pixelsPerDip > 0 ? pixelsPerDip : 1.0);
         dc.DrawText(text, new Point(b.X, b.Y));
     }
 
@@ -238,6 +238,11 @@ internal static class DrawCommandRenderer
     /// </summary>
     private static readonly Dictionary<long, Brush> BrushCache = new();
 
+    /// <summary>Frozen width-1 pens keyed the same way as <see cref="BrushCache"/> — the Line path
+    /// allocated a fresh <see cref="Pen"/> every primitive every frame (loop 520). Same small
+    /// bounded HUD palette, same single render thread.</summary>
+    private static readonly Dictionary<long, Pen> LinePenCache = new();
+
     /// <summary>
     /// Build (or reuse) a frozen solid brush from a <see cref="RenderStyle"/>: unpack the
     /// packed 0xAARRGGBB colour and fold the 0..1 <see cref="RenderStyle.Opacity"/>
@@ -261,5 +266,19 @@ internal static class DrawCommandRenderer
         brush.Freeze();
         BrushCache[key] = brush;
         return brush;
+    }
+
+    /// <summary>Reuse a frozen width-1 pen for the given style (see <see cref="LinePenCache"/>).</summary>
+    private static Pen LinePen(in RenderStyle style)
+    {
+        double opacity = Math.Clamp(style.Opacity, 0.0, 1.0);
+        long key = ((long)style.Color << 8) | (byte)(opacity * 255.0);
+        if (LinePenCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var pen = new Pen(Brush(style), 1.0);
+        pen.Freeze();
+        LinePenCache[key] = pen;
+        return pen;
     }
 }

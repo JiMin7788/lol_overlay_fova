@@ -46,6 +46,20 @@ public sealed class AdBanner : UserControl
     private Window? _host;
     private AdCreative? _current;
     private bool _loading;
+    private bool _filled;
+
+    /// <summary>(loop 521) Raised (UI thread) when the slot starts/stops showing a creative, so the
+    /// host can reclaim the reserved row when empty instead of leaving a black band. Only fires on a
+    /// real transition.</summary>
+    public event Action<bool>? FilledChanged;
+
+    private void SetFilled(bool filled)
+    {
+        Visibility = filled ? Visibility.Visible : Visibility.Collapsed;
+        if (filled == _filled) return;
+        _filled = filled;
+        FilledChanged?.Invoke(filled);
+    }
 
     public AdBanner(AdSlotService service)
     {
@@ -74,9 +88,11 @@ public sealed class AdBanner : UserControl
             Width = SlotWidth,
             Height = SlotHeight,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Background = (Brush)Application.Current.FindResource("Surface"),
-            BorderBrush = (Brush)Application.Current.FindResource("Border"),
-            BorderThickness = new Thickness(1),
+            // (loop 522) Transparent, no border/fill: the creative sits directly on the page instead
+            // of inside a dark "black box". A real opaque banner reads as a clean rectangle; the
+            // house/affiliate placeholders carry their own (transparent-background) framing.
+            // Background stays a hit-testable Transparent so the whole slot area still takes clicks.
+            Background = Brushes.Transparent,
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
             Cursor = Cursors.Hand,
@@ -87,6 +103,7 @@ public sealed class AdBanner : UserControl
 
         Height = SlotHeight;
         Content = _slot;
+        Visibility = Visibility.Collapsed; // nothing to show yet — the host reclaims the row (loop 521)
 
         _timer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -101,14 +118,26 @@ public sealed class AdBanner : UserControl
 
     // ── Lifecycle ───────────────────────────────────────────────────────────────
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e) => EnsureStarted(Window.GetWindow(this));
+
+    private bool _started;
+
+    /// <summary>(loop 524) Kick off host wiring + the first load. The control's own Loaded event
+    /// does NOT reliably fire while it starts Collapsed (loop 521 reserves the row only once a
+    /// creative is showing), so the ad would never fetch — collapsed waiting for an ad, ad never
+    /// loading because collapsed. HomeWindow calls this from its OWN Loaded, whose firing is
+    /// guaranteed, passing the host window. Idempotent.</summary>
+    public void EnsureStarted(Window? host)
     {
-        if (_host is null)
+        if (_host is null && host is not null)
         {
-            _host = Window.GetWindow(this);
+            _host = host;
             // Minimised/hidden HOME rotates nothing — no reason to fetch what nobody sees (D2).
-            if (_host is not null) _host.IsVisibleChanged += (_, _) => Sync();
+            _host.IsVisibleChanged += (_, _) => Sync();
         }
+        if (_started) return;
+        _started = true;
+        AppComposition.AdLog($"EnsureStarted: host={(_host is null ? "null" : "set")}, dormant={_service.IsDormant}");
         Sync();
     }
 
@@ -116,7 +145,9 @@ public sealed class AdBanner : UserControl
 
     private void Sync()
     {
-        if (_service.IsDormant || _host is { IsVisible: false }) Pause();
+        bool pause = _service.IsDormant || _host is { IsVisible: false };
+        AppComposition.AdLog($"Sync: dormant={_service.IsDormant}, hostVisible={_host?.IsVisible}, -> {(pause ? "Pause" : "Resume")}");
+        if (pause) Pause();
         else Resume();
     }
 
@@ -135,6 +166,7 @@ public sealed class AdBanner : UserControl
         _image.Source = null;
         _current = null;
         _slot.Visibility = Visibility.Hidden;
+        SetFilled(false);
     }
 
     // ── Load + decode ───────────────────────────────────────────────────────────
@@ -145,22 +177,26 @@ public sealed class AdBanner : UserControl
         _loading = true;
         try
         {
+            AppComposition.AdLog("LoadNext: calling NextAsync");
             var ad = await _service.NextAsync().ConfigureAwait(true);
-            if (ad is null) { Collapse(); return; }
+            if (ad is null) { AppComposition.AdLog("LoadNext: NextAsync returned null"); Collapse(); return; }
 
             var bitmap = await Task.Run(() => Decode(ad.Bytes)).ConfigureAwait(true);
-            if (bitmap is null) { Collapse(); return; }
+            if (bitmap is null) { AppComposition.AdLog($"LoadNext: decode failed ({ad.Bytes.Length}B)"); Collapse(); return; }
 
             // A game may have started while we were fetching/decoding — dormancy wins.
-            if (_service.IsDormant) { Collapse(); return; }
+            if (_service.IsDormant) { AppComposition.AdLog("LoadNext: went dormant"); Collapse(); return; }
 
             _current = ad.Creative;
             _image.Source = bitmap;
             _slot.Visibility = Visibility.Visible;
+            SetFilled(true);
             _service.RecordImpression(ad.Creative);
+            AppComposition.AdLog($"LoadNext: SHOWN id={ad.Creative.Id} ({bitmap.PixelWidth}x{bitmap.PixelHeight})");
         }
         catch (Exception ex)
         {
+            AppComposition.AdLog($"LoadNext: EXCEPTION {ex.GetType().Name}: {ex.Message}");
             Debug.WriteLine($"[AdBanner] load skipped: {ex.Message}");
             Collapse();
         }
@@ -196,6 +232,7 @@ public sealed class AdBanner : UserControl
         _image.Source = null;
         _current = null;
         _slot.Visibility = Visibility.Hidden;
+        SetFilled(false);
     }
 
     // ── Click ───────────────────────────────────────────────────────────────────
