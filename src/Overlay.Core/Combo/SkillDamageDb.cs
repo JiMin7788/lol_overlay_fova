@@ -125,6 +125,19 @@ public static class SkillDamageDb
         return champion.TryGetValue(slot, out var s) && s.BonusEffects.Length > 0 ? s.BonusEffects : null;
     }
 
+    /// <summary>(loop 539) BIN DataValue name curated on one slot as its AD BUFF: casting the slot
+    /// grants the caster bonus AD equal to this rank-indexed FRACTION of their total AD for the
+    /// buff's duration — Aatrox R "RTotalADAmp" (0.2/0.3/0.4 "increases his attack damage by
+    /// 20/30/40%"), Riven R "PercentBonusAD" (0.2 "gains 20% total AD as bonus AD"). ComboRunner
+    /// raises the working stats' AttackDamage by it for the buff node and everything after it, so a
+    /// combo containing the ultimate finally reads higher than one without (user report: Aatrox R in
+    /// a combo changed nothing). Null for a slot/champion not curated this way. Never throws.</summary>
+    public static string? GetAdBuffDataValue(string championId, string slot)
+    {
+        var champion = Load(championId);
+        return champion is not null && champion.TryGetValue(slot, out var s) ? s.AdBuffDataValue : null;
+    }
+
     /// <summary>Returns the FIRST duration-scaled hit (<see cref="SkillHit.IsDurationScaled"/>)
     /// curated on one skill slot of <paramref name="championId"/>, or null when the champion/slot
     /// has no such hit. Used by the combo editor's "적중시간" (hit duration) control to decide
@@ -324,10 +337,13 @@ public static class SkillDamageDb
                             // and WW are a movement boon and a shield, real casts with real
                             // cooldowns and no damage at all. Dropping them for having no number
                             // would be the same erasure the muse split exists to undo.
+                            // (loop 539) …or an AD buff alone: Aatrox R deals no damage itself, so
+                            // its entry carries only adBuffDataValue and must still be kept.
                             if (hits.Length > 0 || bonus.Length > 0 || tags.Length > 0
-                                || !string.IsNullOrEmpty(slotJson.Icon))
+                                || !string.IsNullOrEmpty(slotJson.Icon)
+                                || !string.IsNullOrEmpty(slotJson.AdBuffDataValue))
                                 parsed[slot] = new CuratedSlot(hits, bonus, castCount, tags, slotJson.Icon,
-                                    slotJson.SelfAttachable ?? true);
+                                    slotJson.SelfAttachable ?? true, slotJson.AdBuffDataValue);
                         }
                     }
                 }
@@ -377,6 +393,12 @@ public static class SkillDamageDb
         [JsonPropertyName("selfAttachable")]
         public bool? SelfAttachable { get; init; }
 
+        /// <summary>(loop 539) Optional BIN DataValue name for this slot's AD BUFF — see
+        /// <see cref="SkillDamageDb.GetAdBuffDataValue"/>. Null/omitted (default) = the slot grants
+        /// no AD buff, fully backward-compatible.</summary>
+        [JsonPropertyName("adBuffDataValue")]
+        public string? AdBuffDataValue { get; init; }
+
         /// <summary>(loop 175) Optional CommunityDragon game-asset icon path for this slot, used by the
         /// combo editor's palette to show a real ability icon for EXTRA (transform-form) slots whose
         /// icon isn't in Data Dragon's base P/Q/W/E/R set — e.g. Jayce "QCannon" -&gt;
@@ -394,7 +416,7 @@ public static class SkillDamageDb
     /// "tags" key to <c>Array.Empty&lt;string&gt;()</c> before constructing this). Hits/BonusEffects/
     /// Tags may all be empty (a slot with only bonus effects, or only tags and no direct hits, is
     /// still kept — see <see cref="SkillDamageDb.Load"/>).</summary>
-    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable);
+    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable, string? AdBuffDataValue = null);
 }
 
 /// <summary>A champion-intrinsic bonus damage source curated on a skill slot: extra hits that

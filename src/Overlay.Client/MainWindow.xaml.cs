@@ -283,7 +283,7 @@ public partial class MainWindow : Window
         {
             _overlayHost = Overlay.Client.Hud.OverlayHost.Start(
                 this, WidgetCanvas, _composition.Config, () => _composition.LatestSnapshot,
-                IsTargetClickModifierHeld, () => _movable,
+                IsTargetClickModifierHeld, IsMovableDragActive,
                 // (loop 125) same-lane enemy return prediction, queried live each frame (null when off)
                 () => _composition.LaneReturnPredictor?.GetActive(
                     System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()),
@@ -322,6 +322,9 @@ public partial class MainWindow : Window
             }
             catch { /* diagnostics must never crash startup */ }
             _composition.WireMinimapCapture(FindLeagueWindow);
+            // (loop 540) Buff-bar stack vision (Nasus Q live stacks) — same HWND getter, own
+            // kill switch (vision.buffStacks), compiled out of the LIGHT build like the above.
+            _composition.WireBuffStackVision(FindLeagueWindow);
 
             // M19: apply overlay opacity + movable from the shared config, then react to live changes.
             // OnChange callbacks arrive on the EventBus thread → marshal to the UI thread.
@@ -455,6 +458,25 @@ public partial class MainWindow : Window
     private bool IsTargetClickModifierHeld()
         => _composition?.HotkeyHook?.IsModifierHeld(_targetClickModifier) ?? false;
 
+    /// <summary>(loop 541, user request) The MOVE chord: with <c>overlay.movable</c> on, HUD
+    /// elements are dragged only WHILE Ctrl+Shift is held — the overlay stays click-through the
+    /// rest of the time, so movable mode no longer swallows every game click. Falls back to
+    /// "always held" when the low-level hook is unavailable (the rare Win32HotkeyHook fallback),
+    /// which degrades to the pre-change always-draggable behavior rather than making movable
+    /// mode dead.</summary>
+    private bool IsMoveChordHeld()
+    {
+        var hook = _composition?.HotkeyHook;
+        return hook is null
+            || hook.IsModifierHeld(HotkeyModifiers.Control | HotkeyModifiers.Shift);
+    }
+
+    /// <summary>(loop 541) Injected into <c>OverlayHost</c> as its movable gate, so drag-start,
+    /// tap-vs-drag classification, and the calibration wheel all require the chord too — without
+    /// it, hovering a card (WantsInteraction) in movable mode would let a PLAIN click start a
+    /// drag the user did not ask for.</summary>
+    private bool IsMovableDragActive() => _movable && IsMoveChordHeld();
+
     /// <summary>M02 loop 38 continuation 12 — combo-overlay click-to-target. Polled at a short
     /// interval rather than event-driven: while click-through, this window receives NO input events
     /// at all, so there is nothing to hang a key handler off. While the configured modifier is held,
@@ -467,14 +489,18 @@ public partial class MainWindow : Window
     /// exactly this purpose — never during normal play.</summary>
     private void UpdateTargetClickThrough()
     {
-        if (_movable) return;
-
         // (loop 118) Non-click-through when the modifier is held OR the overlay wants interaction
         // (cursor hovering the combo card / target picker open) — so the ⇄ button and enemy-portrait
         // picker are clickable WITHOUT holding a key. WantsInteraction is only ever true over the small
         // card/picker region while a card is shown, so normal gameplay clicks elsewhere still fall
         // through (P4). Same poll-driven suppress/restore as the modifier path.
-        bool held = IsTargetClickModifierHeld() || (_overlayHost?.WantsInteraction ?? false);
+        //
+        // (loop 541, user request) Movable mode joined this poll instead of bypassing it: with
+        // overlay.movable on, the window opens for input only WHILE the Ctrl+Shift move chord is
+        // held (IsMoveChordHeld) — before this, movable mode cleared click-through permanently and
+        // every click over any HUD element was eaten until the user remembered to turn it off.
+        bool held = IsTargetClickModifierHeld() || (_overlayHost?.WantsInteraction ?? false)
+                    || (_movable && IsMoveChordHeld());
         if (held && !_targetClickThroughSuppressed)
         {
             SetClickThrough(false);
@@ -525,17 +551,19 @@ public partial class MainWindow : Window
     public void SetOverlayOpacity(double opacity)
         => Opacity = System.Math.Clamp(opacity, 0.2, 1.0);
 
-    /// <summary>M19: toggle movable mode. Movable → interactive/draggable (click-through OFF); not
-    /// movable → click-through ON (default in-game). Called on load and from the
-    /// <c>overlay.movable</c> config listener.</summary>
+    /// <summary>M19: toggle movable mode. (loop 541, user request) Movable no longer clears
+    /// click-through outright — the window stays click-through either way, and
+    /// <see cref="UpdateTargetClickThrough"/> opens it for input only while the Ctrl+Shift move
+    /// chord is held (see <see cref="IsMoveChordHeld"/>), so elements are dragged with
+    /// Ctrl+Shift+drag and plain clicks keep falling through to the game. Called on load and from
+    /// the <c>overlay.movable</c> config listener.</summary>
     public void SetMovable(bool movable)
     {
         _movable = movable;
-        SetClickThrough(!movable);
-        // M02 loop 38 continuation 12: movable mode owns click-through while it's on; drop any
-        // stale suppression flag from the target-click gate so the next UpdateTargetClickThrough
-        // tick recomputes cleanly from the actual (now movable-driven) window state instead of
-        // skipping a needed restore/suppress because of a flag this call didn't set.
+        SetClickThrough(true);
+        // M02 loop 38 continuation 12: drop any stale suppression flag so the next
+        // UpdateTargetClickThrough tick recomputes cleanly from the actual window state instead
+        // of skipping a needed restore/suppress because of a flag this call didn't set.
         _targetClickThroughSuppressed = false;
     }
 

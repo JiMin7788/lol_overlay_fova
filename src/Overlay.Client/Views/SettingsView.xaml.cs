@@ -620,8 +620,8 @@ public partial class SettingsView : UserControl
         ScaleCaption.Text = SL("크기", "Size");
         MovableCaption.Text = SL("이동 여부", "Movable");
         MovableDesc.Text = SL(
-            "켜면 오버레이를 드래그해 위치를 옮길 수 있습니다 (클릭 통과 해제). 끄면 클릭 통과 상태로 고정됩니다.",
-            "When on, drag the overlay to reposition it (click-through off). When off, it stays click-through.");
+            "켜면 Ctrl+Shift를 누른 채 드래그해 오버레이 위치를 옮길 수 있습니다. 키를 안 누른 동안에는 클릭이 게임으로 통과됩니다.",
+            "When on, hold Ctrl+Shift and drag to reposition overlay elements. Clicks pass through to the game while the keys are not held.");
 
         HotkeyCaption.Text = SL("오버레이 표시 단축키", "Overlay toggle hotkey");
         HotkeyDesc.Text = SL(
@@ -653,8 +653,8 @@ public partial class SettingsView : UserControl
             "Inhibitor 5:00 · Nexus turret 3:00 respawn countdown on the minimap");
         AdvancedCaption.Text = SL("고급 설정", "Advanced");
         MinimapCalibrateCaption.Text = SL("미니맵 위치 보정", "Minimap position calibration");
-        MinimapCalibrateDesc.Text = SL("평소엔 끄기. 켜고 '이동 여부'를 켜면 미니맵 영역을 드래그·휠로 맞출 수 있음",
-            "Keep off normally. Turn on + enable Movable to drag/wheel-align the minimap box");
+        MinimapCalibrateDesc.Text = SL("평소엔 끄기. 켜고 '이동 여부'를 켠 뒤 Ctrl+Shift를 누른 채 드래그·휠로 미니맵 영역을 맞출 수 있음",
+            "Keep off normally. Turn on + enable Movable, then hold Ctrl+Shift to drag/wheel-align the minimap box");
         MinimapDebugCaption.Text = SL("미니맵 인식 디버그", "Minimap detection debug");
         MinimapDebugDesc.Text = SL(
             "오인식 원인 분석용. 최근 2초(60프레임)를 메모리에 들고 있다가 Alt+3을 누르면 PNG로 저장합니다 (logs/minimap-debug/). 켜면 약 19MB를 더 씁니다. 켠 뒤에는 앱 재시작이 필요합니다.",
@@ -701,8 +701,8 @@ public partial class SettingsView : UserControl
         // M02 pending-change #1: core HUD element toggles.
         CoreItemsCaption.Text = SL("기본 HUD 요소", "Core HUD Elements");
         CoreItemsDesc.Text = SL(
-            "항상 표시되던 요소들입니다. 끄면 숨겨지고, 오버레이에서 드래그(이동 여부 켠 상태)로 위치를 각각 옮길 수 있습니다.",
-            "Elements that were always shown. Turn off to hide; drag each on the overlay (with \"Movable\" on) to reposition it independently.");
+            "항상 표시되던 요소들입니다. 끄면 숨겨지고, '이동 여부'를 켠 뒤 Ctrl+Shift를 누른 채 드래그하면 위치를 각각 옮길 수 있습니다.",
+            "Elements that were always shown. Turn off to hide; with \"Movable\" on, hold Ctrl+Shift and drag each on the overlay to reposition it independently.");
         ComboResultCaption.Text = SL("콤보 결과 카드", "Combo Result Card");
         ItemAlertCaption.Text = SL("아이템 알림", "Item Alert");
         RecallTimerCaption.Text = SL("귀환 타이머", "Recall Timer");

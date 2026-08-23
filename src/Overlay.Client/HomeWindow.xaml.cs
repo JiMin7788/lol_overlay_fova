@@ -31,10 +31,11 @@ public partial class HomeWindow : Window
 {
     /// <summary>Design size the UI is authored at; the responsive scale is relative to this.</summary>
     private const double BaseW = 1040;
-    /// <summary>Design height cap: 726 of content + the M29 ad row. (loop 528) BaseH stays 830 while
+    /// <summary>Design height: 726 of content + the M29 ad row. (loop 528) BaseH stays 830 while
     /// AdRowHeight dropped 130→104, so the 26px of trimmed ad margin moves to the content area — a
-    /// tall view (stats) shows that much more per screen. The window's real height follows content
-    /// (FitHeightToContent), so this is just the upper bound.</summary>
+    /// tall view (stats) shows that much more per screen. (loop 537) The window height IS this
+    /// (scaled, capped to the work area) — it no longer follows each view's content, so the size
+    /// stays fixed across tab switches.</summary>
     private const double BaseH = 830;
     /// <summary>The reserved M29 row (HomeWindow.xaml): the 90px 728×90 banner plus 6/8 margin. Was
     /// 130 (16/24 margin) — the slot AREA read much larger than the banner and ate content height.
@@ -218,60 +219,6 @@ public partial class HomeWindow : Window
         // Re-center in the work area (CenterScreen only fires once, before we resize).
         Left = wa.Left + (wa.Width - Width) / 2;
         Top = wa.Top + (wa.Height - Height) / 2;
-
-        // (loop 527) _baseH*scale is a design MAX; most views' real content is shorter, leaving a
-        // tall band of empty near-black window background below them. Shrink the window to the
-        // current view's rendered content once layout settles (never grow — a view taller than the
-        // design height keeps it and scrolls, via MainContent's stretch, so no empty band either way).
-        ScheduleFitToContent();
-    }
-
-    private void ScheduleFitToContent()
-        => Dispatcher.BeginInvoke(new Action(FitHeightToContent), System.Windows.Threading.DispatcherPriority.Loaded);
-
-    private System.Windows.Controls.ScrollViewer? _fitSv;
-
-    private void FitHeightToContent()
-    {
-        if (!IsLoaded) return;
-        // The current view's OWN root ScrollViewer (each view's root element) — NOT a visual-tree
-        // search, which could return an inner list scroller (e.g. the champ-select rune list) whose
-        // large extent would balloon the window.
-        var sv = (MainContent.Content as System.Windows.Controls.ContentControl)?.Content
-                 as System.Windows.Controls.ScrollViewer;
-        if (sv is null || sv.ViewportHeight <= 0) return;
-
-        // Views load their content asynchronously (the stats list fills after the view is shown), so
-        // a one-shot fit would shrink to the empty view and, being one-directional, never grow back —
-        // leaving the finished list clipped under the ad. Re-fit whenever this view's content height
-        // changes.
-        if (!ReferenceEquals(sv, _fitSv))
-        {
-            if (_fitSv is not null) _fitSv.ScrollChanged -= OnFitScrollChanged;
-            _fitSv = sv;
-            _fitSv.ScrollChanged += OnFitScrollChanged;
-        }
-
-        var wa = SystemParameters.WorkArea;
-        double scale = RootScale.ScaleY > 0 ? RootScale.ScaleY : 1.0;
-        double designH = Math.Min(_baseH * scale, wa.Height);   // the authored height — never exceed it
-
-        // empty > 0: viewport has a band of empty background below the content → shrink to remove it.
-        // empty < 0: content is taller than the viewport → grow back toward the design height (capped,
-        // so a very tall view just uses the full design height and scrolls, never balloons the window).
-        double empty = sv.ViewportHeight - sv.ExtentHeight;
-        if (double.IsNaN(empty)) return;
-        double target = Math.Min(Math.Max(Height - empty * scale, MinHeight), designH);
-        if (Math.Abs(target - Height) < 1.0) return;
-        Height = target;
-        Top = wa.Top + Math.Max(0, (wa.Height - Height) / 2);
-    }
-
-    private void OnFitScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
-    {
-        // Only the content GROWING/SHRINKING matters (not the scroll position), and only if it did
-        // not just reach the design height already.
-        if (Math.Abs(e.ExtentHeightChange) > 0.5) ScheduleFitToContent();
     }
 
     protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
@@ -346,9 +293,8 @@ public partial class HomeWindow : Window
         // (2026-07-25 feedback: they used to follow the user across every tab).
         HomeDashboardExtras.Visibility = sectionKey == "nav.home"
             ? Visibility.Visible : Visibility.Collapsed;
-
-        // (loop 527) Different views have different content heights — re-fit the window to this one.
-        if (IsLoaded) { ApplyResponsiveScale(); ScheduleFitToContent(); }
+        // (loop 537) The window is NOT re-fit per view: fit-to-content made the window height jump
+        // on every tab switch. Size is fixed at the design size; shorter views just leave background.
     }
 
     // ── Game state → overlay + status pill ─────────────────────────────────

@@ -21,7 +21,7 @@ overlay, plus champ-select rune & spell presets.**
 
 ### 인스톨러로 설치 (권장)
 
-**[⬇ fova-0.3.0-setup.exe 내려받기](release/fova-0.3.0-setup.exe)** (4.5 MB)
+**[⬇ fova-0.3.2-setup.exe 내려받기](release/fova-0.3.2-setup.exe)** (4.5 MB)
 
 일반적인 설치 프로그램입니다. 실행하면 알아서 처리합니다:
 
@@ -33,8 +33,8 @@ overlay, plus champ-select rune & spell presets.**
 - 챔피언·스킬 아이콘과 패치 데이터(Data Dragon)는 기본 데이터가 동봉돼 있고, 첫 온라인 실행 때
   최신으로 자동 갱신됩니다 — 따로 할 일이 없습니다.
 
-> 무결성 확인(선택): `certutil -hashfile fova-0.3.0-setup.exe SHA256` 결과를
-> [`fova-0.3.0-setup.exe.sha256`](release/fova-0.3.0-setup.exe.sha256)과 비교하세요.
+> 무결성 확인(선택): `certutil -hashfile fova-0.3.2-setup.exe SHA256` 결과를
+> [`fova-0.3.2-setup.exe.sha256`](release/fova-0.3.2-setup.exe.sha256)과 비교하세요.
 > 설치기 자체도 내장 파일을 CRC로 검증합니다.
 
 ### "Windows의 PC 보호" 파란 경고가 떠요
@@ -46,14 +46,14 @@ overlay, plus champ-select rune & spell presets.**
 
 ### 압축(zip)으로 설치 — 포터블
 
-**[⬇ fova-0.3.0.zip 내려받기](release/fova-0.3.0.zip)** (4.0 MB) — 원하는 폴더에 풀고
+**[⬇ fova-0.3.2.zip 내려받기](release/fova-0.3.2.zip)** (4.0 MB) — 원하는 폴더에 풀고
 `fova.exe` 실행. 지울 때는 폴더만 삭제하면 됩니다. 단, **.NET 8 Desktop Runtime은 직접
 설치**해야 합니다
 ([다운로드](https://dotnet.microsoft.com/ko-kr/download/dotnet/8.0/runtime) — 반드시
 "Desktop Runtime"을 고르세요. 그냥 "Runtime"으로는 안 켜집니다).
 
-> 무결성 확인(선택): 같은 폴더의 [`fova-0.3.0.zip.sha256`](release/fova-0.3.0.zip.sha256)과
-> `certutil -hashfile fova-0.3.0.zip SHA256` 결과가 같은지 비교하세요.
+> 무결성 확인(선택): 같은 폴더의 [`fova-0.3.2.zip.sha256`](release/fova-0.3.2.zip.sha256)과
+> `certutil -hashfile fova-0.3.2.zip SHA256` 결과가 같은지 비교하세요.
 
 ### 관리자 권한에 대해 — 정정 (2026-08-21)
 
@@ -148,7 +148,8 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 ![콤보 에디터 · 단축키 · TTS](docs/images/feature-assist.png)
 
 **콤보 만들기**: 홈 창 → 콤보 설정 → 챔피언 선택 → 스킬을 순서대로 끌어다 놓기 → 단축키 지정.
-**위치 보정**: 설정에서 "이동 여부"를 켜고 카드를 드래그.
+**위치 보정**: 설정에서 "이동 여부"를 켠 뒤 `Ctrl+Shift`를 누른 채 카드를 드래그.
+키를 누르지 않은 동안에는 클릭이 게임으로 그대로 통과합니다.
 
 ### 잘 안 될 때
 

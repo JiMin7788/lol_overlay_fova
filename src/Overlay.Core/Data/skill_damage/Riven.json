@@ -6,5 +6,6 @@
   "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] } ] },
   "Q": { "hits": [ { "type": "Physical", "calc": "FirstSlashDamage", "count": 1 } ], "castCount": 3 },
   "W": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
-  "R": { "hits": [ { "type": "Physical", "calc": "MinDamage", "count": 1 } ], "tags": ["PercentMissingHp", "BurstCeiling", "AoeUltimate"] }
+  "_noteR_adBuff": "R adBuff (loop 539): activating Blade of the Exile grants 20% of total AD as bonus AD (PercentBonusAD DataValue on RivenFengShuiEngine, live BIN read). adBuffDataValue makes ComboRunner raise the working AD from the R node on -- including this slot's own MinDamage hit, since Wind Slash is thrown with the empowered blade -- so Q/W/autos after R scale up too. 15s duration covers a burst combo.",
+  "R": { "adBuffDataValue": "PercentBonusAD", "hits": [ { "type": "Physical", "calc": "MinDamage", "count": 1 } ], "tags": ["PercentMissingHp", "BurstCeiling", "AoeUltimate"] }
 }

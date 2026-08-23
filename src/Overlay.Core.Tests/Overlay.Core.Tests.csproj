@@ -29,6 +29,10 @@
          project needs no image decoder (it targets net8.0 without WPF). -->
     <None Include="Fixtures\minimap\*.bgra" CopyToOutputDirectory="PreserveNewest"
           Link="Fixtures\minimap\%(Filename)%(Extension)" />
+    <!-- (loop 540) Real captured buff-bar bands + the NasusQ icon template, same raw BGRA shape,
+         for BuffStackReaderTests (Nasus live stack reading). -->
+    <None Include="Fixtures\buffstacks\*.bgra" CopyToOutputDirectory="PreserveNewest"
+          Link="Fixtures\buffstacks\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

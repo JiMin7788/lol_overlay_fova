@@ -50,6 +50,8 @@
       }
     ]
   },
+  "_noteR": "R (World Ender): deals NO damage on cast -- the ultimate is a pure self-buff, which is why this slot had no entry and an R node contributed nothing (user report, loop 539). adBuffDataValue=RTotalADAmp (live rank-indexed BIN read: 0.2/0.3/0.4 = the wiki's 20/30/40% increased attack damage) makes ComboRunner raise the working AD for every node from the R cast on, so autos and AD-ratio abilities after R read higher. The 10s duration comfortably covers a burst combo (same approximation class as the spellblade rule). Healing amp and the revive are out of scope for combo damage.",
+  "R": { "adBuffDataValue": "RTotalADAmp" },
   "P": {
     "bonusEffects": [
       {

@@ -936,6 +936,44 @@ public sealed class AppComposition : IDisposable
 #endif
     }
 
+    /// <summary>(loop 540) Buff-bar stack vision (Nasus Q live stacks). Declared only in the FULL
+    /// build — unlike the minimap fields above, the TYPE itself is compiled out of LIGHT, so a
+    /// null-suppressed declaration cannot exist there; every reader is #if-guarded instead.</summary>
+#if !LIGHT
+    private BuffStackVision? _buffStackVision;
+#endif
+
+    /// <summary>(loop 540) Wires the buff-bar stack reader (kill switch <c>vision.buffStacks</c>,
+    /// default ON) and hands its confirmed value to <see cref="ComboRunner.LiveStackProvider"/> so
+    /// stack-scaled hits (Nasus Q) resolve against the REAL live count. Mirrors
+    /// <see cref="WireMinimapCapture"/>: idempotent, called once a game-HWND getter exists.</summary>
+    public void WireBuffStackVision(Func<IntPtr> getGameWindow)
+    {
+#if LIGHT
+        MinimapLog("LIGHT build — buff-stack vision is compiled out; the editor's stack knob remains the source.");
+#else
+        if (_buffStackVision is not null) return;
+        if (!GetBool("vision.buffStacks", true))
+        {
+            MinimapLog("vision.buffStacks is OFF → buff-stack reading not started.");
+            return;
+        }
+        try
+        {
+            _buffStackVision = new BuffStackVision(getGameWindow, () => _latestSnapshot,
+                DataDragonVersion, MinimapLog);
+            if (_comboRunner is not null)
+                _comboRunner.LiveStackProvider = (champ, slot) => _buffStackVision?.CurrentStacks(champ, slot);
+            _buffStackVision.Start();
+            MinimapLog("buff-stack vision wired (1s ticks, Nasus Q).");
+        }
+        catch (Exception ex)
+        {
+            MinimapLog($"buff-stack vision wiring failed: {ex.GetType().Name}: {ex.Message}");
+        }
+#endif
+    }
+
     /// <summary>The user's one-time manual minimap-calibration box as normalized fractions
     /// (X of width, Y and Size of height), or null when disabled. Read from the SAME
     /// <c>overlay.minimapCalibration</c> keys OverlayHost.ResolveMinimapRect uses, so the capture
@@ -956,6 +994,9 @@ public sealed class AppComposition : IDisposable
     {
         try { _cts.Cancel(); } catch { /* ignore */ }
 
+#if !LIGHT
+        _buffStackVision?.Dispose();
+#endif
         _comboRunner?.Dispose();
         _runeEngine?.Dispose();
         _targetHealthTracker?.Dispose();

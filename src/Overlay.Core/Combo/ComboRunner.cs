@@ -89,6 +89,17 @@ public sealed class ComboRunner : IDisposable
     /// below and preserves the pre-existing "always trigger" behavior.</summary>
     private OverlayCoordinator? _overlayCoordinator;
 
+    /// <summary>(loop 540) LIVE caster-buff stack source: (championId, slot) → the stack count read
+    /// off the player's own buff bar right now (Nasus Q Siphoning Strike), or null when unknown.
+    /// Attached post-construction by the FULL build's buff-bar vision (the public LightMode build
+    /// ships no screen-reading code, so there it stays null — the editor's "몇 스택" knob remains
+    /// the only source). A user-set knob still OVERRIDES the live reading, the same precedence
+    /// loop 472 established for auto-resolvable resource conditions; left unset, stack-scaled hits
+    /// resolve from this live value instead of the 0-stack floor. The Live Client API exposes no
+    /// buff data (verified live 2026-08-23 against allgamedata), so the buff bar — public pixels on
+    /// the player's own screen, P1/P3-clean — is the only real-time source.</summary>
+    public Func<string, string, int?>? LiveStackProvider { get; set; }
+
     /// <summary>The comboId whose card is the currently-shown <c>UI.COMBO_RESULT</c> HUD, or null
     /// if none/cleared. Needed because <see cref="ComboHudResult"/>/<see cref="HUDPayload"/> carry
     /// no comboId (the card's stable id is the constant event type, shared by every combo — see
@@ -166,6 +177,9 @@ public sealed class ComboRunner : IDisposable
         // drives the designated-target reset; the targeting.* config change makes a ⇄ re-pin apply
         // immediately. All route to RefreshShownCombo (a no-op when no card is shown).
         void OnStatEvent(Event _) => RefreshShownCombo();
+        // (loop 540) Live buff-bar stack reads (Nasus Q) re-resolve the shown card the same way a
+        // stat change does, so the number tracks the stacks in real time while the card is up.
+        _refreshSubscriptionIds.Add(EventBus.EventBus.Subscribe("GAME.BUFF_STACKS_CHANGED", OnStatEvent));
         _refreshSubscriptionIds.Add(EventBus.EventBus.Subscribe("GAME.PLAYER_LEVEL_UP", OnStatEvent));
         _refreshSubscriptionIds.Add(EventBus.EventBus.Subscribe("GAME.ITEM_CHANGED", OnStatEvent));
         _refreshSubscriptionIds.Add(EventBus.EventBus.Subscribe("GAME.CHAMPION_DIED", OnStatEvent));
@@ -365,7 +379,7 @@ public sealed class ComboRunner : IDisposable
             // (loop 179) armor-pen / lethality diagnostic (computed pre-Begin in BuildContext).
             if (_lethalityDiag is { Length: > 0 } lethalityDiag) CalcTrace.Row(lethalityDiag);
             var originalGraph = graph; // pre-expansion nodes ("Q_0") carrying the user's knob values
-            graph = ApplyBinDamage(originalGraph, saved.ChampionId, snap, context.Defender.MaxHP);
+            graph = ApplyBinDamage(originalGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider);
 
             // 4. Run + publish. UI.COMBO_RESULT is a mapped HUD type in M02's TypeMap. The card
             //    needs the target + command string too, so publish the ComboHudResult wrapper.
@@ -400,7 +414,7 @@ public sealed class ComboRunner : IDisposable
             {
                 var floorResolved = minGraph is null
                     ? graph
-                    : ApplyBinDamage(minGraph, saved.ChampionId, snap, context.Defender.MaxHP);
+                    : ApplyBinDamage(minGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider);
                 if (minGraph is not null)
                     rangeMin = Math.Min(rangeMin, _engine.Execute(floorResolved, context).RangeMin);
                 if (enemyDefRunes.Count > 0)
@@ -415,7 +429,7 @@ public sealed class ComboRunner : IDisposable
             }
             if (BuildExposureGraph(originalGraph, saved.ChampionId, maximize: true) is { } maxGraph)
                 rangeMax = Math.Max(rangeMax,
-                    _engine.Execute(ApplyBinDamage(maxGraph, saved.ChampionId, snap, context.Defender.MaxHP), context).RangeMax);
+                    _engine.Execute(ApplyBinDamage(maxGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider), context).RangeMax);
 
             // 4c. (M24 P4) Equipped CONDITIONAL amplifier runes (Coup de Grace / Cut Down / Last Stand /
             // PtA / First Strike) lift only the range CEILING: their ×(1+amp) applies only when the rune's
@@ -661,10 +675,16 @@ public sealed class ComboRunner : IDisposable
     /// <param name="defenderMaxHp">The resolved target's max HP, needed to turn a %-max-HP curated
     /// hit into its flat number at build time (MaxHP is constant across a combo). %current/%missing
     /// hits do not use it — they become M05 execute nodes re-evaluated against live HP.</param>
-    private static ComboGraph ApplyBinDamage(ComboGraph graph, string comboChampionId, GameSnapshot snap, double defenderMaxHp)
+    private static ComboGraph ApplyBinDamage(ComboGraph graph, string comboChampionId, GameSnapshot snap, double defenderMaxHp,
+        Func<string, string, int?>? liveStackProvider = null)
     {
         var champion = ChampionRepository.Get(comboChampionId);
         if (champion is null) return graph; // not in the cached 5 -> template damage (0)
+
+        // (loop 540) Slot-bound view of the live buff-stack source for THIS champion; null when no
+        // vision source is attached (light build / tests), keeping the editor knob the only input.
+        Func<string, int?>? liveStacks = liveStackProvider is null
+            ? null : slot => liveStackProvider(champion.Id, slot);
 
         int level = Math.Max(1, snap.Level);
         // (GOLDEN #3 round 3) Resolved once — constant across every node in this combo (same active
@@ -750,6 +770,16 @@ public sealed class ComboRunner : IDisposable
             ?.FirstOrDefault(h => h.ReplacesBasicAttack);
         bool empoweredArmed = false;
 
+        // (loop 539) WORKING attacker stats for this combo. A curated AD-buff slot (Aatrox R World
+        // Ender +20/30/40% AD, Riven R Blade of the Exile +20% AD — SkillDamageDb.GetAdBuffDataValue)
+        // raises AttackDamage here when its node is reached, so the buff node's own hits and every
+        // node AFTER it (abilities, autos, riders) resolve against the buffed AD. ActivePlayerStats
+        // is a value type, so this copy never touches the snapshot itself. Assumes the burst combo
+        // completes inside the buff's duration (10-15s) — the same approximation class as the
+        // spellblade rule above. Applied once per slot per combo: a recast refreshes, never stacks.
+        var stats = snap.Stats;
+        var adBuffApplied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var node in graph.Nodes)
         {
             // Auto-attack node: the palette template carries 0 damage. The Live Client API gives
@@ -764,7 +794,7 @@ public sealed class ComboRunner : IDisposable
                 // stay zero. One swap is spent per armed auto; a later auto with no fresh cast is a
                 // normal physical attack. On-hit riders below still fire (it is still a basic attack).
                 if (empoweredArmed && empoweredAutoHit is { } emp
-                    && SkillDamage.ComputeCalcDamage(champion, "P", emp.Calc, snap.Stats, level) is double empDmg)
+                    && SkillDamage.ComputeCalcDamage(champion, "P", emp.Calc, stats, level) is double empDmg)
                 {
                     empoweredArmed = false;
                     rewritten.Add(node with
@@ -780,7 +810,7 @@ public sealed class ComboRunner : IDisposable
                 {
                     rewritten.Add(node with
                     {
-                        Damage = snap.Stats.AttackDamage,
+                        Damage = stats.AttackDamage,
                         RatioAD = 0,
                         RatioBonusAD = 0,
                         RatioAP = 0,
@@ -814,7 +844,7 @@ public sealed class ComboRunner : IDisposable
                         || onHitProcs.GetValueOrDefault(b.CalcSlot) < b.MaxProcs).ToList();
                 if (applicableOnHit.Count > 0)
                 {
-                    AppendBonusHits(rewritten, node, champion, applicableOnHit, snap.Stats, level, defenderMaxHp, "onHit");
+                    AppendBonusHits(rewritten, node, champion, applicableOnHit, stats, level, defenderMaxHp, "onHit", liveStacks);
                     foreach (var b in applicableOnHit)
                         if (b.MaxProcs > 0)
                             onHitProcs[b.CalcSlot] = onHitProcs.GetValueOrDefault(b.CalcSlot) + 1;
@@ -843,7 +873,7 @@ public sealed class ComboRunner : IDisposable
                     AppendItemHit(rewritten, node, stc.Proc);
                 }
                 // User-attached bonus effects on this AA node (manual sub-icons, T3.3/T8).
-                AppendBonusHits(rewritten, node, champion, UserBonuses(node), snap.Stats, level, defenderMaxHp);
+                AppendBonusHits(rewritten, node, champion, UserBonuses(node), stats, level, defenderMaxHp, liveStacks: liveStacks);
                 continue; // (changed already true)
             }
 
@@ -895,7 +925,7 @@ public sealed class ComboRunner : IDisposable
             {
                 rewritten.Add(node);
                 // A non-ability node (item/rune/execute) can still carry user-attached bonus effects.
-                changed |= AppendBonusHits(rewritten, node, champion, UserBonuses(node), snap.Stats, level, defenderMaxHp);
+                changed |= AppendBonusHits(rewritten, node, champion, UserBonuses(node), stats, level, defenderMaxHp, liveStacks: liveStacks);
                 continue;
             }
 
@@ -917,12 +947,29 @@ public sealed class ComboRunner : IDisposable
                 // (loop 536) Any spell cast (re)arms Sylas's empowered next auto — the charge does
                 // not stack, so a second cast before the auto lands just keeps it armed.
                 empoweredArmed = true;
+
+                // (loop 539) An AD-buff slot raises the working AD BEFORE this node's own hits
+                // resolve: Riven's R node is curated as Wind Slash, which the blade's own +20% AD
+                // empowers in game, so the buff must cover the granting cast too (for Aatrox, whose
+                // R deals nothing, the order is moot). The fraction is a live rank-indexed BIN read
+                // (Hard Rule); a ≥1 value is a whole-percent encoding, same rule as ResolveHpPercent.
+                if (!adBuffApplied.Contains(slot)
+                    && SkillDamageDb.GetAdBuffDataValue(champion.Id, slot) is { } adBuffDv
+                    && SkillDamage.ComputeFlatDataValue(champion, slot, adBuffDv, stats, level) is double adBuffFrac
+                    && adBuffFrac > 0)
+                {
+                    if (adBuffFrac >= 1) adBuffFrac /= 100.0;
+                    stats.AttackDamage *= 1 + adBuffFrac;
+                    adBuffApplied.Add(slot);
+                    if (CalcTrace.IsCollecting)
+                        CalcTrace.Row($"node={node.Id} branch=adBuff dv={adBuffDv} frac={adBuffFrac:0.###} ad={stats.AttackDamage:0.##}");
+                }
             }
 
             var hits = SkillDamageDb.GetHits(champion.Id, slot);
             int castCount = SkillDamageDb.GetCastCount(champion.Id, slot);
             var expanded = hits is not null
-                ? ExpandCuratedSkill(node, champion, slot, hits, snap.Stats, level, defenderMaxHp, castCount, allOut, countedAsPercent)
+                ? ExpandCuratedSkill(node, champion, slot, hits, stats, level, defenderMaxHp, castCount, allOut, countedAsPercent, liveStacks)
                 : null;
             if (expanded is not null)
             {
@@ -953,7 +1000,7 @@ public sealed class ComboRunner : IDisposable
             // the very wall damage the toggle exists to gate — handing back the full number.
             else if (!(hits is null && SkillDamageDb.IsSlotCurated(champion.Id, slot))
                 && !(hits is { Length: > 0 } && hits.All(h => h.IsConditional && string.IsNullOrEmpty(h.Calc)))
-                && SkillDamage.ComputeNodeDamage(champion, slot, snap.Stats, level) is double damage)
+                && SkillDamage.ComputeNodeDamage(champion, slot, stats, level) is double damage)
             {
                 var fallbackType = hits is { Length: > 0 } ? MapHitType(hits[0].Type) : node.DamageType;
                 if (CalcTrace.IsCollecting)
@@ -970,7 +1017,7 @@ public sealed class ComboRunner : IDisposable
             // plus (for a real ability cast, not the passive) any on-ability effects.
             var selfBonuses = SelfBonuses(champion.Id, slot);
             if (selfBonuses.Count > 0)
-                changed |= AppendBonusHits(rewritten, node, champion, selfBonuses, snap.Stats, level, defenderMaxHp, "self");
+                changed |= AppendBonusHits(rewritten, node, champion, selfBonuses, stats, level, defenderMaxHp, "self", liveStacks);
             if (!slot.Equals("P", StringComparison.OrdinalIgnoreCase) && onAbilityBonuses.Count > 0)
             {
                 // Honor appliesTo (loop 475): an on-ability rider curated to ride only certain slots
@@ -982,7 +1029,7 @@ public sealed class ComboRunner : IDisposable
                     b.AppliesTo is not { Length: > 0 }
                     || Array.Exists(b.AppliesTo, s => s.Equals(slot, StringComparison.OrdinalIgnoreCase)));
                 if (applicable.Count > 0)
-                    changed |= AppendBonusHits(rewritten, node, champion, applicable, snap.Stats, level, defenderMaxHp, "onAbility");
+                    changed |= AppendBonusHits(rewritten, node, champion, applicable, stats, level, defenderMaxHp, "onAbility", liveStacks);
             }
 
             // User-attached bonus effects on this skill node (manual sub-icons, T3.3/T8). Merged with
@@ -990,7 +1037,7 @@ public sealed class ComboRunner : IDisposable
             // user lists are disjoint sources), so a manual bonus adds to — never replaces — them.
             var userBonuses = UserBonuses(node);
             if (userBonuses.Count > 0)
-                changed |= AppendBonusHits(rewritten, node, champion, userBonuses, snap.Stats, level, defenderMaxHp);
+                changed |= AppendBonusHits(rewritten, node, champion, userBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks);
 
             // (M22 Phase 4) Flip the All-Out stance AFTER resolving this node, so the R cast itself
             // resolves normally and only the nodes that FOLLOW it (until the next R) are All-Out.
@@ -1034,14 +1081,14 @@ public sealed class ComboRunner : IDisposable
     private static bool AppendBonusHits(
         List<ComboNode> into, ComboNode node, ChampionData champion,
         IReadOnlyList<BonusSpec> bonuses, ActivePlayerStats stats, int level, double defenderMaxHp,
-        string trigger = "user")
+        string trigger = "user", Func<string, int?>? liveStacks = null)
     {
         bool added = false;
         for (int n = 0; n < bonuses.Count; n++)
         {
             var (calcSlot, hit) = (bonuses[n].CalcSlot, bonuses[n].Hit);
             if (!TryBuildHitShape(hit, champion, calcSlot, stats, level, defenderMaxHp, node.UserHitDurationSeconds,
-                    node.UserAttackCount, node.UserDistanceFraction, allOut: false, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, node.UserStackCount ?? 0))
+                    node.UserAttackCount, node.UserDistanceFraction, allOut: false, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, EffectiveStacks(node.UserStackCount, liveStacks, calcSlot)))
                 continue;
 
             // (T1-c, M26 §6 Trace Mode) One row per resolved bonus hit, before it's replicated into
@@ -1110,6 +1157,13 @@ public sealed class ComboRunner : IDisposable
             _ => false, // conservative unmet — a UserAssumed kind should never be routed here
         };
 
+    /// <summary>(loop 540) The stack count a stack-scaled hit resolves with: the node's own
+    /// "몇 스택" knob when the user set one (it OVERRIDES the live reading, the loop-472 precedence),
+    /// else the live buff-bar value for the hit's calc slot, else 0 — the pre-existing floor.</summary>
+    private static int EffectiveStacks(int? userStackCount, Func<string, int?>? liveStacks, string slot)
+        => userStackCount is int sc && sc > 0 ? sc
+           : liveStacks?.Invoke(slot) is int live && live > 0 ? live : 0;
+
     /// <summary>A bonus hit plus the skill slot whose BIN spell holds its calc.</summary>
     private readonly record struct BonusSpec(string CalcSlot, SkillHit Hit, bool AlwaysOn = false,
         int MaxProcs = 0, string[]? AppliesTo = null);
@@ -1125,7 +1179,7 @@ public sealed class ComboRunner : IDisposable
     private static List<ComboNode>? ExpandCuratedSkill(
         ComboNode node, ChampionData champion, string slot, SkillHit[] hits,
         ActivePlayerStats stats, int level, double defenderMaxHp, int castCount = 1, bool allOut = false,
-        double countedAsPercent = 0)
+        double countedAsPercent = 0, Func<string, int?>? liveStacks = null)
     {
         var result = new List<ComboNode>();
         for (int cast = 0; cast < Math.Max(1, castCount); cast++)
@@ -1134,7 +1188,7 @@ public sealed class ComboRunner : IDisposable
             {
                 var hit = hits[h];
                 if (!TryBuildHitShape(hit, champion, slot, stats, level, defenderMaxHp, node.UserHitDurationSeconds,
-                        node.UserAttackCount, node.UserDistanceFraction, allOut, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, node.UserStackCount ?? 0))
+                        node.UserAttackCount, node.UserDistanceFraction, allOut, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, EffectiveStacks(node.UserStackCount, liveStacks, slot)))
                     continue; // unresolvable calc/DataValue -> drop this hit (documented)
 
                 // (T1-c, M26 §6 Trace Mode) One row per resolved curated hit, before it's replicated
@@ -2513,7 +2567,7 @@ public sealed class ComboRunner : IDisposable
                     var graph = _engine.BuildGraph(new[] { node });
                     // The auto-attack is a bare AD node (RatioAD=1) resolved by the engine; abilities/passive
                     // get their real curated BIN damage filled in first.
-                    var resolved = s == "A" ? graph : ApplyBinDamage(graph, championId, snap, context.Defender.MaxHP);
+                    var resolved = s == "A" ? graph : ApplyBinDamage(graph, championId, snap, context.Defender.MaxHP, LiveStackProvider);
                     return _engine.Execute(resolved, context).TotalDamage;
                 }
                 catch { return 0; }
