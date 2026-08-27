@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fova — 추천 게이밍 장비</title>
-<meta name="description" content="Fova가 고른 LoL·FPS용 게이밍 장비 추천. 마우스·키보드·헤드셋·모니터.">
+<title>Fova — LoL 콤보 데미지 오버레이</title>
+<meta name="description" content="게임 중 콤보 데미지와 킬각을 실시간으로 보여주는 가벼운 League of Legends 오버레이. 메모리 접근 없음, 공개 정보만 사용, 무료.">
 <style>
   :root{
     --bg:#0F1117; --surface:#181B22; --surface-hi:#20242E;
     --border:#2A2F3A; --text:#E4E8EE; --dim:#95A0AC; --gold:#C89B3C; --gold-dim:#B7995E;
+    --ok:#4CAF7D;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
@@ -18,41 +19,55 @@
     line-height:1.6; -webkit-font-smoothing:antialiased;
   }
   a{color:inherit;text-decoration:none}
-  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 
-  header{padding:56px 0 28px;text-align:center}
-  .logo{display:inline-flex;align-items:center;gap:12px;font-size:30px;font-weight:800;letter-spacing:.5px}
-  .logo .dot{width:22px;height:22px;border-radius:50%;
+  header{padding:64px 0 40px;text-align:center}
+  .logo{display:inline-flex;align-items:center;gap:12px;font-size:34px;font-weight:800;letter-spacing:.5px}
+  .logo .dot{width:24px;height:24px;border-radius:50%;
     background:conic-gradient(from 210deg,var(--gold),#7d5a1e 55%,transparent 55%);
     box-shadow:inset 0 0 0 3px var(--bg)}
-  .tagline{color:var(--dim);margin-top:10px;font-size:15px}
-  .cta{display:inline-block;margin-top:22px;padding:11px 22px;border-radius:10px;
+  .tagline{margin-top:14px;font-size:20px;font-weight:600}
+  .tagline .hl{color:var(--gold)}
+  .subline{color:var(--dim);margin-top:8px;font-size:14.5px}
+
+  .cta-row{margin-top:26px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .cta{display:inline-block;padding:12px 24px;border-radius:10px;
     background:var(--gold);color:#14181E;font-weight:700;font-size:15px;transition:background .15s}
   .cta:hover{background:#D8BC82}
+  .cta.ghost{background:var(--surface-hi);color:var(--text);border:1px solid var(--border);font-weight:600}
+  .cta.ghost:hover{border-color:var(--gold-dim)}
+  .cta-note{margin-top:10px;color:var(--dim);font-size:12.5px}
+  .cta-note a{color:var(--gold-dim)}
 
-  .disclosure{background:var(--surface);border:1px solid var(--border);border-radius:10px;
-    padding:14px 18px;margin:28px 0;color:var(--dim);font-size:13.5px}
-  .disclosure b{color:var(--text)}
+  /* Feature banners: the images carry their own captions on the same dark ground,
+     so they sit as full-width panels with just a hairline frame. */
+  .shots{display:flex;flex-direction:column;gap:18px;margin-top:8px}
+  .shot{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#0d0f14}
+  .shot img{display:block;width:100%;height:auto}
 
-  h2{font-size:22px;margin:14px 0 4px}
-  .sub{color:var(--dim);font-size:14px;margin-bottom:22px}
+  h2{font-size:21px;margin:48px 0 4px}
+  .sub{color:var(--dim);font-size:14px;margin-bottom:18px}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
-    padding:20px;display:flex;flex-direction:column;transition:border-color .15s,transform .15s}
-  .card.on:hover{border-color:var(--gold-dim);transform:translateY(-2px)}
-  .card .ico{font-size:30px;line-height:1}
-  .card h3{font-size:17px;margin:12px 0 6px}
-  .card p{color:var(--dim);font-size:13.5px;flex:1}
-  .card .buy{margin-top:16px;align-self:flex-start;padding:8px 16px;border-radius:8px;
-    background:var(--surface-hi);border:1px solid var(--border);color:var(--text);
-    font-size:13.5px;font-weight:600;transition:background .15s,border-color .15s}
-  .card.on .buy::after{content:" →"}
-  .card.on .buy:hover{background:var(--gold);color:#14181E;border-color:var(--gold)}
-  .card.off{opacity:.5}
-  .card.off .buy{color:var(--dim);cursor:default}
+  .trust{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;margin-top:16px}
+  .trust ul{list-style:none}
+  .trust li{padding:7px 0;font-size:14.5px;display:flex;gap:10px;align-items:flex-start}
+  .trust li::before{content:"✓";color:var(--ok);font-weight:700;flex:0 0 auto}
+  .trust li b{color:var(--text)}
+  .trust li span{color:var(--dim)}
+  .trust .src{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
+    color:var(--dim);font-size:13px}
+  .trust .src a{color:var(--gold-dim)}
 
-  footer{margin:48px 0 40px;padding-top:24px;border-top:1px solid var(--border);
+  .dl{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;margin-top:16px;font-size:14.5px}
+  .dl p{margin:6px 0;color:var(--dim)}
+  .dl b{color:var(--text)}
+  .dl a{color:var(--gold-dim)}
+  .dl .warn{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+    background:var(--surface-hi);font-size:13px}
+
+  footer{margin:56px 0 40px;padding-top:24px;border-top:1px solid var(--border);
     color:var(--dim);font-size:12.5px;text-align:center}
   footer a{color:var(--gold-dim)}
   footer p{margin:6px 0}
@@ -62,86 +77,58 @@
   <div class="wrap">
     <header>
       <div class="logo"><span class="dot"></span>FOVA</div>
-      <p class="tagline">LoL 오버레이가 고른 게이밍 장비 — 콤보 데미지·킬각 계산기를 만드는 사람들이 씁니다</p>
-      <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova">Fova 내려받기</a>
+      <p class="tagline">지금 이 콤보로 <span class="hl">킬각이 나오는지</span>, 게임 화면 위에서 바로.</p>
+      <p class="subline">내 실시간 스탯·룬·아이템 기준으로 콤보 데미지를 계산해 보여주는 가벼운 LoL 오버레이 — 무료</p>
+      <div class="cta-row">
+        <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2-setup.exe">⬇ 설치 파일 받기 (0.3.2, 4.5MB)</a>
+        <a class="cta ghost" href="https://github.com/JiMin7788/lol_overlay_fova">GitHub에서 보기</a>
+      </div>
+      <p class="cta-note">무설치 <a href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2.zip">ZIP(4.0MB)</a>도 있습니다 · Windows 10/11</p>
     </header>
 
-    <!-- 쿠팡 파트너스 필수 고지 문구 (수정하지 마세요) -->
-    <div class="disclosure">
-      <b>이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</b>
-      구매 가격은 동일하며, 받은 수수료는 Fova 개발에 쓰입니다.
+    <!-- 오버레이 UI 쇼케이스 — 각 패널은 캡션을 자체 포함 -->
+    <div class="shots">
+      <figure class="shot"><img src="images/feature-combo-damage.png" alt="콤보 데미지 · 킬각 계산 — 대상 체력 바 위에 최소~최대 킬 임계선을 그려 어느 체력부터 잡을 수 있는지 표시"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-timers.png" alt="타이머 · 귀환 계산 — 적 귀환·라인 복귀 예측, 억제기·넥서스 포탑 리스폰 카운트다운"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-alerts.png" alt="적 정글 발견 · 아이템 완성 알림 — 스코어보드에 이미 뜨는 정보만 사용"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-jungle-tracking.png" alt="적 위치 안내 — 화면에 이미 보이는 정보의 재표시, 시야 밖 추측 없음"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-multiform.png" alt="멀티폼 · 추가 스킬 — 제이스·그나르·렉사이·흐웨이 등 폼 전환 스킬까지 개별 계산"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-bonus-effects.png" alt="추가효과 계산 — 온힛·처형·룬 증폭까지 실제 패치 계수로 반영"></figure>
+      <figure class="shot"><img loading="lazy" src="images/feature-assist.png" alt="콤보 에디터 · 단축키 · TTS — 콤보를 직접 만들고 단축키와 음성 브리핑으로 사용"></figure>
     </div>
 
-    <h2>추천 게이밍 장비</h2>
-    <p class="sub">FPS·MOBA에 두루 쓰기 좋은 기준으로 골랐습니다. 카테고리를 누르면 쿠팡에서 열립니다.</p>
+    <h2>안전한 이유</h2>
+    <p class="sub">헬퍼류와 원리부터 다릅니다 — 소스 코드가 공개돼 있어 직접 확인할 수 있습니다.</p>
+    <div class="shots">
+      <figure class="shot"><img loading="lazy" src="images/feature-anticheat.png" alt="안티치트 안전 설계 — 사용하는 것: Live Client Data API·정적 데이터·클릭스루 표시 창 / 하지 않는 것: 메모리 읽기·코드 주입·입력 자동화"></figure>
+    </div>
+    <div class="trust">
+      <ul>
+        <li><b>공개 정보만 사용</b>&nbsp;<span>— Riot이 공식 제공하는 로컬 Live Client API와 공개 게임 데이터(Data Dragon)만 읽습니다.</span></li>
+        <li><b>게임 메모리 접근 없음</b>&nbsp;<span>— 메모리 읽기/쓰기, 코드 주입, 패킷 분석을 하지 않습니다.</span></li>
+        <li><b>조작 대신 표시만</b>&nbsp;<span>— 매크로·자동 입력이 없고, 오버레이는 정보를 보여줄 뿐 절대 대신 플레이하지 않습니다.</span></li>
+        <li><b>인게임 광고 없음</b>&nbsp;<span>— 광고는 데스크톱 홈 화면에만, 게임이 시작되면 완전히 꺼집니다.</span></li>
+        <li><b>가볍게</b>&nbsp;<span>— 저사양 PC 기준으로 설계. 게임 프레임에 영향을 주지 않는 것이 성능 원칙입니다.</span></li>
+      </ul>
+      <p class="src">Riot Developer Portal에 제품 등록·심사 절차를 진행 중입니다. 전체 소스:
+        <a href="https://github.com/JiMin7788/lol_overlay_fova">github.com/JiMin7788/lol_overlay_fova</a></p>
+    </div>
 
-    <div class="grid" id="grid">
-      <a class="card" data-key="mouse">
-        <div class="ico">🖱️</div><h3>게이밍 마우스</h3>
-        <p>가벼운 무선 · 낮은 클릭 지연. 롱겜에도 손 안 피로한 60~70g대 위주.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
-      <a class="card" data-key="keyboard">
-        <div class="ico">⌨️</div><h3>기계식 키보드</h3>
-        <p>텐키리스로 마우스 공간 확보. 리니어 스위치가 QWER 연타에 유리.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
-      <a class="card" data-key="headset">
-        <div class="ico">🎧</div><h3>게이밍 헤드셋</h3>
-        <p>발소리·정글 동선 파악용. 유선 저지연 + 편한 착용감 기준.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
-      <a class="card" data-key="monitor">
-        <div class="ico">🖥️</div><h3>고주사율 모니터</h3>
-        <p>144Hz 이상. 스킬샷·무빙 체감이 확 달라지는 첫 업그레이드.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
-      <a class="card" data-key="mousepad">
-        <div class="ico">🟦</div><h3>대형 마우스패드</h3>
-        <p>낮은 감도용 XL 사이즈. 일관된 에임을 위한 균일한 표면.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
-      <a class="card" data-key="chair">
-        <div class="ico">🪑</div><h3>게이밍 의자</h3>
-        <p>장시간 앉아도 허리 편한 인체공학. 요추 지지 기준.</p>
-        <span class="buy">쿠팡에서 보기</span>
-      </a>
+    <h2>다운로드</h2>
+    <div class="dl">
+      <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2-setup.exe">fova-0.3.2-setup.exe</a></b> (4.5MB) — 설치 후 시작 메뉴에서 실행</p>
+      <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2.zip">fova-0.3.2.zip</a></b> (4.0MB) — 풀어서 Fova.exe 실행 (무설치)</p>
+      <p>.NET 8 Desktop Runtime이 필요합니다 — 설치 파일이 없으면 자동으로 안내합니다.
+         무결성 확인용 <a href="https://github.com/JiMin7788/lol_overlay_fova/blob/main/release">SHA-256 해시</a> 제공.</p>
+      <div class="warn">Windows SmartScreen이 "인식할 수 없는 앱"이라고 표시할 수 있습니다 — 다운로드 이력이 적은
+        모든 무서명 프로그램에 뜨는 일반 경고입니다. "추가 정보 → 실행"으로 진행하거나, 위 해시로 파일을 검증하세요.</div>
     </div>
 
     <footer>
+      <p><a href="gear.html">Fova가 추천하는 게이밍 장비</a> · <a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a></p>
       <p>Fova는 Riot Games가 승인하거나 후원한 프로그램이 아닙니다. League of Legends 및 관련 자산은
          Riot Games, Inc.의 상표 및 저작물입니다.</p>
-      <p><a href="https://github.com/JiMin7788/lol_overlay_fova">github.com/JiMin7788/lol_overlay_fova</a></p>
     </footer>
   </div>
-
-<script>
-  // ── 쿠팡 파트너스 링크를 여기에 붙여넣으세요 ────────────────────────────────────
-  //  쿠팡 파트너스 승인 후, 파트너스 대시보드의 "링크 생성"에서 상품/검색 링크를 만들어
-  //  아래에 붙여넣으면 됩니다. 비워두면 그 카드는 "준비 중"으로 표시됩니다.
-  //  (쿠팡 링크는 상품마다 고유 추적 링크라, 일반 URL로는 수수료가 잡히지 않습니다.)
-  var COUPANG = {
-    mouse:    "https://link.coupang.com/a/gpyCbw7Y9k",   // (테스트) 실제 상품 링크로 교체하세요
-    keyboard: "https://link.coupang.com/a/gpy1VJNQei",   // (테스트)
-    headset:  "https://link.coupang.com/a/gpy2zep0eq",   // (테스트)
-    monitor:  "",
-    mousepad: "",
-    chair:    ""
-  };
-  // ────────────────────────────────────────────────────────────────────────────
-
-  document.querySelectorAll("#grid .card").forEach(function (card) {
-    var url = COUPANG[card.getAttribute("data-key")];
-    if (url) {
-      card.classList.add("on");
-      card.setAttribute("href", url);
-      card.setAttribute("target", "_blank");
-      card.setAttribute("rel", "sponsored nofollow noopener");
-    } else {
-      card.classList.add("off");
-      card.querySelector(".buy").textContent = "준비 중";
-    }
-  });
-</script>
 </body>
 </html>
