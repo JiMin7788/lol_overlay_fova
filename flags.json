@@ -1,0 +1,3 @@
+{
+  "forceOff": ["recallTimer", "laneReturn", "enemyJunglerSpotted", "enemyItemAlert"]
+}
