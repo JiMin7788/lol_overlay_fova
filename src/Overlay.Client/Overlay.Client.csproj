@@ -39,6 +39,8 @@
     <AssemblyName>fova</AssemblyName>
     <ApplicationIcon>fova.ico</ApplicationIcon>
     <Product>Fova</Product>
+    <!-- Program.Main runs VelopackApp before WPF starts (Velopack install/update hooks). -->
+    <StartupObject>Overlay.Client.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -69,6 +71,8 @@
     <!-- Reference Overlay.Core for ObjectiveTimerResult, RecallEvent,
          and related types consumed by the client. -->
     <ProjectReference Include="..\Overlay.Core\Overlay.Core.csproj" />
+    <!-- Auto-update with delta packages from GitHub Releases (packaging/release.ps1). -->
+    <PackageReference Include="Velopack" Version="1.2.158" />
     <!-- M31: native minimap capture (WGC/DXGI). AppComposition.WireMinimapCapture instantiates
          MinimapCaptureSource from here. Pulls Vortice.Direct3D11 in transitively. -->
     <!-- M31 native capture (WGC + DXGI Desktop Duplication, and the Vortice/SharpGen

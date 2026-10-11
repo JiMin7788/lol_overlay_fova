@@ -21,39 +21,37 @@ overlay, plus champ-select rune & spell presets.**
 
 ### 인스톨러로 설치 (권장)
 
-**[⬇ fova-0.3.3-setup.exe 내려받기](release/fova-0.3.3-setup.exe)** (4.5 MB)
+**[⬇ Fova 설치 파일 내려받기](https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe)** (약 13 MB, 항상 최신 버전)
 
 일반적인 설치 프로그램입니다. 실행하면 알아서 처리합니다:
 
-- **.NET 8 데스크톱 런타임** — 없으면 설치 중에 Microsoft 공식 설치기를 내려받아 조용히
-  설치합니다. 이미 있으면 건너뜁니다.
-- 사용자 폴더(`%LocalAppData%\Programs\Fova`)에 설치 — **관리자 권한 불필요**, UAC 창 없음.
-  (.NET 런타임을 새로 설치하게 되는 경우에만 Microsoft 런타임 설치기의 UAC 창이 한 번 뜹니다.)
-- **시작 메뉴 바로가기** 생성(바탕화면 바로가기는 설치 중 선택), 제어판 "앱 제거" 지원.
+- **.NET 8 데스크톱 런타임** — 없으면 설치 중에 Microsoft 공식 설치기를 내려받아 설치합니다.
+  이미 있으면 건너뜁니다.
+- 사용자 폴더(`%LocalAppData%\FovaApp`)에 설치 — **관리자 권한 불필요**. 설정은
+  `%LocalAppData%\Fova`에 따로 보관돼 업데이트·재설치해도 유지됩니다.
+- **바탕화면·시작 메뉴 바로가기** 생성, Windows "앱 제거" 지원.
+- **자동 업데이트** — 실행할 때 새 버전을 확인해 바뀐 부분만 백그라운드로 받아 두고, Fova를
+  닫을 때 적용합니다. 게임 중에 재시작되는 일은 없습니다.
+- 0.3.3 이하를 예전 설치 파일로 설치했다면, 새 버전이 처음 실행될 때 설정을 옮기고 예전 설치를
+  자동으로 지웁니다.
 - 챔피언·스킬 아이콘과 패치 데이터(Data Dragon)는 기본 데이터가 동봉돼 있고, 첫 온라인 실행 때
   최신으로 자동 갱신됩니다 — 따로 할 일이 없습니다.
-
-> 무결성 확인(선택): `certutil -hashfile fova-0.3.3-setup.exe SHA256` 결과를
-> [`fova-0.3.3-setup.exe.sha256`](release/fova-0.3.3-setup.exe.sha256)과 비교하세요.
-> 설치기 자체도 내장 파일을 CRC로 검증합니다.
 
 ### "Windows의 PC 보호" 파란 경고가 떠요
 
 정상입니다. Fova는 아직 **코드 서명 인증서로 서명되지 않아** Windows SmartScreen이
 "인식할 수 없는 앱"으로 표시합니다 — 다운로드 이력이 적은 모든 무서명 프로그램에 뜨는
 경고이고, 악성 판정이 아닙니다. **"추가 정보" → "실행"**을 누르면 설치가 진행됩니다.
-찜찜하면 위의 SHA-256 확인으로 파일이 배포본 그대로인지 검증한 뒤 실행하세요.
+파일은 [GitHub Releases](https://github.com/JiMin7788/lol_overlay_fova/releases)에서만 배포하며,
+각 파일의 SHA-256이 릴리스 페이지에 표시됩니다.
 
 ### 압축(zip)으로 설치 — 포터블
 
-**[⬇ fova-0.3.3.zip 내려받기](release/fova-0.3.3.zip)** (4.0 MB) — 원하는 폴더에 풀고
-`fova.exe` 실행. 지울 때는 폴더만 삭제하면 됩니다. 단, **.NET 8 Desktop Runtime은 직접
-설치**해야 합니다
+**[⬇ Fova 포터블 zip 내려받기](https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip)** — 원하는 폴더에 풀고
+`Fova.exe` 실행. 자동 업데이트도 똑같이 됩니다. 지울 때는 폴더만 삭제하면 됩니다. 단,
+**.NET 8 Desktop Runtime은 직접 설치**해야 합니다
 ([다운로드](https://dotnet.microsoft.com/ko-kr/download/dotnet/8.0/runtime) — 반드시
 "Desktop Runtime"을 고르세요. 그냥 "Runtime"으로는 안 켜집니다).
-
-> 무결성 확인(선택): 같은 폴더의 [`fova-0.3.3.zip.sha256`](release/fova-0.3.3.zip.sha256)과
-> `certutil -hashfile fova-0.3.3.zip SHA256` 결과가 같은지 비교하세요.
 
 ### 관리자 권한에 대해 — 정정 (2026-08-21)
 

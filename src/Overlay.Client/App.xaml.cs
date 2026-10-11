@@ -44,6 +44,12 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    protected override void OnExit(ExitEventArgs e)
+    {
+        AppUpdater.ApplyPendingOnExit();
+        base.OnExit(e);
+    }
+
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Report("UI-thread (Dispatcher)", e.Exception, showDialog: true);

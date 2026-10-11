@@ -63,7 +63,7 @@ public sealed class AppComposition : IDisposable
     private static readonly string[] FallbackChampionIds =
         { "Aatrox", "Ahri", "Annie", "Zed", "Jinx" };
 
-    private readonly ConfigManager _config = new();
+    private readonly ConfigManager _config = new(AppPaths.UserConfigPath);
     private readonly CancellationTokenSource _cts = new();
 
     // M29: HOME-window ad slot. Constructed in the ctor (it reads config), disposed with the rest.
@@ -295,6 +295,9 @@ public sealed class AppComposition : IDisposable
         // M33: LCU probe loop is independent of the game-data graph — start it directly (it
         // idles cheaply at 5s probes until a League client exists).
         Lcu?.Start(_cts.Token);
+
+        // Background update check/download; applied when the app exits (AppUpdater).
+        _ = AppUpdater.CheckAndDownloadAsync(_cts.Token);
 
         // Fire-and-forget: the internal try/catch keeps a startup failure from surfacing as
         // an unobserved task exception, and the UI thread is never blocked.
