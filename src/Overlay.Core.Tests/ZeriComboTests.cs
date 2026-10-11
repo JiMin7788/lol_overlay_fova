@@ -190,17 +190,17 @@ public class ZeriComboTests : IDisposable
     [Fact]
     public void Zeri_WAlone_TotalDamage()
     {
-        // TotalDamage = NamedDataValue(Damage, rank5) + StatByNamedDataValue(mStat=2, ADRatio=1.2, no
+        // TotalDamage = NamedDataValue(Damage, rank5) + StatByNamedDataValue(mStat=2, ADRatio=1.0 (1.2 before patch 16.20), no
         // mStatFormula -> TOTAL AD) + StatByNamedDataValue(APRatio=0.5, no mStat -> AP).
         // Damage[5] = 190 (zeri.bin.json W DataValues: [-10,30,70,110,150,190,230], index=rank).
-        // W = 190 + 1.2*100 + 0.5*0 = 190 + 120 = 310. Magic (per Zeri.json, a documented kit quirk —
+        // W = 190 + 1.0*100 + 0.5*0 = 190 + 100 = 290. Magic (per Zeri.json, a documented kit quirk —
         // AD-scaling but Magic damage type).
         var zeri = LoadChampionFromBin("Zeri");
         ChampionRepository.Initialize(new[] { zeri });
 
         var result = RunCombo("Zeri", new[] { "W" }, Snapshot("Zeri", Stats(), Level));
 
-        Assert.Equal(310.0, result.TotalDamage, precision: 2);
+        Assert.Equal(290.0, result.TotalDamage, precision: 2);
     }
 
     [Fact]
@@ -244,12 +244,12 @@ public class ZeriComboTests : IDisposable
     [Fact]
     public void Zeri_FullRotation_QWER_SumsToExpectedTotal()
     {
-        // 148 (Q) + 310 (W) + 30 (E) + 410 (R) = 898.
+        // 148 (Q) + 290 (W) + 30 (E) + 410 (R) = 878.
         var zeri = LoadChampionFromBin("Zeri");
         ChampionRepository.Initialize(new[] { zeri });
 
         var result = RunCombo("Zeri", new[] { "Q", "W", "E", "R" }, Snapshot("Zeri", Stats(), Level));
 
-        Assert.Equal(898.0, result.TotalDamage, precision: 2);
+        Assert.Equal(878.0, result.TotalDamage, precision: 2);
     }
 }

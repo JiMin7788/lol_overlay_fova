@@ -209,6 +209,19 @@
                         <Button x:Name="FlashKeyF" Content="F 점멸" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
                     </StackPanel>
                 </Border>
+                <!-- M39 one-time telemetry disclosure (2026-08-26): shown once, only while telemetry
+                     is actually configured+on; both buttons dismiss it forever (telemetry.noticeShown). -->
+                <Border x:Name="TelemetryNotice" Margin="28,12,28,0" Visibility="Collapsed"
+                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
+                        BorderThickness="1" CornerRadius="8" Padding="16,10">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="품질 개선을 위해 익명 사용 통계와 오류 리포트를 보냅니다 (설치 ID·버전·OS·오류 내용만 — 게임/계정 정보 없음). 설정에서 끌 수 있습니다."
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextDim}"
+                                   TextWrapping="Wrap" MaxWidth="560" Margin="0,0,10,0" />
+                        <Button x:Name="TelemetryOk" Content="확인" Style="{StaticResource GhostButton}" />
+                        <Button x:Name="TelemetryOptOut" Content="보내지 않기" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- Active view host -->

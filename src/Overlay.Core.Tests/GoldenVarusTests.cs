@@ -108,15 +108,15 @@ public class GoldenVarusTests
         AssertWithinOne(150, Calc("R", "TotalDamage"), "Varus R raw (rank1 base 150)");
     }
 
-    // ── Composition rows → GoldenVarusCompositionTests (Varus_MultiAxis), wired 2026-07-20 ───
-    // DONE there: Q charge min→max interpolation, and blight = 75 detonating on every ability.
-    // NOT wired, because there is no curation to drive them (they are a curation/engine decision,
-    // not a missing test — logged as CLAUDE_CODE_TODO §40):
-    //   blight via full-charge Q = 112 (75 × 1.5 charge amp) — UserDistanceFraction only interpolates
-    //     Q's OWN min/max hit; it never reaches the separate onAbility blight bonus effect.
-    //   W-active full-charge Q missing bonus = 49 (9% of DYNAMIC missing 666 at 518/1000) — the
-    //     WQHealthDamage/QEmpowerPercentHP terms are "Deliberately NOT curated" per Varus.json _noteW.
-    //     Would need a Missing-basis hit ordered AFTER Q base + blight (the Garen-R MissingHp path).
+    // ── Composition rows → GoldenVarusCompositionTests (Varus_MultiAxis) ──────────────────────
+    // Wired 2026-07-20: Q charge min→max interpolation, blight detonating on every ability.
+    // Wired loop 548 (§40 closed): the last two measured axes —
+    //   blight via full-charge Q = 112 (75 × 1.5): SkillHit.ChargeAmpMaxDataValue lets the
+    //     triggering slot's charge knob reach its riders (TriggeringChargeFraction);
+    //   W-active Q missing bonus (measured 49 = 9% of dynamic missing 666 at 518/1000): an
+    //     Upgraded-gated onAbility rider (appliesTo Q) with MetHpPercentCalc 6% → MetHpPercentMaxCalc
+    //     9% by charge, hpBasis Missing, declared AFTER the blight rider so its dynamic fraction
+    //     reads the post-blight running HP.
     private static void AssertWithinOne(double expected, double actual, string what)
         => Assert.True(Math.Abs(actual - expected) <= 1.5,
             $"{what}: expected {expected} ±1.5, engine gave {actual:0.###} (Δ={actual - expected:0.###})");

@@ -67,6 +67,10 @@ public sealed class ConfigSchema
     [JsonPropertyName("champSelect")]
     public ChampSelectConfig ChampSelect { get; set; } = new();
 
+    /// <summary>M39 anonymous telemetry + crash reports. Additive section.</summary>
+    [JsonPropertyName("telemetry")]
+    public TelemetryConfig Telemetry { get; set; } = new();
+
     /// <summary>Deep clone used so <see cref="ConfigManager.Reset"/> can restore fresh
     /// default instances without callers accidentally sharing mutable nested objects.</summary>
     public static ConfigSchema CreateDefault() => new();
@@ -103,6 +107,25 @@ public sealed class ChampSelectConfig
     /// (default) = no recommendation source; the panel shows local presets only.</summary>
     [JsonPropertyName("recDir")]
     public string RecDir { get; set; } = "";
+}
+
+/// <summary>M39 telemetry config. Additive section — old configs missing "telemetry" deserialize
+/// to these defaults. Default ON with a one-time HOME disclosure banner (2026-08-26 user decision);
+/// the collected fields are an anonymous install GUID, app version, OS version, and — on crash —
+/// the scrubbed exception text. No Riot/game/account data ever (M29 §3 spirit).</summary>
+public sealed class TelemetryConfig
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Base URL of the self-hosted telemetry Worker (see telemetry-worker/). Empty = not
+    /// configured — nothing is ever sent and the disclosure banner never shows.</summary>
+    [JsonPropertyName("endpoint")]
+    public string Endpoint { get; set; } = "";
+
+    /// <summary>True once the one-time HOME disclosure banner has been acknowledged.</summary>
+    [JsonPropertyName("noticeShown")]
+    public bool NoticeShown { get; set; }
 }
 
 /// <summary>M29 ad-slot config. Additive section — old configs missing "ads" deserialize to these
@@ -321,16 +344,16 @@ public sealed class OverlayItemsConfig
     [JsonPropertyName("globalGold")]
     public ItemToggleConfig GlobalGold { get; set; } = new();
 
-    /// <summary>(loop 125) Same-lane enemy RETURN timer (minimap-left portrait + countdown). Default
-    /// ENABLED. The respawn part is exact (API), the travel part is a move-speed ESTIMATE (marked "~").</summary>
+    /// <summary>(loop 125) Same-lane enemy RETURN timer (minimap-left portrait + countdown). Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier).
+    /// The respawn part is exact (API), the travel part is a move-speed ESTIMATE (marked "~").</summary>
     [JsonPropertyName("laneReturn")]
-    public ItemToggleConfig LaneReturn { get; set; } = new() { Enabled = true };
+    public ItemToggleConfig LaneReturn { get; set; } = new() { Enabled = false };
 
-    /// <summary>M30 Enemy Jungler Spotted Alert. Default ENABLED — real API field diffs (CS/item
+    /// <summary>M30 Enemy Jungler Spotted Alert. Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier). Real API field diffs (CS/item
     /// change on the enemy JUNGLE-position row), no coordinate estimate, same honesty basis as
     /// <see cref="InhibitorTimers"/>. Silently inert outside ranked/draft (no `position` data).</summary>
     [JsonPropertyName("enemyJunglerSpotted")]
-    public ItemToggleConfig EnemyJunglerSpotted { get; set; } = new() { Enabled = true };
+    public ItemToggleConfig EnemyJunglerSpotted { get; set; } = new() { Enabled = false };
 
     /// <summary>M02 pending-change #1: combo-result HUD card. Default enabled (opt-out).</summary>
     [JsonPropertyName("comboResult")]
@@ -341,11 +364,11 @@ public sealed class OverlayItemsConfig
     public ItemToggleConfig ItemAlert { get; set; } = new() { Enabled = true };
 
     /// <summary>Enemy legendary-item-completed alert (<see cref="Overlay.Core.Items.EnemyItemAlertDetector"/>).
-    /// Default ENABLED — real API item-list diffs on enemy rows (an enemy's data only refreshes while
+    /// Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier). Real API item-list diffs on enemy rows (an enemy's data only refreshes while
     /// visible), same honesty basis as <see cref="EnemyJunglerSpotted"/>. Shows the enemy champion
     /// portrait + the completed item's icon.</summary>
     [JsonPropertyName("enemyItemAlert")]
-    public ItemToggleConfig EnemyItemAlert { get; set; } = new() { Enabled = true };
+    public ItemToggleConfig EnemyItemAlert { get; set; } = new() { Enabled = false };
 
     /// <summary>(§40) The always-on enemy PORTRAIT ROW above the combo overlay (click a portrait to
     /// select the target; dead enemies grey out + show a respawn countdown). Default ENABLED.</summary>
@@ -357,9 +380,9 @@ public sealed class OverlayItemsConfig
     [JsonPropertyName("skillOverlay")]
     public ItemToggleConfig SkillOverlay { get; set; } = new() { Enabled = false };
 
-    /// <summary>M02 pending-change #1. Default enabled (opt-out).</summary>
+    /// <summary>M02 pending-change #1. Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier).</summary>
     [JsonPropertyName("recallTimer")]
-    public ItemToggleConfig RecallTimer { get; set; } = new() { Enabled = true };
+    public ItemToggleConfig RecallTimer { get; set; } = new() { Enabled = false };
 
     /// <summary>M02 pending-change #1. Default enabled (opt-out).</summary>
     [JsonPropertyName("notification")]

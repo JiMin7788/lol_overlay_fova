@@ -150,12 +150,16 @@ public static class ChampionRepository
                 AttackRange = stats?.AttackRange ?? 0,
                 // §48: base attacks/sec, the divisor for SkillDamage's bonus-AS ratio (mStat=4).
                 AttackSpeed = stats?.AttackSpeed ?? 0,
+                // (loop 551) Base AD — without it the preview AA was 0 and live bonus-AD
+                // ratios over-counted by the whole base (see ChampionSummaryStats.Ad).
+                Ad = stats?.Ad ?? 0,
             },
             StatsPerLevel = new ChampionStatsPerLevel
             {
                 Hp = stats?.HpPerLevel ?? 0,
                 Armor = stats?.ArmorPerLevel ?? 0,
                 Mr = stats?.MrPerLevel ?? 0,
+                Ad = stats?.AdPerLevel ?? 0,
             },
             Skills = skills,
         };

@@ -705,6 +705,10 @@ public sealed class ComboRunner : IDisposable
             if (effects is null) continue;
             foreach (var effect in effects)
             {
+                // (loop 552) A manual-only effect never rides automatically — it exists solely for
+                // the "+fx" picker (Irelia P: the 4-stack on-hit at face value, attached when the
+                // user says the Fervor is up, instead of a conditional range on every AA).
+                if (effect.ManualOnly) continue;
                 foreach (var hit in effect.Hits)
                 {
                     if (effect.Trigger == BonusTrigger.OnHit)
@@ -964,6 +968,18 @@ public sealed class ComboRunner : IDisposable
                     if (CalcTrace.IsCollecting)
                         CalcTrace.Row($"node={node.Id} branch=adBuff dv={adBuffDv} frac={adBuffFrac:0.###} ad={stats.AttackDamage:0.##}");
                 }
+                // (loop 554) FLAT AD-buff variant (Twitch R "BonusAD" 30/45/60): real AD added
+                // as-is — the fractional field's whole-percent rule cannot carry a flat grant.
+                if (!adBuffApplied.Contains(slot)
+                    && SkillDamageDb.GetAdBuffFlatDataValue(champion.Id, slot) is { } adBuffFlatDv
+                    && SkillDamage.ComputeFlatDataValue(champion, slot, adBuffFlatDv, stats, level) is double adBuffFlat
+                    && adBuffFlat > 0)
+                {
+                    stats.AttackDamage += adBuffFlat;
+                    adBuffApplied.Add(slot);
+                    if (CalcTrace.IsCollecting)
+                        CalcTrace.Row($"node={node.Id} branch=adBuffFlat dv={adBuffFlatDv} flat={adBuffFlat:0.##} ad={stats.AttackDamage:0.##}");
+                }
             }
 
             var hits = SkillDamageDb.GetHits(champion.Id, slot);
@@ -1015,9 +1031,13 @@ public sealed class ComboRunner : IDisposable
 
             // Append this node's bonus contributions: the slot's own self-triggered effects,
             // plus (for a real ability cast, not the passive) any on-ability effects.
+            // (§40 loop 548) All of them inherit this cast's ONE charge fraction when the slot has a
+            // charge/distance-scaled own hit — so a full-charge Q amplifies its riders too, and an
+            // unset knob reads as the same anchor end the slot's own hit already resolves to.
+            double? nodeChargeFraction = TriggeringChargeFraction(champion.Id, slot, node.UserDistanceFraction);
             var selfBonuses = SelfBonuses(champion.Id, slot);
             if (selfBonuses.Count > 0)
-                changed |= AppendBonusHits(rewritten, node, champion, selfBonuses, stats, level, defenderMaxHp, "self", liveStacks);
+                changed |= AppendBonusHits(rewritten, node, champion, selfBonuses, stats, level, defenderMaxHp, "self", liveStacks, nodeChargeFraction);
             if (!slot.Equals("P", StringComparison.OrdinalIgnoreCase) && onAbilityBonuses.Count > 0)
             {
                 // Honor appliesTo (loop 475): an on-ability rider curated to ride only certain slots
@@ -1029,7 +1049,7 @@ public sealed class ComboRunner : IDisposable
                     b.AppliesTo is not { Length: > 0 }
                     || Array.Exists(b.AppliesTo, s => s.Equals(slot, StringComparison.OrdinalIgnoreCase)));
                 if (applicable.Count > 0)
-                    changed |= AppendBonusHits(rewritten, node, champion, applicable, stats, level, defenderMaxHp, "onAbility", liveStacks);
+                    changed |= AppendBonusHits(rewritten, node, champion, applicable, stats, level, defenderMaxHp, "onAbility", liveStacks, nodeChargeFraction);
             }
 
             // User-attached bonus effects on this skill node (manual sub-icons, T3.3/T8). Merged with
@@ -1037,7 +1057,7 @@ public sealed class ComboRunner : IDisposable
             // user lists are disjoint sources), so a manual bonus adds to — never replaces — them.
             var userBonuses = UserBonuses(node);
             if (userBonuses.Count > 0)
-                changed |= AppendBonusHits(rewritten, node, champion, userBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks);
+                changed |= AppendBonusHits(rewritten, node, champion, userBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks, bonusChargeFraction: nodeChargeFraction);
 
             // (M22 Phase 4) Flip the All-Out stance AFTER resolving this node, so the R cast itself
             // resolves normally and only the nodes that FOLLOW it (until the next R) are All-Out.
@@ -1045,6 +1065,24 @@ public sealed class ComboRunner : IDisposable
         }
 
         return changed ? graph with { Nodes = rewritten } : graph;
+    }
+
+    /// <summary>(§40 loop 548) The ONE charge fraction the bonus hits riding <paramref name="slot"/>
+    /// inherit — non-null only when the slot's own curation has a distance/charge-scaled hit (so a
+    /// knob exists at all). An unset knob resolves to the SAME anchor end that slot's own hit already
+    /// resolves to (Varus Q anchors at max charge — its curated Calc IS MaxCalc — so an un-knobbed Q
+    /// reads as one consistent full-charge cast, own hit and riders alike; a min-anchored champion
+    /// like Fizz R would inherit 0). A slot with no charge mechanic returns null and every
+    /// charge-dependent rider field stays inert on it.</summary>
+    private static double? TriggeringChargeFraction(string championId, string slot, double? userDistanceFraction)
+    {
+        var hits = SkillDamageDb.GetHits(championId, slot);
+        if (hits is null) return null;
+        foreach (var h in hits)
+            if (h.IsDistanceScaled)
+                return userDistanceFraction
+                    ?? (string.Equals(h.Calc, h.MaxCalc, StringComparison.OrdinalIgnoreCase) ? 1.0 : 0.0);
+        return null;
     }
 
     /// <summary>The self-triggered bonus hits curated on one slot, paired with that slot as the
@@ -1081,14 +1119,14 @@ public sealed class ComboRunner : IDisposable
     private static bool AppendBonusHits(
         List<ComboNode> into, ComboNode node, ChampionData champion,
         IReadOnlyList<BonusSpec> bonuses, ActivePlayerStats stats, int level, double defenderMaxHp,
-        string trigger = "user", Func<string, int?>? liveStacks = null)
+        string trigger = "user", Func<string, int?>? liveStacks = null, double? bonusChargeFraction = null)
     {
         bool added = false;
         for (int n = 0; n < bonuses.Count; n++)
         {
             var (calcSlot, hit) = (bonuses[n].CalcSlot, bonuses[n].Hit);
             if (!TryBuildHitShape(hit, champion, calcSlot, stats, level, defenderMaxHp, node.UserHitDurationSeconds,
-                    node.UserAttackCount, node.UserDistanceFraction, allOut: false, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, EffectiveStacks(node.UserStackCount, liveStacks, calcSlot)))
+                    node.UserAttackCount, node.UserDistanceFraction, allOut: false, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, EffectiveStacks(node.UserStackCount, liveStacks, calcSlot), bonusChargeFraction))
                 continue;
 
             // (T1-c, M26 §6 Trace Mode) One row per resolved bonus hit, before it's replicated into
@@ -1265,11 +1303,12 @@ public sealed class ComboRunner : IDisposable
         double defenderMaxHp, double? userHitDurationSeconds, int? userAttackCount,
         double? userDistanceFraction, bool allOut,
         out double damage, out ComboExecuteType execType, out double execPercent,
-        bool? userConditionMet = null, int userStackCount = 0)
+        bool? userConditionMet = null, int userStackCount = 0, double? bonusChargeFraction = null)
     {
         if (!TryBuildHitShapeCore(hit, champion, calcSlot, stats, level, defenderMaxHp,
                 userHitDurationSeconds, userAttackCount, userDistanceFraction, allOut,
-                out damage, out execType, out execPercent, userConditionMet, userStackCount))
+                out damage, out execType, out execPercent, userConditionMet, userStackCount,
+                bonusChargeFraction))
             return false;
 
         // (loop 471) Per-cast ramp: a later cast of the same ability scales whatever shape the
@@ -1286,6 +1325,25 @@ public sealed class ComboRunner : IDisposable
             damage *= factor;
             execPercent *= factor;
         }
+
+        // (§40 loop 548) Charge amplification: a bonus hit whose payload the TRIGGERING cast's charge
+        // amplifies (Varus blight: a full-charge Q detonates ×1.5, VarusWMaxChargeHPDamage). Applied
+        // here around every shape, like the ramp above. bonusChargeFraction is non-null only for a
+        // bonus hit riding a slot with a distance/charge-scaled own hit (see
+        // TriggeringChargeFraction) — an E/R detonation has no charge knob and stays plain. An
+        // unresolvable amp DataValue leaves the plain value rather than dropping a real hit: the
+        // amplifier is an upgrade on the claim, not the claim itself.
+        if (!string.IsNullOrEmpty(hit.ChargeAmpMaxDataValue) && bonusChargeFraction is { } ampFrac)
+        {
+            string ampSlot = string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!;
+            if (SkillDamage.ComputeFlatDataValue(champion, ampSlot, hit.ChargeAmpMaxDataValue!, stats, level,
+                    rankSlot: calcSlot) is double ampMax && ampMax > 0)
+            {
+                double amp = 1 + Math.Clamp(ampFrac, 0, 1) * (ampMax - 1);
+                damage *= amp;
+                execPercent *= amp;
+            }
+        }
         return true;
     }
 
@@ -1294,7 +1352,7 @@ public sealed class ComboRunner : IDisposable
         double defenderMaxHp, double? userHitDurationSeconds, int? userAttackCount,
         double? userDistanceFraction, bool allOut,
         out double damage, out ComboExecuteType execType, out double execPercent,
-        bool? userConditionMet = null, int userStackCount = 0)
+        bool? userConditionMet = null, int userStackCount = 0, double? bonusChargeFraction = null)
     {
         damage = 0;
         execType = ComboExecuteType.None;
@@ -1324,6 +1382,15 @@ public sealed class ComboRunner : IDisposable
         string calcSlotEff = useAllOut && !string.IsNullOrEmpty(hit.AllOutBinSpell) ? hit.AllOutBinSpell!
             : (string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!);
 
+        // (loop 551) The folded basic attack of a next-attack empowerment (Camille-Q class): this
+        // hit is the swing itself, worth the attacker's live total AD — identical to an AA node's
+        // number — so the empowered attack reads on ONE skill node instead of needing a separate AA.
+        if (hit.BasicAttack)
+        {
+            damage = stats.AttackDamage;
+            return true;
+        }
+
         // (M25 §11.G) Conditional-bonus hit: the condition switches this hit from its baseline effCalc
         // (UNMET = the conservative RangeMin anchor, P2) to MetCalc (MET = RangeMax). An AutoResolvable
         // condition (the caster's own resource) reads live stats; a UserAssumed one (enemy/positional
@@ -1346,6 +1413,13 @@ public sealed class ComboRunner : IDisposable
             {
                 if (SkillDamage.ResolveHpPercentCalc(champion, calcSlotEff, hit.MetHpPercentCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double metFrac || metFrac <= 0)
                     return false;
+                // (§40 loop 548) Charge-interpolated MET fraction: [MetHpPercentCalc → MetHpPercentMaxCalc]
+                // by the triggering cast's charge (Varus W-active Q: 6% → 9% of missing health). A null
+                // fraction (rider fired without a charge-scaled slot) keeps the floor; an unresolvable
+                // ceiling calc likewise — the floor is the honest claim on its own.
+                if (!string.IsNullOrEmpty(hit.MetHpPercentMaxCalc) && bonusChargeFraction is { } metChargeFrac
+                    && SkillDamage.ResolveHpPercentCalc(champion, calcSlotEff, hit.MetHpPercentMaxCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double metFracMax && metFracMax > 0)
+                    metFrac += Math.Clamp(metChargeFrac, 0, 1) * (metFracMax - metFrac);
                 switch (hit.HpBasis)
                 {
                     case HpBasis.Current: execType = ComboExecuteType.CurrentHp; execPercent = metFrac; break;
@@ -2171,7 +2245,10 @@ public sealed class ComboRunner : IDisposable
             && TargetSnapshotStore.Load(config, comboId) is { } snapshot)
         {
             defender = new DefenderStat(
-                CurrentHP: snapshot.MaxHp, MaxHP: snapshot.MaxHp,
+                // (loop 553) A positive CurrentHp seeds a pre-damaged virtual target (dynamic
+                // missing-HP reproduction); 0/absent keeps the prior start-at-full behavior.
+                CurrentHP: snapshot.CurrentHp > 0 ? Math.Min(snapshot.CurrentHp, snapshot.MaxHp) : snapshot.MaxHp,
+                MaxHP: snapshot.MaxHp,
                 Armor: snapshot.Armor, Mr: snapshot.Mr, Shield: 0);
             targetChampion = snapshot.ChampionName;
             defenderIsFallback = false; // an explicit, labeled virtual target — not a failed resolution

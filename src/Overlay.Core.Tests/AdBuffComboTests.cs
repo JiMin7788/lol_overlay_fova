@@ -36,7 +36,7 @@ public class AdBuffComboTests : IDisposable
         _dir = Path.Combine(Path.GetTempPath(), "AdBuffComboTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
         _configPath = Path.Combine(_dir, "user_config.json");
-        ChampionRepository.Initialize(new[] { LoadChampionFromBin("Aatrox"), LoadChampionFromBin("Riven") });
+        ChampionRepository.Initialize(new[] { LoadChampionFromBin("Aatrox"), LoadChampionFromBin("Riven"), LoadChampionFromBin("Twitch") });
     }
 
     public void Dispose()
@@ -91,6 +91,19 @@ public class AdBuffComboTests : IDisposable
         // Q's AD-ratio casts after R must resolve against the buffed AD, so Q-after-R exceeds bare Q.
         Assert.True(rq - r > q + 1,
             $"Q after R ({rq - r:0.##}) must exceed bare Q ({q:0.##}) via the +20% AD buff");
+    }
+
+    [Fact]
+    public void TwitchR_GrantsFlatBonusAd_ToTheAutoAfterIt()
+    {
+        const double ad = 100;
+        double r = RunCombo("Twitch", ad, new[] { "R" });
+        double ra = RunCombo("Twitch", ad, new[] { "R", "A" });
+        double a = RunCombo("Twitch", ad, new[] { "A" });
+        // (loop 554) Spray and Pray is a FLAT AD grant: BIN BonusAD = 60 at R rank 3 (the harness
+        // rank fallback maxes every ability). The auto after R deals AD+60; Twitch's P is a DoT
+        // rider that cancels in the difference of differences like Aatrox's above.
+        AssertClose(60, (ra - r) - a, "Spray and Pray flat AD on the following auto");
     }
 
     // ── harness (mirrors SylasEmpoweredAutoTests) ────────────────────────────────

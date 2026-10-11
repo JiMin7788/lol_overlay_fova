@@ -206,13 +206,19 @@ public class M25ConditionalHitTests : IDisposable
 
         // Composition: Q(full-charge) + Blight, AA(AD + on-hit), E(base + Blight) -- Blight fires on BOTH
         // ability nodes (2x), the on-hit fires on the AA only. All unmitigated (fallback 0/0 defender).
-        double expected = qMax + blight + stats.AttackDamage + onHit + eBase + blight;
+        // (§40 loop 548) The Q-node detonation is now charge-AMPLIFIED: an unset knob resolves to Q's
+        // anchor (full charge, _noteQ) so ITS blight reads ×1.5 (VarusWMaxChargeHPDamage); the E-node
+        // detonation has no charge knob and stays plain — the axes still compose additively, the Q
+        // charge axis just genuinely reaches its rider now.
+        double expected = qMax + 1.5 * blight + stats.AttackDamage + onHit + eBase + blight;
         Assert.True(expected < 950, $"guard: keep the combo under the lethality bound (was {expected})");
         Assert.Equal(expected, combo.TotalDamage, precision: 2);
 
-        // The charge axis widens the range independently: everything else is constant across the graphs,
-        // so the whole-combo range delta equals exactly Q's charge delta.
-        Assert.Equal(qMax - qMin, combo.RangeMax - combo.RangeMin, precision: 2);
+        // (§40) The charge axis no longer moves Q's own hit alone: min-exposure (knob 0) also drops
+        // the blight amp (−0.5×blight), and max-exposure raises the W-active empower ceiling — so the
+        // whole-combo range delta is strictly WIDER than the bare qMax−qMin charge delta.
+        Assert.True(combo.RangeMax - combo.RangeMin > qMax - qMin,
+            $"range delta ({combo.RangeMax - combo.RangeMin}) must exceed the bare Q charge delta ({qMax - qMin})");
     }
 
     [Fact]

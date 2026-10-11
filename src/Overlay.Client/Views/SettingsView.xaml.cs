@@ -102,6 +102,8 @@ public partial class SettingsView : UserControl
 
             // Rune auto-apply (default TRUE — equipped-rune reflection is the intended default).
             RuneAutoApplyToggle.IsChecked = GetBool(cfg, "runes.autoApply", true);
+            // M39 telemetry (default TRUE — first-run disclosure banner owns the initial notice).
+            TelemetryToggle.IsChecked = GetBool(cfg, "telemetry.enabled", true);
             // Flash key (champSelect.flashKey): unset -> neither radio checked (the first-run
             // banner owns the initial ask); user can change it here anytime.
             var flashKey = cfg.Get("champSelect.flashKey") as string;
@@ -174,7 +176,7 @@ public partial class SettingsView : UserControl
             // M02 pending-change #1: core HUD element toggles, opt-OUT (default true).
             ComboResultToggle.IsChecked = GetBool(cfg, "overlay.items.comboResult.enabled", true);
             ItemAlertToggle.IsChecked = GetBool(cfg, "overlay.items.itemAlert.enabled", true);
-            RecallTimerToggle.IsChecked = GetBool(cfg, "overlay.items.recallTimer.enabled", true);
+            RecallTimerToggle.IsChecked = GetBool(cfg, "overlay.items.recallTimer.enabled", false);
             NotificationToggle.IsChecked = GetBool(cfg, "overlay.items.notification.enabled", true);
             StatusCardToggle.IsChecked = GetBool(cfg, "overlay.items.statusCard.enabled", true);
         }
@@ -275,6 +277,20 @@ public partial class SettingsView : UserControl
         // Persist only — ComboRunner re-reads runes.autoApply live on every combo trigger, so the
         // change takes effect without restarting the runner or the app.
         _composition.Config.Set("runes.autoApply", RuneAutoApplyToggle.IsChecked == true);
+    }
+
+    // ── M39: anonymous telemetry + crash reports ────────────────────────────
+
+    private void TelemetryToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing || _composition is null) return;
+        bool on = TelemetryToggle.IsChecked == true;
+        _composition.Config.Set("telemetry.enabled", on);
+        // Off must bite THIS session (unhook the crash sink), not just the next launch. On only
+        // re-hooks: the service snapshots its enabled flag at construction, so a session that
+        // STARTED disabled stays inert until restart (RecordCrash no-ops on IsConfigured) — the
+        // opt-out direction is the one that may not wait.
+        App.CrashSink = on ? _composition.Telemetry.RecordCrash : null;
     }
 
     private void FlashKey_Changed(object sender, System.Windows.RoutedEventArgs e)
@@ -615,6 +631,12 @@ public partial class SettingsView : UserControl
         GeneralCaption.Text = SL("기본", "General");
         MonitorDesc.Text = SL("앱 표시 관련 기본값입니다.", "App-level display defaults.");
         MonitorLabel.Text = SL("타겟 모니터 (0 = 주 모니터)", "Target monitor (0 = primary)");
+
+        TelemetryCaption.Text = SL("데이터", "Data");
+        TelemetryToggleCaption.Text = SL("익명 사용 통계·오류 리포트", "Anonymous usage stats & crash reports");
+        TelemetryToggleDesc.Text = SL(
+            "익명 설치 ID·앱 버전·OS 버전, 그리고 오류 발생 시 오류 내용을 보냅니다. 게임/계정 정보는 절대 포함되지 않습니다.",
+            "Sends an anonymous install id, app version, OS version, and — on a crash — the error details. Never any game or account data.");
 
         OpacityCaption.Text = SL("불투명도", "Opacity");
         ScaleCaption.Text = SL("크기", "Size");

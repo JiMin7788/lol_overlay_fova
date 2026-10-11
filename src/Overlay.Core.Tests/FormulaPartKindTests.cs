@@ -76,11 +76,14 @@ public class FormulaPartKindTests
     {
         var irelia = Champion("Irelia");
 
-        // OnHitBaseDamage 10 + OnHitPerLevel 3: the wiki's "10 - 61 (based on level)" is 10 + 3x17,
-        // and the AD term adds 20% of bonus AD on top (300 total AD against a base the repository
-        // reports, so the assertion is on the level curve, not the exact total).
-        double atOne = SkillDamage.ComputeCalcDamage(irelia, "P", "OnHitBonus", Stats(), 1)!.Value;
-        double atEighteen = SkillDamage.ComputeCalcDamage(irelia, "P", "OnHitBonus", Stats(), 18)!.Value;
+        // OnHitBaseDamage 10 + OnHitPerLevel 3: the wiki's "10 - 61 (based on level)" is 10 + 3x17.
+        // The calc also carries a 20% BONUS-AD term; since loop 551 the repository reports real base
+        // AD (+growth), so bonus AD would DIFFER between the two levels under a fixed total AD and
+        // pollute the level-curve delta. Zero AD pins bonus AD to 0 at both levels, so the assertion
+        // stays exactly the curve: 3 x 17 = 51.
+        var zeroAd = new ActivePlayerStats { AbilityPower = 0 };
+        double atOne = SkillDamage.ComputeCalcDamage(irelia, "P", "OnHitBonus", zeroAd, 1)!.Value;
+        double atEighteen = SkillDamage.ComputeCalcDamage(irelia, "P", "OnHitBonus", zeroAd, 18)!.Value;
         Assert.Equal(51, atEighteen - atOne, 1);
     }
 

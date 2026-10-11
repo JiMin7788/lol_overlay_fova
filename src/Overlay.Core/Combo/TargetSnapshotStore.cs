@@ -60,5 +60,12 @@ public static class TargetSnapshotStore
 /// Armor/Mr/MaxHP fields) at the moment of capture. <see cref="CapturedAtUtcMs"/> (Unix epoch
 /// milliseconds, matching <see cref="Overlay.Overlay.IClock.NowMs"/>'s own unit) lets the UI show an honest
 /// "captured X ago" instead of implying the snapshot is live.</summary>
+/// <param name="CurrentHp">(loop 553, §40 residual) Optional pre-damaged starting HP for the
+/// virtual target. 0/omitted (every capture written before this field existed, and every live
+/// capture — enemy current HP is not public data, P2) means "start at <see cref="MaxHp"/>",
+/// byte-identical to the prior behavior. A POSITIVE value seeds the damage engine's running HP,
+/// which is what lets a dynamic missing-health hit be tested against a mid-fight target — the
+/// measured Varus session (target at 518/1000) is the motivating reproduction.</param>
 public sealed record TargetSnapshot(
-    string ChampionName, double Armor, double Mr, double MaxHp, long CapturedAtUtcMs);
+    string ChampionName, double Armor, double Mr, double MaxHp, long CapturedAtUtcMs,
+    double CurrentHp = 0);

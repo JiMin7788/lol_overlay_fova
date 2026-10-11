@@ -211,8 +211,12 @@ public class DistanceScaledHitTests : IDisposable
 
         Assert.True(result.TotalDamage > 0);
         // Resolved default = full charge (value identity with the prior TotalDamageMax curation).
-        Assert.Equal(result.TotalDamage, result.RangeMax, precision: 2);
+        // (§40 loop 548) RangeMax is no longer equal to the resolved total: max-exposure also meets
+        // the W-active empower rider's Upgraded checkbox, so the ceiling sits ABOVE the resolved
+        // full-charge cast (resolved keeps the P2 floor: checkbox unmet).
+        Assert.True(result.RangeMax >= result.TotalDamage - 0.01,
+            "full-charge resolved total must not exceed the range ceiling");
         // Range widens DOWN to the uncharged floor (TotalDamage < TotalDamageMax).
-        Assert.True(result.RangeMin < result.RangeMax, "the uncharged floor must be below the full-charge ceiling");
+        Assert.True(result.RangeMin < result.TotalDamage, "the uncharged floor must be below the full-charge resolved total");
     }
 }

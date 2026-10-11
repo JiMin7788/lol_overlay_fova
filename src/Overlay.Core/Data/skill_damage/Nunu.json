@@ -11,8 +11,9 @@
   "E": {
     "hits": [
       { "type": "Magic", "calc": "TotalSnowballDamage", "count": 3 },
-      { "type": "Magic", "calc": "TotalRootDamage", "count": 1 }
-    ]
+      { "type": "Magic", "conditionType": "Upgraded", "metCalc": "TotalRootDamage", "count": 1 }
+    ],
+    "_noteE_555": "loop 555 (user decision, section-91-1): Snowball Barrage's ROOT damage only lands when the channel is held to completion - a cast-state fact the engine cannot read, so it is now the Upgraded-gated half (default UNMET = volleys only, the P2 floor; the M28 checkbox asserts the full channel). The old unconditional root hit assumed every E was fully channeled."
   },
   "R": { "hits": [ { "type": "Magic", "calc": "MaximumDamage", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W MaxDamageScalar(1.0)/MaxDamageTime(5.0) are the snowball RAMP parameters; the BIN exposes NO minimum-roll calc (only MaximumSnowballDamage and the NoImpact variant), so a Fizz-style [min,max] range is not expressible from BIN names - the curated Max stands WITH this disclosure (short rolls overstate; BurstCeiling-adjacent semantics). Documented.",

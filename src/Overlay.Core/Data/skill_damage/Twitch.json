@@ -42,7 +42,9 @@
   "R": {
     "tags": [
       "AoeUltimate"
-    ]
+    ],
+    "adBuffFlatDataValue": "BonusAD",
+    "_noteR_554": "loop 554 (section-91-4): Spray and Pray grants FLAT bonus AD (BIN BonusAD 30/45/60 by R rank, TwitchFullAutomatic) - curated via the new adBuffFlatDataValue so a combo containing R raises every later AA/physical ratio, same mechanism class as Aatrox/Riven R (loop 539) but flat, not fractional. The piercing bolts hitting extra targets stay out (single-target model)."
   },
   "_noteE": "CORRECTED this pass: E (Contaminate/Expunge) previously curated with ONLY 'PhysicalDamagePerStack' (a single stack's per-stack coefficient alone) as the sole hit -- this omitted the flat guaranteed BaseDamage component entirely AND the Magic-damage-per-stack component entirely, badly understating the real hit. TwitchExpungeAbility/TwitchExpunge's real damage = BaseDamage (flat, DataValues [10,20,30,40,50,60,70]) + PhysicalDamagePerStack x (Deadly Venom stack count on target, 1-6) as Physical, PLUS MagicDamagePerStack x (same stack count) as Magic (APRatioPerStack=0.35, no base AP component of its own). E can only be cast on a target that already carries at least 1 Deadly Venom stack (a hard cast requirement), so the minimum-guaranteed floor is BaseDamage + 1x PhysicalDamagePerStack (physical) + 1x MagicDamagePerStack (magic) -- curated as three hits (flatDataValue BaseDamage + calc PhysicalDamagePerStack + calc MagicDamagePerStack), representing the 1-stack floor, consistent with this project's conservative-floor convention for stack-count-dependent mechanics this engine cannot live-track (same as Locke Q's 1-stack floor). Real damage at higher stack counts (up to the BIN's own MaxPhysicalDamage/MaxMagicDamage 6-stack ceiling) is understated by design (never overstated, per P2).",
   "_noteR": "R (Spray and Pray): a steroid ult - grants bonus AD and makes basic attacks pierce; the damage is dealt by the empowered auto-attacks (bonus AD, resolved on the AA node), not by the R cast. No direct cast hits."

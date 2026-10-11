@@ -1,2 +1,3 @@
-fova-affiliate.png	https://jimin7788.github.io/lol_overlay_fova/
+# fova-affiliate is off until the Riot app is Approved/Acknowledged (TODO s140); uncomment to restore.
+# fova-affiliate.png	https://jimin7788.github.io/lol_overlay_fova/
 fova-house.png	https://github.com/JiMin7788/lol_overlay_fova

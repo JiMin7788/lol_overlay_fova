@@ -21,8 +21,14 @@
   "R": {
     "tags": ["BurstCeiling", "AoeUltimate"],
     "hits": [
-      { "type": "Magic", "calc": "Cast1Damage", "count": 1 },
-      { "type": "Magic", "calc": "Cast2DamageMin", "count": 1 }
+      { "type": "Magic", "calc": "Cast1Damage", "count": 1 }
     ]
-  }
+  },
+  "R2": {
+    "icon": "assets/characters/akali/hud/icons2d/akali_r2.png",
+    "hits": [
+      { "type": "Magic", "calc": "Cast2DamageMin", "minCalc": "Cast2DamageMin", "maxCalc": "Cast2DamageMax", "binSpell": "R", "count": 1 }
+    ]
+  },
+  "_noteR_555": "loop 555 (user decision, section-91-1 split): Perfect Execution is TWO player-sequenced casts folded into one node since loop 39 - R now carries cast 1 only and R2 is its own slot (LeeSin Q/Q2 precedent; saved combos keep R working and simply lose the folded second cast - add an R2 node). R2's damage scales 1x->3x with the TARGET's missing health (BIN Cast2DamageMax = Cast2DamageMin x3); no BIN DataValue exposes the scalar alone, so it is expressed as the min/max RANGE [Cast2DamageMin, Cast2DamageMax] with the conservative min anchor (P2) rather than a hardcoded dynamic bonus."
 }

@@ -158,7 +158,7 @@ public class PercentHpDamageTests : IDisposable
     // Vayne W BIN DataValue MaxHealthRatio, indexed directly by ability rank (index 0 is the
     // rank-0 slot, same convention as every other DataValue lookup in the interpreter).
     private static readonly double[] VayneMaxHealthRatio =
-        { 0.05, 0.06, 0.07, 0.08, 0.09, 0.10, 0.11 };
+        { 0.025, 0.04, 0.055, 0.07, 0.085, 0.10, 0.115 }; // patch 16.20 BIN
 
     private static ActivePlayerStats StatsWithWRank(int wRank) =>
         new() { AbilityW = wRank, AbilityQ = 5, AbilityE = 5 };
@@ -168,9 +168,9 @@ public class PercentHpDamageTests : IDisposable
     [Fact]
     public void VayneW_PercentMaxHpTrue_EqualsFractionTimesMaxHp_AndIgnoresResist()
     {
-        int wRank = 4; // MaxHealthRatio[4] = 0.09
+        int wRank = 4; // MaxHealthRatio[4] = 0.085
         double maxHp = 2000;
-        double expected = VayneMaxHealthRatio[wRank] * maxHp; // 0.09 * 2000 = 180
+        double expected = VayneMaxHealthRatio[wRank] * maxHp; // 0.085 * 2000 = 170
 
         // Enemy with a KNOWN MaxHP and DELIBERATELY high armor+MR — true damage must ignore both.
         ChampionRepository.Initialize(new[]
@@ -181,12 +181,12 @@ public class PercentHpDamageTests : IDisposable
 
         // Sanity: the fraction really is resolved live from the BIN DataValue at this rank.
         var vayne = LoadChampionFromBin("Vayne");
-        Assert.Equal(0.09, SkillDamage.ResolveHpPercent(vayne, "W", "MaxHealthRatio", StatsWithWRank(wRank))!.Value, precision: 4);
+        Assert.Equal(0.085, SkillDamage.ResolveHpPercent(vayne, "W", "MaxHealthRatio", StatsWithWRank(wRank))!.Value, precision: 4);
 
         var snap = Snapshot("Vayne", StatsWithWRank(wRank), enemyChampion: "Tank", enemyLevel: 1);
         var result = RunCombo("Vayne", new[] { "W" }, snap);
 
-        Assert.Equal(expected, result.TotalDamage, precision: 2); // 180 despite 300/300 resist
+        Assert.Equal(expected, result.TotalDamage, precision: 2); // 170 despite 300/300 resist
         Assert.Single(result.NodeBreakdown);
     }
 
@@ -202,12 +202,12 @@ public class PercentHpDamageTests : IDisposable
             Dummy("Squishy", hp: maxHp), // 0 resist so total == raw true damage
         });
 
-        // Rank 4 -> MaxHealthRatio[4] = 0.09 -> 180.
+        // Rank 4 -> MaxHealthRatio[4] = 0.085 -> 170.
         var high = RunCombo("Vayne", new[] { "W" },
             Snapshot("Vayne", StatsWithWRank(4), "Squishy", enemyLevel: 1));
-        Assert.Equal(VayneMaxHealthRatio[4] * maxHp, high.TotalDamage, precision: 2); // 180
+        Assert.Equal(VayneMaxHealthRatio[4] * maxHp, high.TotalDamage, precision: 2); // 170
 
-        // Rank 2 -> MaxHealthRatio[2] = 0.07 -> 140. A LITERAL would give the same number at both
+        // Rank 2 -> MaxHealthRatio[2] = 0.055 -> 110. A LITERAL would give the same number at both
         // ranks; a live per-rank lookup gives a different one. Reset the bus so the first run's
         // now-disposed UI.COMBO_RESULT gate does not fire on the second publish.
         EventBus.EventBus.ResetForTests();
@@ -216,7 +216,7 @@ public class PercentHpDamageTests : IDisposable
         ChampionRepository.Initialize(new[] { LoadChampionFromBin("Vayne"), Dummy("Squishy", hp: maxHp) });
         var low = RunCombo("Vayne", new[] { "W" },
             Snapshot("Vayne", StatsWithWRank(2), "Squishy", enemyLevel: 1));
-        Assert.Equal(VayneMaxHealthRatio[2] * maxHp, low.TotalDamage, precision: 2); // 140
+        Assert.Equal(VayneMaxHealthRatio[2] * maxHp, low.TotalDamage, precision: 2); // 110
 
         Assert.True(high.TotalDamage > low.TotalDamage + 0.01,
             "a higher W rank must resolve a higher %HP fraction (dynamic, not a baked constant)");

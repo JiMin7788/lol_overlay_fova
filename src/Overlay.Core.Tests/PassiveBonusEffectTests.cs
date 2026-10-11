@@ -276,12 +276,12 @@ public class PassiveBonusEffectTests : IDisposable
         Assert.Equal(HitDamageType.Magic, hit.Type);
         Assert.Equal("PBaseDamage", hit.Calc);
 
-        // PBaseDamage @ level 6 = interpolate(4->24, t=(6-1)/17=5/17 -> 4+20*5/17=9.882353)
-        //                          + 0.12 * AP(100) = 12  ⇒  21.882353.
+        // PBaseDamage @ level 6 = interpolate(4->30 since patch 16.20, t=(6-1)/17=5/17 -> 4+26*5/17=11.647059)
+        //                          + 0.12 * AP(100) = 12  ⇒  23.647059.
         var stats = new ActivePlayerStats { AbilityPower = 100 };
         double? value = SkillDamage.ComputeCalcDamage(kaisa, "P", hit.Calc, stats, level: 6);
         Assert.NotNull(value);
-        Assert.Equal(21.88, value!.Value, precision: 2);
+        Assert.Equal(23.65, value!.Value, precision: 2);
     }
 
     [Fact]
@@ -623,16 +623,16 @@ public class PassiveBonusEffectTests : IDisposable
         Assert.Equal(HitDamageType.Magic, hit.Type);
         Assert.Equal("TotalDamage", hit.Calc);
 
-        // TotalDamage = ByCharLevelFormulaCalculationPart(values=[10,17,24,...], step +7,
+        // TotalDamage = ByCharLevelFormulaCalculationPart(values=[15,22,29,...] since patch 16.20, step +7,
         // indexed directly by champion level) + StatByNamedDataValueCalculationPart
         // (BonusADRatio flat 0.5 * bonus AD). The ByCharLevelFormula gap this curation pass
         // originally documented was later closed (CalculationPart.Kind.ByCharLevelFormula added),
-        // so it now resolves live. At level 6: values[6] = 10 + 6*7 = 52; + 0.5 * bonusAD(100) = 50
-        //   ⇒ 102.
+        // so it now resolves live. At level 6: values[6] = 15 + 6*7 = 57; + 0.5 * bonusAD(100) = 50
+        //   ⇒ 107.
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         double? value = SkillDamage.ComputeCalcDamage(khazix, "P", hit.Calc, stats, level: 6);
         Assert.NotNull(value);
-        Assert.Equal(102.0, value!.Value, precision: 2);
+        Assert.Equal(107.0, value!.Value, precision: 2);
     }
 
     // ── 10. T-new2 passive pass (Braum/Nautilus/Bard): further hand-verified live BIN numbers ──

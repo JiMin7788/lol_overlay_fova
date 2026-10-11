@@ -5,17 +5,9 @@
   "_noteR": "R (Chaaaaaaaarge!!!, KledRAbility) FIXED a real bug: MaximumChargeDamage is ALSO a %MAX-HP fraction (0.03x(PercentHPBase[2-14] + 0.03 bonusAD-coeff), mDisplayAsPercent) that the prior curation used as flat literal damage -- same class of bug as W, now fixed via hpPercentCalc/hpBasis Max. Uses the FULLY-CHARGED (3s charge-up, SecondsToMaxPower) value rather than the lesser MinimumDamageTooltip floor, matching this project's convention of modeling an intentional/well-executed cast (an engaging Kled player charges before impact).",
   "Q": {
     "hits": [
-      {
-        "type": "Physical",
-        "calc": "TotalDamage",
-        "count": 1
-      },
-      {
-        "type": "Physical",
-        "calc": "TotalYankDamage",
-        "count": 1
-      }
-    ]
+      { "type": "Physical", "calc": "TotalDamage", "minCalc": "TotalDamage", "maxCalc": "TotalYankDamage", "count": 1 }
+    ],
+    "_noteQ_555": "loop 555 (user decision): Beartrap on a Rope lands the hook (TotalDamage) and only if the tether HOLDS does the yank total (TotalYankDamage) apply - one outcome per cast, so the old two-hit sum over-counted. One hit, RANGE [TotalDamage, TotalYankDamage], conservative min anchor (P2: the yank is not assumed)."
   },
   "W": {
     "tags": [

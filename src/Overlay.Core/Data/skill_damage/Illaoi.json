@@ -17,6 +17,7 @@
   "W": {
     "tags": ["PercentMaxHp"],
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
         "type": "Physical",
         "hpPercentCalc": "HealthPercentTotal",

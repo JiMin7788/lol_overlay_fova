@@ -205,10 +205,12 @@ public class IllaoiComboTests : IDisposable
         // Fraction = 0.01 * (5.0 + 0.035*100) = 0.01 * (5.0 + 3.5) = 0.01*8.5 = 0.085 (8.5% max HP).
         // hpBasis=Max -> damage = fraction x target maxHP (2000) = 0.085*2000 = 170, then mitigated as
         // a normal Physical hit (target armor 0 -> k=1, unchanged).
+        // (loop 551, user decision) W is a next-attack empowerment (Harsh Lesson), so the swing is
+        // FOLDED into the node: + basicAttack hit worth the total AD (100). 170 + 100 = 270.
         InitRepo();
         var result = RunCombo(new[] { "W" }, Snapshot(Stats(), Level));
 
-        Assert.Equal(170.0, result.TotalDamage, precision: 2);
+        Assert.Equal(270.0, result.TotalDamage, precision: 2);
     }
 
     [Fact]
@@ -248,11 +250,11 @@ public class IllaoiComboTests : IDisposable
     [Fact]
     public void Illaoi_FullCombo_QThenWThenR_WithTwoTentacleSlams_SumsToExpectedTotal()
     {
-        // Q (377) + W (170) + R (400 ground slam + 2*377 tentacle slams = 1154) = 377 + 170 + 1154
-        // = 1701.
+        // Q (377) + W (170 + 100 folded swing, loop 551) + R (400 ground slam + 2*377 tentacle
+        // slams = 1154) = 377 + 270 + 1154 = 1801.
         InitRepo();
         var result = RunCombo(new[] { "Q", "W", "R" }, Snapshot(Stats(), Level), rAttackCount: 2);
 
-        Assert.Equal(1701.0, result.TotalDamage, precision: 2);
+        Assert.Equal(1801.0, result.TotalDamage, precision: 2);
     }
 }

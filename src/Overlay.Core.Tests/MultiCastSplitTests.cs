@@ -127,6 +127,8 @@ public class MultiCastSplitTests : IDisposable
     [Theory]
     [InlineData("Camille", "Q2")]
     [InlineData("LeeSin", "Q2")]
+    [InlineData("Akali", "R2")]
+    [InlineData("Vex", "R2")]
     [InlineData("MonkeyKing", "R2")]
     [InlineData("Shyvana", "Q2")]
     [InlineData("Shyvana", "Q3")]
@@ -136,32 +138,32 @@ public class MultiCastSplitTests : IDisposable
         Init(championId);
         Assert.Contains(slot, ComboEditor.LoadPalette(championId).AvailableNodes.Select(n => n.Id));
 
-        // Camille's Q casts are riders, so they need the attack they empower to show a number.
-        double dmg = championId == "Camille" ? Run(championId, slot, "AA") - Run(championId, "AA")
-                                             : Run(championId, slot);
+        // (loop 551) Camille's Q casts FOLD their empowered attack in — the slot resolves alone.
+        double dmg = Run(championId, slot);
         Assert.True(dmg > 0, $"{championId} {slot} resolved to {dmg:0.##} — silent-zero class");
     }
 
-    // ── Camille: the cast carries nothing, the attack carries it ─────────────────────
+    // ── Camille: the cast IS the empowered attack (loop 551 fold — reversing loop 482) ──
 
     [Fact]
-    public void CamilleQ_EmpowersOneAttackEach_AndTheRecastIsDouble()
+    public void CamilleQ_FoldsTheEmpoweredAttack_AndTheRecastBonusIsDouble()
     {
         Init("Camille");
-        Assert.Equal(0, Run("Camille", "Q"), 2);
-
+        // (loop 551, user decision) The Camille-Q class folds the swing into the skill node:
+        // Q alone = the empowered basic attack = AA (total AD) + the 20-40% AD bonus. The loop-482
+        // "cast carries nothing" attribution (Q == 0, bonus rides a following AA node) is reversed —
+        // casting the empowerment asserts the swing, so no AA node is needed.
         double aa = Run("Camille", "AA");
-        double first = Run("Camille", "Q", "AA") - aa;
-        double second = Run("Camille", "Q2", "AA") - aa;
-        Assert.True(first > 0);
+        double q = Run("Camille", "Q");
+        double q2 = Run("Camille", "Q2");
+        double first = q - aa;
+        double second = q2 - aa;
+        Assert.True(first > 0, "Q must exceed a plain attack by its empowerment bonus");
         // 20-40% AD on the first cast, doubled on the recast (BIN QEmpoweredAmp 2.0).
         Assert.Equal(2 * first, second, 1);
 
-        // One cast empowers ONE attack: the second attack after a single Q is plain.
-        Assert.Equal(aa, Run("Camille", "Q", "AA", "AA") - Run("Camille", "Q", "AA"), 1);
-
-        // …and a Q2 node does not also arm Q's rider just because it starts with the same letter.
-        Assert.Equal(second, Run("Camille", "Q2", "AA") - aa, 1);
+        // The fold is per-cast: an AA sequenced after Q stays a PLAIN attack (no rider arming).
+        Assert.Equal(aa, Run("Camille", "Q", "AA") - q, 1);
     }
 
     // ── Lee Sin: the recast reads the health it actually lands on ────────────────────

@@ -167,6 +167,28 @@ public partial class HomeWindow : Window
             _ = System.Threading.Tasks.Task.Run(Overlay.Client.ChampSelect.RunePageView.PrefetchIconsAsync);
         }
 
+        // M39 one-time telemetry disclosure: only while something would actually be sent
+        // (configured + enabled) and never again once acknowledged. "보내지 않기" both opts out
+        // and acknowledges — the service reads telemetry.enabled at next construction, and the
+        // current session's instance simply keeps its (already sent) launch ping.
+        if (_composition.Telemetry.IsConfigured
+            && _composition.Config.Get("telemetry.noticeShown") is not true)
+        {
+            TelemetryNotice.Visibility = Visibility.Visible;
+            TelemetryOk.Click += (_, _) =>
+            {
+                _composition.Config.Set("telemetry.noticeShown", true);
+                TelemetryNotice.Visibility = Visibility.Collapsed;
+            };
+            TelemetryOptOut.Click += (_, _) =>
+            {
+                _composition.Config.Set("telemetry.enabled", false);
+                _composition.Config.Set("telemetry.noticeShown", true);
+                App.CrashSink = null; // opt-out applies to THIS session's crashes too, not just the next launch
+                TelemetryNotice.Visibility = Visibility.Collapsed;
+            };
+        }
+
         Localization.LanguageChanged += ApplyLanguage;
         ApplyLanguage();
 

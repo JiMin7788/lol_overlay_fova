@@ -19,13 +19,14 @@ namespace Overlay.Core.Tests;
 /// for BOTH schools, since Armor and MR are equal — every expectation below is a live (post-mitigation)
 /// HP delta from that session, which is what the golden is for.</para>
 ///
-/// <para>SCOPE — only two of the five documented axes are composable against today's curation:
-/// Q charge interpolation and the blight detonation. The other two rows named at
-/// <c>GoldenVarusTests</c> (Q-charge AMPLIFYING the blight ×1.5, and the W-active missing-HP Q empower)
-/// are NOT written here because there is nothing to drive: <c>UserDistanceFraction</c> only interpolates
-/// Q's own min/max hit and never reaches the separate onAbility bonus effect, and the W-active empower
-/// is explicitly "Deliberately NOT curated" in <c>Varus.json</c>'s <c>_noteW</c>. Writing those needs a
-/// curation/engine decision, not a test — see CLAUDE_CODE_TODO §40.</para>
+/// <para>SCOPE — all four composable axes (§40 closed, loop 548): Q charge interpolation, the blight
+/// detonation, the Q-charge blight AMPLIFICATION (×1→×1.5 via <c>chargeAmpMaxDataValue</c> riding the
+/// Q node's own charge knob), and the W-active missing-HP Q empower (Upgraded-gated rider, 6%→9% via
+/// <c>metHpPercentMaxCalc</c>, dynamic Missing evaluated AFTER Q base + blight land). The dynamic rows
+/// run against a FULL-HP target (this harness has no target-health tracker, so the defender starts at
+/// MaxHP); the measured session started at 518/1000, and the identity that validated the fraction —
+/// 49 ≈ 9% × 666 missing × 0.8333 — is the same fraction/basis/order these rows pin at a different
+/// start HP.</para>
 /// </summary>
 public class GoldenVarusCompositionTests : IDisposable
 {
@@ -99,8 +100,11 @@ public class GoldenVarusCompositionTests : IDisposable
         return snap;
     }
 
-    /// <summary>Runs one skill slot, optionally with a charge fraction (Q's min→max knob).</summary>
-    private ComboResult RunSlot(string slot, double? chargeFraction = null)
+    /// <summary>Runs one skill slot, optionally with a charge fraction (Q's min→max knob), the
+    /// node's conditional checkbox (the W-active empower's Upgraded toggle), and — via the loop-553
+    /// <see cref="TargetSnapshot.CurrentHp"/> seed — a pre-damaged virtual target.</summary>
+    private ComboResult RunSlot(string slot, double? chargeFraction = null, bool? conditionMet = null,
+        double? targetCurrentHp = null)
     {
         using var config = new ConfigManager(_configPath);
         var runeEngine = new RuneEngine();
@@ -110,8 +114,15 @@ public class GoldenVarusCompositionTests : IDisposable
         editor.AddNode(draft.Id, new ComboNode(
             Id: $"{slot}_0", NodeType: ComboNodeType.Skill, Name: slot, Cooldown: 0, Mana: 0, Damage: 0,
             DamageType: ComboDamageType.Physical, RatioAD: 0, RatioBonusAD: 0, RatioAP: 0,
-            CastTime: 0, Delay: 0, TravelTime: 0, UserDistanceFraction: chargeFraction));
+            CastTime: 0, Delay: 0, TravelTime: 0, UserDistanceFraction: chargeFraction,
+            UserConditionMet: conditionMet));
         editor.SaveCombo(draft.Id);
+        if (targetCurrentHp is { } hp)
+        {
+            TargetSnapshotStore.Save(config, draft.Id,
+                new TargetSnapshot("Target", Armor: 20, Mr: 20, MaxHp: 1000, CapturedAtUtcMs: 0, CurrentHp: hp));
+            TargetSnapshotStore.SetUseSnapshot(config, draft.Id, true);
+        }
 
         using var runner = new ComboRunner(engine, config, () => Snapshot(), runeEngine: runeEngine);
         runner.Start();
@@ -158,17 +169,33 @@ public class GoldenVarusCompositionTests : IDisposable
     // ── Axis 3 (composed): the onAbility blight detonation rides every ability cast ──────────────
 
     [Theory]
-    [InlineData("Q")]
     [InlineData("E")]
     [InlineData("R")]
-    public void Varus_MultiAxis_BlightDetonates_OnEveryAbility(string slot)
+    public void Varus_MultiAxis_BlightDetonates_OnChargelessAbilities(string slot)
     {
         Init();
         // Blight = 3% max HP per stack, capped at 3 stacks → 9% max. Measured 2026-07-14: a
         // full-stack detonation on a 1000 HP / MR 20 target = 75 live (0.09 × 1000 × 0.8333).
         // This is the UPPER BOUND by construction — the curation carries the capped value and the
         // engine does not live-track stack count, so partial stacks are not expressible.
+        // E/R have no charge mechanic, so the §40 charge amp is inert on them — plain 75.
         Assert.Equal(75.0, Sum(RunSlot(slot), $"{slot}_0#bonus"), 1);
+    }
+
+    // ── Axis 4 (§40, loop 548): Q charge AMPLIFIES the blight detonation ×1 → ×1.5 ────────────────
+
+    [Theory]
+    [InlineData(0.0, 75.0)]    // uncharged Q: plain detonation — the measured E-detonate value
+    [InlineData(1.0, 112.5)]   // full charge: ×1.5 (VarusWMaxChargeHPDamage) — measured 112
+    [InlineData(null, 112.5)]  // unset knob = Q's anchor (full charge, _noteQ) — ONE consistent cast
+    public void Varus_MultiAxis_QCharge_AmplifiesBlight(double? charge, double expectedLive)
+    {
+        Init();
+        // (§40) This row previously pinned 75 on a knob-less Q — an ARTIFACT of the amp not being
+        // modeled, not a measurement (75 was measured on E-detonate). The measured Q number is 112
+        // (75 × 1.5), which the amp now reproduces; the label and rows moved, the measured values
+        // (75, 112) did not (RECURRING_TRAPS 2.2).
+        Assert.Equal(expectedLive, Sum(RunSlot("Q", charge), "Q_0#bonus"), 1);
     }
 
     [Fact]
@@ -178,5 +205,59 @@ public class GoldenVarusCompositionTests : IDisposable
         var result = RunSlot("R");
         Assert.Equal(125.0, Sum(result, "R_0#cast0h0"), 1);   // 150 base × 0.8333
         Assert.Equal(200.0, result.TotalDamage, 1);           // + 75 blight
+    }
+
+    // ── Axis 5 (§40, loop 548): W-active empowered Q — dynamic missing-HP, post-blight, 6%→9% ────
+
+    [Fact]
+    public void Varus_MultiAxis_WActiveEmpower_DefaultsUnmet_NothingAdded()
+    {
+        Init();
+        // The Upgraded checkbox defaults UNMET (P2 floor): a plain full-charge Q is its own hit +
+        // the amplified blight and NOTHING else — the pre-§40 cast, byte-identical.
+        var result = RunSlot("Q", chargeFraction: 1.0);
+        Assert.Equal(72.0 + 112.5, result.TotalDamage, 1);
+    }
+
+    [Theory]
+    [InlineData(1.0, 13.8)]   // full charge: 9% × missing(72+112.5=184.5) × 0.8333
+    [InlineData(0.0, 6.2)]    // uncharged:   6% × missing(48+75=123)      × 0.8333
+    public void Varus_MultiAxis_WActiveEmpower_DynamicMissingAfterBlight(double charge, double expectedLive)
+    {
+        Init();
+        // Checkbox ON: the rider lands as a DYNAMIC missing-health execute node ordered AFTER Q
+        // base + blight (rider declaration order in Varus.json W — load-bearing, see _noteW), so
+        // its fraction reads the running HP those hits produced. This harness has no target-health
+        // tracker, so the target starts FULL (1000): full charge → 9% × 184.5 missing × 0.8333 =
+        // 13.8. The measured session (2026-07-14) started at 518/1000 and the SAME fraction/basis/
+        // order gave 49 ≈ 9% × 666 × 0.8333 — the fraction is pinned by GoldenVarusTests' raw rows,
+        // the order and dynamism by this one.
+        var result = RunSlot("Q", chargeFraction: charge, conditionMet: true);
+        double blight = charge >= 1.0 ? 112.5 : 75.0;
+        double qOwn = charge >= 1.0 ? 72.0 : 48.0;
+        Assert.Equal(qOwn + blight + expectedLive, result.TotalDamage, 1);
+    }
+
+    [Fact]
+    public void Varus_MultiAxis_WActiveEmpower_ReproducesTheMeasuredSession()
+    {
+        Init();
+        // The 2026-07-14 measurement itself, end to end (loop 553: TargetSnapshot.CurrentHp seeds
+        // the 518/1000 start): full-charge Q at 518 HP → Q 72 + blight 112.5 lands the target at
+        // 333.5 (measured 334), missing 666.5 → 9% × 666.5 × 0.8333 = 49.99 ≈ the measured 49.
+        var result = RunSlot("Q", chargeFraction: 1.0, conditionMet: true, targetCurrentHp: 518);
+        double empower = result.TotalDamage - 72.0 - 112.5;
+        Assert.True(Math.Abs(empower - 49.9) <= 1.5,
+            $"W-active empower at 518/1000 should reproduce the measured 49 (±1.5), got {empower:0.##}");
+    }
+
+    [Fact]
+    public void Varus_MultiAxis_WActiveEmpower_OffersItsCheckboxOnQOnly()
+    {
+        Init();
+        // Editor discovery (M28): the Upgraded-gated rider is appliesTo:["Q"], so the checkbox
+        // must surface on Q nodes and NOT on E (same membership rule as the damage — loop 479).
+        Assert.NotNull(SkillDamageDb.GetConditionalHit("Varus", "Q"));
+        Assert.Null(SkillDamageDb.GetConditionalHit("Varus", "E"));
     }
 }

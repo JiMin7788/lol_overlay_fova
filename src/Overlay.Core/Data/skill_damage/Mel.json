@@ -12,7 +12,7 @@
       { "type": "Magic", "calc": "TotalExplosionDamage", "count": 5 }
     ]
   },
-  "W": {},
+  "W": { "tags": ["Utility"], "_noteW_554": "loop 554 (section-91-4): Rebuttal is a reflect/shield - the reflected damage depends entirely on what the ENEMY fired (unknowable to this single-caster model), so the honest curation is a Utility slot with no hits, not a fabricated number." },
   "E": {
     "hits": [
       { "type": "Magic", "calc": "Damage", "count": 1 },

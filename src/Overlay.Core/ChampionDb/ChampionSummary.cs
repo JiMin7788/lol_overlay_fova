@@ -84,7 +84,9 @@ public static class ChampionSummary
                         AttackRange: GetD(s, "attackrange"),
                         // Base attacks/sec — the divisor for the §48 bonus-AS ratio
                         // (bonusAS = live total / base − 1) in SkillDamage's mStat=4 mapping.
-                        AttackSpeed: GetD(s, "attackspeed"));
+                        AttackSpeed: GetD(s, "attackspeed"),
+                        Ad: GetD(s, "attackdamage"),
+                        AdPerLevel: GetD(s, "attackdamageperlevel"));
 
                     // Key by both the Data Dragon id (the JSON property name, e.g. "DrMundo")
                     // and the display name (e.g. "Dr. Mundo"); the scoreboard uses the display
@@ -195,7 +197,14 @@ public sealed record ChampionSummaryStats(
     double Mr,
     double MrPerLevel,
     double AttackRange = 0,
-    double AttackSpeed = 0)
+    double AttackSpeed = 0,
+    // (loop 551) Base AD + growth. These were never parsed, so every summary-built champion
+    // (everyone without a per-champion detail file — ~172 of 173) had BaseStats.Ad == 0: the
+    // out-of-game preview showed AA = 0, and LIVE bonus-AD ratios over-counted by the whole
+    // base AD (bonus = total − 0). The old Talon calc-trace over-count (TODO_ARCHIVE §…112.46
+    // vs measured 105) was this bug's growth half.
+    double Ad = 0,
+    double AdPerLevel = 0)
 {
     public double HpAt(int level) => LevelGrowth.Stat(Hp, HpPerLevel, level);
     public double ArmorAt(int level) => LevelGrowth.Stat(Armor, ArmorPerLevel, level);

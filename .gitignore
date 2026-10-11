@@ -23,3 +23,6 @@ __pycache__/
 
 # Packaging output (packaging/build-release.ps1)
 dist/
+
+# wrangler local cache (telemetry-worker)
+telemetry-worker/.wrangler/

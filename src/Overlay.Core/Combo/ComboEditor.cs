@@ -266,6 +266,44 @@ public sealed class ComboEditor
         }
     }
 
+    // ── Share codes (see ComboShareCode) ──────────────────────────────────────────────────
+
+    /// <summary>Builds the share code for a SAVED combo straight from its persisted entry, so the
+    /// code is exactly what the user saved (hotkeys and snapshots are deliberately left out).</summary>
+    public string ShareCombo(string comboId)
+    {
+        if (_config.Get(SavedComboKeyPrefix + comboId) is not string raw)
+            throw new KeyNotFoundException($"No saved combo with id '{comboId}'");
+        var saved = JsonSerializer.Deserialize<SavedCombo>(raw, SavedComboOptions)
+            ?? throw new ComboImportException($"Saved combo '{comboId}' is corrupt");
+        return ComboShareCode.Encode(saved.ChampionId, saved.Name, saved.GraphJson);
+    }
+
+    /// <summary>Decodes a share code found anywhere in <paramref name="text"/>, validates the graph
+    /// with the same schema check as <see cref="ImportCombo"/>, and saves it as a NEW combo (fresh
+    /// id, no hotkey). Nothing is written when any step fails. Throws
+    /// <see cref="ComboShareCodeException"/> for a bad code and <see cref="ComboImportException"/>
+    /// for a code whose graph fails validation.</summary>
+    public ComboDraft ImportSharedCombo(string text)
+    {
+        var shared = ComboShareCode.Decode(text);
+        var graph = ImportCombo(shared.GraphJson);
+
+        var draft = CreateCombo(shared.ChampionId, shared.Name);
+        try
+        {
+            foreach (var node in graph.Nodes)
+                AddNode(draft.Id, node);
+        }
+        catch (ArgumentException ex)
+        {
+            _sessions.Remove(draft.Id);
+            throw new ComboImportException("Shared combo has invalid nodes: " + ex.Message, ex);
+        }
+        SaveCombo(draft.Id);
+        return GetCombo(draft.Id);
+    }
+
     // ── Persistence + save event ─────────────────────────────────────────────────
 
     /// <summary>Persists the combo (as a serialized <see cref="SavedCombo"/>) via M14 and

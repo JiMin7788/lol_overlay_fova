@@ -21,6 +21,13 @@ namespace Overlay.Client;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>(M39) Where <see cref="Report"/> forwards crashes for anonymous crash reporting —
+    /// set to <c>TelemetryService.RecordCrash</c> by AppComposition, null before/after its
+    /// lifetime (an early-startup crash then only reaches the local log, which is correct: no
+    /// config has been read yet, so no consent state is known). Invoked inside the same
+    /// never-throw envelope as the file log.</summary>
+    internal static Action<string, string>? CrashSink;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -75,6 +82,18 @@ public partial class App : Application
         catch
         {
             // Swallow — the reporter must never throw; the dialog below is the fallback surface.
+        }
+
+        try
+        {
+            // M39: durably queue an anonymous crash report (no-op unless telemetry is configured
+            // and enabled). Queue-first design: even if the process dies right after this line,
+            // the report is delivered by the next launch.
+            CrashSink?.Invoke(source, text);
+        }
+        catch
+        {
+            // Same rule: telemetry must never mask or compound the original crash.
         }
 
         if (!showDialog) return;

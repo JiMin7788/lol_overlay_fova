@@ -69,6 +69,26 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+
+                <!-- M39 익명 텔레메트리 (anonymous telemetry + crash reports) -->
+                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left" Margin="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock x:Name="TelemetryCaption" Text="데이터" Style="{StaticResource CaptionText}" />
+                        <DockPanel Margin="0,12,0,0">
+                            <ToggleButton x:Name="TelemetryToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="TelemetryToggle_Changed" Unchecked="TelemetryToggle_Changed" />
+                            <StackPanel>
+                                <TextBlock x:Name="TelemetryToggleCaption" Text="익명 사용 통계·오류 리포트"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock x:Name="TelemetryToggleDesc"
+                                           Text="익명 설치 ID·앱 버전·OS 버전, 그리고 오류 발생 시 오류 내용을 보냅니다. 게임/계정 정보는 절대 포함되지 않습니다."
+                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- ── 언어 (Language) ────────────────────────────────────── -->

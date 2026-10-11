@@ -451,9 +451,9 @@ public class ChampionBinTests
     public void FormulaInterpreter_Evaluate_KhazixPassive_ResolvesByCharLevelFormulaPlusBonusADRatio()
     {
         // Khazix passive (Taste Their Fear's isolation bonus) "TotalDamage" =
-        // ByCharLevelFormulaCalculationPart(values=[10,17,...,220], step +7) +
+        // ByCharLevelFormulaCalculationPart(values=[15,22,...,225] since patch 16.20, step +7) +
         // StatByNamedDataValueCalculationPart(mStat=2/mStatFormula=2, dataValue="BonusADRatio").
-        // values[1]=17 (level 1), values[18]=10+7*18=136 (level 18), same direct-index-by-level
+        // values[1]=22 (level 1), values[18]=15+7*18=141 (level 18), same direct-index-by-level
         // convention verified against Leona above.
         var json = File.ReadAllText(FixturePath("khazix"));
         var binSkills = ChampionBinParser.ParseChampion("Khazix", json);
@@ -471,8 +471,8 @@ public class ChampionBinTests
         var bonusAdRatio = FormulaInterpreter.EvaluateDataValue(skill, "BonusADRatio", rank: 1);
         var atLevel1 = FormulaInterpreter.Evaluate(skill, "TotalDamage", rank: 1, statResolver: (_, _) => 100.0);
 
-        // 17 (values[1]) + bonusAdRatio * 100.
-        Assert.Equal(17.0 + bonusAdRatio * 100.0, atLevel1, precision: 5);
+        // 22 (values[1]) + bonusAdRatio * 100.
+        Assert.Equal(22.0 + bonusAdRatio * 100.0, atLevel1, precision: 5);
     }
 
     [Fact]

@@ -409,6 +409,8 @@ public partial class ComboSettingsView : UserControl
         ClearButton.Content = Localization.L("combo.clear");
         SaveButton.Content = Localization.L("combo.save");
         SavedCaption.Text = Localization.L("combo.saved");
+        PasteComboButton.Content = Localization.L("combo.paste");
+        PasteComboButton.ToolTip = Localization.L("combo.pasteTip");
         EmptySaved.Text = Localization.L("combo.emptySaved");
         SavedHint.Text = Localization.L("combo.savedHint");
 
@@ -1695,6 +1697,13 @@ public partial class ComboSettingsView : UserControl
         if (championId is not null && SkillDamageDb.GetStackScaledHit(championId, chip.Slot) is { } stackHit)
             subRow.Children.Add(BuildStackCountBadge(chip, stackHit.MaxStackTier));
 
+        // (loop 549) Rider-only slot hint: a curated slot whose CAST deals nothing because every
+        // number rides the next basic attack (Camille Q/Q2, Draven Q — the RECURRING_TRAPS 1.7
+        // class) reads as 0 on its own node, which looks like a bug to the user. Surface the
+        // mechanic instead of leaving the zero unexplained.
+        if (championId is not null && IsOnHitRiderOnlySlot(championId, chip.Slot))
+            subRow.Children.Add(BuildRiderHintBadge());
+
         // "최대 데미지" (max damage / 벽꿍-style) checkbox (M28 §1): offered when this node's curated
         // skill has a UserAssumed conditional-bonus hit — a wall/debuff/positional/terrain fact the
         // Live Client API cannot observe at all (e.g. K'Sante R's wall-impact bonus — see
@@ -2151,9 +2160,53 @@ public partial class ComboSettingsView : UserControl
             Overlay.Core.Combo.ConditionType.Upgraded => "강화",
             Overlay.Core.Combo.ConditionType.SweetSpot => "정타",
             Overlay.Core.Combo.ConditionType.FromBehind => "뒤",
+            // (loop 551) Named for what the user asserts, not a generic "max" — an unnamed 최대
+            // badge on an AA (Irelia P's 4-stack on-hit) read as an inexplicable damage range.
+            Overlay.Core.Combo.ConditionType.StackGte => "스택",
+            Overlay.Core.Combo.ConditionType.HpBelow => "적체력↓",
             _ => "최대",
         }
         : "최대";
+
+    /// <summary>(loop 549) True for a curated slot with NO direct hits whose bonus effects include an
+    /// on-hit rider — the "cast deals nothing, the next basic attack carries it" class (Camille Q/Q2,
+    /// Draven Q; RECURRING_TRAPS 1.7). AA/P are excluded: AA is the carrier, and a passive's zero is
+    /// not surprising.</summary>
+    private static bool IsOnHitRiderOnlySlot(string championId, string slot)
+    {
+        if (slot is "AA" or "P") return false;
+        if (!SkillDamageDb.IsSlotCurated(championId, slot)) return false;
+        if (SkillDamageDb.GetHits(championId, slot) is { Length: > 0 }) return false;
+        var effects = SkillDamageDb.GetBonusEffects(championId, slot);
+        if (effects is not { Length: > 0 }) return false;
+        foreach (var eff in effects)
+            if (eff.Trigger == BonusTrigger.OnHit)
+                return true;
+        return false;
+    }
+
+    /// <summary>(loop 549) Non-interactive hint badge for a rider-only slot: says where the damage
+    /// actually lands, so the node's honest 0 stops reading as a bug.</summary>
+    private static Border BuildRiderHintBadge() => new()
+    {
+        Height = 18,
+        CornerRadius = new CornerRadius(4),
+        BorderBrush = (Brush)Application.Current.FindResource("TextDim"),
+        BorderThickness = new Thickness(1),
+        Background = Brushes.Transparent,
+        Padding = new Thickness(4, 0, 4, 0),
+        Margin = new Thickness(0, 0, 2, 0),
+        ToolTip = "이 스킬은 시전 데미지가 0입니다 — 다음 평타를 강화하는 스킬이라, 이 노드 뒤에 평타(AA) 노드를 추가하면 보너스가 그 평타에 합산됩니다.",
+        Child = new TextBlock
+        {
+            Text = "⚔ 평타강화",
+            FontSize = 9,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)Application.Current.FindResource("TextDim"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        },
+    };
 
     private Border BuildConditionalBadge(Chip chip, SkillHit conditionalHit)
     {
@@ -2289,22 +2342,52 @@ public partial class ComboSettingsView : UserControl
 
     /// <summary>Opens a context menu of the champion's attachable bonus effects under the "+" button;
     /// choosing one attaches it to the chip's node.</summary>
+    /// <summary>(loop 549) The "+fx" attach picker. Was a ContextMenu — WPF's DEFAULT menu chrome is
+    /// LIGHT, and this app's inherited foreground is light too, so the items rendered white-on-white
+    /// and were unreadable. Rebuilt on the same dark Popup pattern every other picker in this view
+    /// already uses (stack count, attack count), so it matches the theme with no global menu
+    /// restyling. An already-attached effect shows an accent ✓; clicking a row closes the popup.</summary>
     private void OpenBonusPicker(Button anchor, Chip chip, IReadOnlyList<AttachableBonusEffect> attachable)
     {
-        var menu = new ContextMenu { PlacementTarget = anchor, Placement = PlacementMode.Bottom };
         var already = chip.Node.UserBonusEffects ?? (IReadOnlyList<AttachableBonusEffect>)Array.Empty<AttachableBonusEffect>();
+        var list = new StackPanel { Margin = new Thickness(4) };
+        var popup = new Popup
+        {
+            PlacementTarget = anchor,
+            Placement = PlacementMode.Bottom,
+            StaysOpen = false,
+            Child = new Border
+            {
+                Background = (Brush)Application.Current.FindResource("Surface"),
+                BorderBrush = (Brush)Application.Current.FindResource("Border"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Child = list,
+            },
+        };
         foreach (var eff in attachable)
         {
-            var item = new MenuItem
+            bool attached = already.Contains(eff);
+            var row = new Border
             {
-                Header = BonusLabel(eff),
-                IsChecked = already.Contains(eff),
+                CornerRadius = new CornerRadius(3),
+                Padding = new Thickness(10, 5, 10, 5),
+                Background = Brushes.Transparent,
+                Cursor = Cursors.Hand,
+                Child = new TextBlock
+                {
+                    Text = (attached ? "✓ " : "   ") + BonusLabel(eff),
+                    FontSize = 12,
+                    Foreground = (Brush)Application.Current.FindResource(attached ? "Accent" : "Text"),
+                },
             };
+            row.MouseEnter += (_, _) => row.Background = (Brush)Application.Current.FindResource("SurfaceHi");
+            row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
             var captured = eff;
-            item.Click += (_, _) => AttachBonus(chip, captured);
-            menu.Items.Add(item);
+            row.MouseLeftButtonUp += (_, e) => { e.Handled = true; popup.IsOpen = false; AttachBonus(chip, captured); };
+            list.Children.Add(row);
         }
-        menu.IsOpen = true;
+        popup.IsOpen = true;
     }
 
     /// <summary>Human-readable label for a bonus effect: slot + trigger + first hit's damage type,
@@ -2346,7 +2429,7 @@ public partial class ComboSettingsView : UserControl
         if (slot is not ("Q" or "W" or "E" or "R")) return node;
 
         var onAbility = SkillDamageDb.GetAttachableBonusEffects(championId, slot)
-            .Where(eff => eff.Effect.Trigger == BonusTrigger.OnAbility)
+            .Where(eff => eff.Effect.Trigger == BonusTrigger.OnAbility && !eff.Effect.ManualOnly)
             .ToList();
         if (onAbility.Count == 0) return node;
 
@@ -2618,6 +2701,121 @@ public partial class ComboSettingsView : UserControl
         // Re-register combo hotkeys so a combo bound AFTER the overlay was first wired
         // actually fires in-game (otherwise its hotkey was never registered).
         _composition?.RefreshComboHotkeys();
+    }
+
+    // ── Share codes (ComboShareCode) ────────────────────────────────────────────────────
+
+    /// <summary>Copies a Discord-ready message (title line + FOVA1: code in inline code) for a
+    /// saved combo. Only the combo travels — hotkeys and target snapshots stay local.</summary>
+    private void CopyShareCode(SavedCombo combo)
+    {
+        var editor = _composition?.ComboEditor;
+        if (editor is null)
+        {
+            ShowMessage(Localization.L("combo.initializing"), isError: true);
+            return;
+        }
+        try
+        {
+            var code = editor.ShareCombo(combo.Id);
+            var text = ComboShareCode.ToDiscordMessage(Localization.ChampionName(combo.ChampionId), combo.Name, code,
+                Localization.L("combo.shareFooter"));
+            if (!TrySetClipboard(text))
+            {
+                ShowMessage(Localization.L("combo.clipboardBusy"), isError: true);
+                return;
+            }
+            ShowMessage(Localization.F("combo.shareCopied", combo.Name), isError: false);
+        }
+        catch (Exception ex)
+        {
+            ShowMessage(Localization.F("combo.shareFailed", ex.Message), isError: true);
+        }
+    }
+
+    /// <summary>Imports the first FOVA1: code on the clipboard as a NEW saved combo (no hotkey),
+    /// then switches the editor to that combo's champion so it shows up in the saved list.</summary>
+    private async void PasteComboButton_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = _composition?.ComboEditor;
+        if (editor is null || _allChampionIds.Count == 0)
+        {
+            ShowMessage(Localization.L("combo.initializing"), isError: true);
+            return;
+        }
+
+        string? text = null;
+        try { if (Clipboard.ContainsText()) text = Clipboard.GetText(); }
+        catch (COMException) { /* clipboard held by another app — treated as empty */ }
+
+        if (!ComboShareCode.ContainsCode(text))
+        {
+            ShowMessage(Localization.L("combo.pasteNone"), isError: true);
+            return;
+        }
+
+        SharedCombo shared;
+        try
+        {
+            shared = ComboShareCode.Decode(text);
+        }
+        catch (ComboShareCodeException ex)
+        {
+            ShowMessage(Localization.L(ex.Error == ComboShareCodeError.NewerVersion ? "combo.pasteNewer" : "combo.pasteCorrupt"),
+                isError: true);
+            return;
+        }
+
+        // A code for a champion this install doesn't know (newer roster) is refused before anything is saved.
+        if (!_allChampionIds.Contains(shared.ChampionId, StringComparer.Ordinal))
+        {
+            ShowMessage(Localization.F("combo.pasteUnknownChampion", shared.ChampionId), isError: true);
+            return;
+        }
+
+        try
+        {
+            editor.ImportSharedCombo(text!);
+        }
+        catch (Exception ex) when (ex is ComboImportException or ComboShareCodeException)
+        {
+            ShowMessage(Localization.F("combo.pasteFailed", ex.Message), isError: true);
+            return;
+        }
+
+        try
+        {
+            if (!string.Equals(_selectedChampionId, shared.ChampionId, StringComparison.Ordinal))
+                await SelectChampionAsync(shared.ChampionId);
+            else
+                RefreshSavedList();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage(Localization.F("combo.skillLoadFailed", ex.Message), isError: true);
+            return;
+        }
+
+        var displayName = string.IsNullOrEmpty(shared.Name) ? Localization.L("combo.noName") : shared.Name;
+        ShowMessage(Localization.F("combo.pasteOk", Localization.ChampionName(shared.ChampionId), displayName), isError: false);
+    }
+
+    /// <summary>Clipboard.SetText throws when another process holds the clipboard; retry briefly.</summary>
+    private static bool TrySetClipboard(string text)
+    {
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch (COMException)
+            {
+                Thread.Sleep(40);
+            }
+        }
+        return false;
     }
 
     private void ShowMessage(string text, bool isError)
@@ -2908,6 +3106,20 @@ public partial class ComboSettingsView : UserControl
                 preview.Children.Add(BuildPreviewIcon(slot));
             stack.Children.Add(preview);
         }
+
+        // Share code: copies a Discord-ready message with this combo's FOVA1: code.
+        var shareButton = new Button
+        {
+            Style = (Style)Application.Current.FindResource("GhostButton"),
+            Content = Localization.L("combo.share"),
+            FontSize = 11,
+            Padding = new Thickness(8, 3, 8, 3),
+            Margin = new Thickness(0, 8, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            ToolTip = Localization.L("combo.shareTip"),
+        };
+        shareButton.Click += (_, _) => CopyShareCode(combo);
+        stack.Children.Add(shareButton);
 
         // Loop 38 continuation 19: defender-side "virtual model" — capture the currently-resolved
         // LIVE target's stats for THIS combo (TargetSnapshotStore is comboId-scoped, unlike the

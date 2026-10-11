@@ -138,6 +138,15 @@ public static class SkillDamageDb
         return champion is not null && champion.TryGetValue(slot, out var s) ? s.AdBuffDataValue : null;
     }
 
+    /// <summary>(loop 554) FLAT AD-buff companion — the DataValue is real AD added as-is (Twitch R
+    /// "BonusAD" 30/45/60), unlike <see cref="GetAdBuffDataValue"/> whose value is a fraction of
+    /// total AD. Null for a slot/champion not curated this way. Never throws.</summary>
+    public static string? GetAdBuffFlatDataValue(string championId, string slot)
+    {
+        var champion = Load(championId);
+        return champion is not null && champion.TryGetValue(slot, out var s) ? s.AdBuffFlatDataValue : null;
+    }
+
     /// <summary>Returns the FIRST duration-scaled hit (<see cref="SkillHit.IsDurationScaled"/>)
     /// curated on one skill slot of <paramref name="championId"/>, or null when the champion/slot
     /// has no such hit. Used by the combo editor's "적중시간" (hit duration) control to decide
@@ -226,6 +235,9 @@ public static class SkillDamageDb
             if (!champion.TryGetValue(source, out var s)) continue;
             foreach (var effect in s.BonusEffects)
             {
+                // (loop 552) A manual-only effect rides nothing automatically, so it must not
+                // surface automatic knobs (checkbox/stack badges) on the nodes it could ride.
+                if (effect.ManualOnly) continue;
                 if (!effect.AppliesToSlot(slot)) continue;
                 foreach (var hit in effect.Hits)
                     if (match(hit)) return hit;
@@ -341,9 +353,11 @@ public static class SkillDamageDb
                             // its entry carries only adBuffDataValue and must still be kept.
                             if (hits.Length > 0 || bonus.Length > 0 || tags.Length > 0
                                 || !string.IsNullOrEmpty(slotJson.Icon)
-                                || !string.IsNullOrEmpty(slotJson.AdBuffDataValue))
+                                || !string.IsNullOrEmpty(slotJson.AdBuffDataValue)
+                                || !string.IsNullOrEmpty(slotJson.AdBuffFlatDataValue))
                                 parsed[slot] = new CuratedSlot(hits, bonus, castCount, tags, slotJson.Icon,
-                                    slotJson.SelfAttachable ?? true, slotJson.AdBuffDataValue);
+                                    slotJson.SelfAttachable ?? true, slotJson.AdBuffDataValue,
+                                    slotJson.AdBuffFlatDataValue);
                         }
                     }
                 }
@@ -399,6 +413,13 @@ public static class SkillDamageDb
         [JsonPropertyName("adBuffDataValue")]
         public string? AdBuffDataValue { get; init; }
 
+        /// <summary>(loop 554) FLAT companion to <see cref="AdBuffDataValue"/>: the DataValue is a
+        /// flat AD grant, added to the working AttackDamage as-is (Twitch R "BonusAD" 30/45/60 —
+        /// a ≥1 value here is REAL AD, not a whole-percent encoding, which is exactly why the
+        /// fractional field cannot carry it).</summary>
+        [JsonPropertyName("adBuffFlatDataValue")]
+        public string? AdBuffFlatDataValue { get; init; }
+
         /// <summary>(loop 175) Optional CommunityDragon game-asset icon path for this slot, used by the
         /// combo editor's palette to show a real ability icon for EXTRA (transform-form) slots whose
         /// icon isn't in Data Dragon's base P/Q/W/E/R set — e.g. Jayce "QCannon" -&gt;
@@ -416,7 +437,7 @@ public static class SkillDamageDb
     /// "tags" key to <c>Array.Empty&lt;string&gt;()</c> before constructing this). Hits/BonusEffects/
     /// Tags may all be empty (a slot with only bonus effects, or only tags and no direct hits, is
     /// still kept — see <see cref="SkillDamageDb.Load"/>).</summary>
-    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable, string? AdBuffDataValue = null);
+    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable, string? AdBuffDataValue = null, string? AdBuffFlatDataValue = null);
 }
 
 /// <summary>A champion-intrinsic bonus damage source curated on a skill slot: extra hits that
@@ -487,6 +508,14 @@ public sealed class SkillBonusEffect
     /// non-OnHit triggers.</summary>
     [JsonPropertyName("alwaysOn")]
     public bool AlwaysOn { get; init; }
+
+    /// <summary>(loop 552, user decision) True = this effect NEVER rides automatically; it exists
+    /// only in the "+fx" manual picker. For a passive whose value depends on a state the engine
+    /// cannot read but the USER can simply assert by attaching it — Irelia P is the case: the
+    /// 4-stack Ionian Fervor on-hit at face value, attached to the AA/Q nodes the user says land
+    /// while fully stacked, instead of an auto-attached conditional range on every attack.</summary>
+    [JsonPropertyName("manualOnly")]
+    public bool ManualOnly { get; init; }
 }
 
 /// <summary>A bonus effect the combo editor can attach under a skill node (T3.3/T8): the champion
@@ -675,6 +704,37 @@ public sealed class SkillHit
     /// 15% of the target's health. Set at most ONE of the two.</para></summary>
     [JsonPropertyName("metHpPercentCalc")]
     public string? MetHpPercentCalc { get; init; }
+
+    /// <summary>(§40 loop 548) CEILING companion to <see cref="MetHpPercentCalc"/> for a MET fraction
+    /// that additionally scales with the triggering cast's CHARGE: the resolved fraction interpolates
+    /// [<see cref="MetHpPercentCalc"/> → this calc] by the triggering node's charge fraction. Varus
+    /// W-active empowered Q is the case: 6% (QEmpowerPercentHP) → 9% (MaxQEmpowerPercentHP) of missing
+    /// health by Q charge. Only meaningful on a BONUS hit riding a slot that has a distance/charge-
+    /// scaled own hit — the rider inherits that slot's ONE charge knob (and its anchor end when the
+    /// knob is unset, so the whole cast reads as one charge state). Null/omitted = the MET fraction is
+    /// <see cref="MetHpPercentCalc"/> alone, exactly as before.</summary>
+    [JsonPropertyName("metHpPercentMaxCalc")]
+    public string? MetHpPercentMaxCalc { get; init; }
+
+    /// <summary>(§40 loop 548) Name of a BIN DataValue holding the MAX-charge damage MULTIPLIER for a
+    /// %HP hit whose payload is amplified by the triggering cast's charge — damage × lerp(1, DV,
+    /// chargeFraction). Varus blight detonation is the case: a full-charge Q amplifies the detonation
+    /// ×1.5 (VarusWMaxChargeHPDamage) while an uncharged Q, and every OTHER detonating ability (E/R,
+    /// which have no charge knob at all), deals the plain value. Applied only when the triggering
+    /// node's slot actually has a distance/charge-scaled own hit (same inheritance rule as
+    /// <see cref="MetHpPercentMaxCalc"/>); otherwise inert. Null/omitted = never amplified.</summary>
+    [JsonPropertyName("chargeAmpMaxDataValue")]
+    public string? ChargeAmpMaxDataValue { get; init; }
+
+    /// <summary>(loop 551, user decision) This hit IS the basic attack the cast empowers — resolved
+    /// as the attacker's live total AD, exactly the number an AA node carries. The "Camille-Q class"
+    /// (single next-basic-attack empowerments: Camille Q/Q2, Gragas W, Garen Q, Illaoi W) folds that
+    /// attack INTO the skill node so a combo needs no separate AA node after the cast — casting the
+    /// skill asserts the swing. Stated trade-off: on-hit riders (runes/items/other passives) that
+    /// would proc on the real swing do not proc on this folded hit; a user who wants those procs
+    /// counted still sequences an explicit AA node instead.</summary>
+    [JsonPropertyName("basicAttack")]
+    public bool BasicAttack { get; init; }
 
     /// <summary>(loop 480) Name of a BIN DataValue holding a scalar by which this hit's own base
     /// damage GROWS with the target's missing health — <c>base × (1 + scalar × missingFraction)</c>,

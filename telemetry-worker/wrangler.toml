@@ -1,0 +1,12 @@
+# M39 telemetry Worker config. Deploy steps: see README.md in this directory.
+name = "fova-telemetry"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fova-telemetry"
+database_id = "d8d682c6-76e5-4922-8196-89978de98842"
+
+[observability]
+enabled = true

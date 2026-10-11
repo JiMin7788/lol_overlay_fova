@@ -1,5 +1,24 @@
 {
   "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
+  "P": {
+    "bonusEffects": [
+      {
+        "trigger": "onHit",
+        "maxProcs": 1,
+        "hits": [
+          {
+            "type": "Magic",
+            "conditionType": "HpBelow",
+            "conditionValue": 0.5,
+            "metHpPercentCalc": "{6a1a62e9}",
+            "hpBasis": "Max",
+            "count": 1,
+            "tags": ["PercentMaxHp"]
+          }
+        ]
+      }
+    ]
+  },
   "Q": {
     "hits": [
       {
@@ -30,6 +49,6 @@
       }
     ]
   },
-  "_noteP": "P (Contempt for the Weak) confirmed GENUINELY BLOCKED this pass (previously undocumented): ZedPassiveAbility/ZedPassive's damage chain uses 'FinalDamage', a GameCalculationConditional node (not a plain GameCalculation/GameCalculationModified) gated by HasBuffCastRequirement + AboveHealthPercentCastRequirement (the target-below-50%-HP condition that defines this passive's whole mechanic). Verified via grep across all ChampionDb .cs files: neither GameCalculationConditional, HasBuffCastRequirement, nor AboveHealthPercentCastRequirement is referenced anywhere in the parser/interpreter -- this node type is entirely unsupported, not just a stat-mapping gap. Correctly left uncurated (no P key); documenting the reason explicitly since it wasn't previously stated.",
+  "_noteP": "P (Contempt for the Weak) confirmed GENUINELY BLOCKED this pass (previously undocumented): ZedPassiveAbility/ZedPassive's damage chain uses 'FinalDamage', a GameCalculationConditional node (not a plain GameCalculation/GameCalculationModified) gated by HasBuffCastRequirement + AboveHealthPercentCastRequirement (the target-below-50%-HP condition that defines this passive's whole mechanic). Verified via grep across all ChampionDb .cs files: neither GameCalculationConditional, HasBuffCastRequirement, nor AboveHealthPercentCastRequirement is referenced anywhere in the parser/interpreter -- this node type is entirely unsupported, not just a stat-mapping gap. SUPERSEDED loop 550: the conditional WRAPPER (FinalDamage) is still unsupported, but the wrapper is a router, not the number - its inner percent calc {6a1a62e9} is a PLAIN GameCalculation (ByCharLevelBreakpoints: 5 percent, +2.5 at levels 7/17/25 - a part kind the interpreter supports), and the wrapper's own gate (AboveHealthPercentCastRequirement vs CurrentHealthThreshold=0.5, inverted) is exactly the engine's HpBelow UserAssumed condition. Curated as an onHit rider on P: conditionType HpBelow 0.5 (default UNMET, checkbox on AA nodes), metHpPercentCalc {6a1a62e9}, hpBasis Max (percent of TARGET max HP - the {a8cb9c14} target-stat flag on TotalDamage's mStat-12 part). maxProcs 1 mirrors the 10s per-target cooldown (PerUnitCD) - one proc per combo is the honest reading. NOT modeled: the ShenZedQuestBonus +2 percent quest variant (conditional branch, conservative default) and the 175 monster cap (single-target champion model).",
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): R RBaseDamage is an EMPTY/valueless leftover (the live R initial hit = 100% AD = the curated RCalculatedDamage; the mark pop scales off damage DEALT during the mark - post-hoc state, honestly unmodelable). Benign."
 }

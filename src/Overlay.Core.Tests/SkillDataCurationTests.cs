@@ -620,15 +620,25 @@ public class SkillDataCurationTests : IDisposable
     }
 
     [Fact]
-    public void AkaliR_UsesGuaranteedRecastFloor_NotMissingHealthMax()
+    public void AkaliR_SplitsIntoTwoCasts_AndR2RangesMinToMax()
     {
-        // Cast2DamageMax bakes in only the theoretical 200%-missing-HP cap as a flat x3, not a
-        // live scaling formula this schema can express -- R must curate the guaranteed
-        // Cast2DamageMin floor instead.
-        var hits = SkillDamageDb.GetHits("Akali", "R");
-        Assert.NotNull(hits);
-        Assert.Contains(hits, h => h.Calc == "Cast1Damage");
-        Assert.Contains(hits, h => h.Calc == "Cast2DamageMin");
+        // (loop 555, user decision — supersedes the folded-floor reading) Perfect Execution is two
+        // player-sequenced casts: R carries cast 1 alone, R2 is its own slot. R2's 1×→3× missing-
+        // health scaling has no BIN scalar of its own, so it is the RANGE [Cast2DamageMin,
+        // Cast2DamageMax] anchored at the guaranteed min (P2) — the old single-node curation kept
+        // only the floor AND misattributed it to the first cast's node.
+        var r = SkillDamageDb.GetHits("Akali", "R");
+        Assert.NotNull(r);
+        var rHit = Assert.Single(r!);
+        Assert.Equal("Cast1Damage", rHit.Calc);
+
+        var r2 = SkillDamageDb.GetHits("Akali", "R2");
+        Assert.NotNull(r2);
+        var r2Hit = Assert.Single(r2!);
+        Assert.Equal("Cast2DamageMin", r2Hit.Calc);
+        Assert.Equal("Cast2DamageMin", r2Hit.MinCalc);
+        Assert.Equal("Cast2DamageMax", r2Hit.MaxCalc);
+        Assert.Equal("R", r2Hit.BinSpell);
     }
 
     [Fact]

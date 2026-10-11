@@ -31,29 +31,16 @@
       }
     ]
   },
-  "_noteE": "E (Skip 'n Slash) itself (the dash) deals no direct damage -- confirmed via wiki: 'Gwen dashes to the target location, then empowers her basic attacks within the next 4 seconds to deal 15 (+20% AP) bonus magic damage on-hit'. GwenE.mSpellCalculations 'OnHitDamage' = BaseDamage + StatByCoefficient(0.20, no mStat -> AP), matching the 15(+20%AP) tooltip exactly; 'BonusAttackSpeed' is a stat grant, not damage. Curated as a bonusEffects trigger:'onHit' (same shape as Warwick P Eternal Hunger) rather than a direct E hit, since the damage only lands via subsequent basic attacks, not the E cast itself.",
+  "_noteE": "E (Skip 'n Slash) itself (the dash) deals no direct damage -- confirmed via wiki: 'Gwen dashes to the target location, then empowers her basic attacks within the next 4 seconds to deal 15 (+20% AP) bonus magic damage on-hit'. GwenE.mSpellCalculations 'OnHitDamage' = BaseDamage + StatByCoefficient(0.20, no mStat -> AP), matching the 15(+20%AP) tooltip exactly; 'BonusAttackSpeed' is a stat grant, not damage. NOT folded loop 553 (Camille-Q-class review): the empowerment is a 4-SECOND WINDOW riding every attack in it, not one next attack - a rider is the honest model, folding one swing would misstate the mechanic. Curated as a bonusEffects trigger:'onHit' (same shape as Warwick P Eternal Hunger) rather than a direct E hit, since the damage only lands via subsequent basic attacks, not the E cast itself.",
   "R": {
     "tags": [
       "BurstCeiling",
       "AoeUltimate"
     ],
     "hits": [
-      {
-        "type": "Magic",
-        "calc": "TotalDamage",
-        "count": 1
-      },
-      {
-        "type": "Magic",
-        "calc": "TotalDamage3",
-        "count": 1
-      },
-      {
-        "type": "Magic",
-        "calc": "TotalDamage5",
-        "count": 1
-      }
-    ]
+      { "type": "Magic", "calc": "TotalDamage", "minCalc": "TotalDamage", "maxCalc": "MaxDamage", "count": 1 }
+    ],
+    "_noteR_555": "loop 555 (user decision): Needlework's three recasts (1/3/5 needles) are shown as a min/max RANGE instead of three summed hits - min = TotalDamage (one needle, the guaranteed first cast, P2 anchor), max = MaxDamage (BIN GameCalculationModified = TotalDamage x9, the full nine-needle send). The knob picks how much of the ult actually landed."
   },
   "_noteR": "R (Needlework) is a 3-charge recast skill (initial cast = 1 needle, 1st recast = 3 needles, 2nd recast = 5 needles; wiki-confirmed '30/50/70(+10%AP)' per needle, second-cast/third-cast TOTALS match TotalDamage*3/TotalDamage*5). GwenR.mSpellCalculations: 'TotalDamage' (BaseDamage + StatByCoefficient 0.10 AP) is the single-needle formula; 'TotalDamage3'/'TotalDamage5' are GameCalculationModified referencing 'TotalDamage' with mMultiplier 3.0/5.0 (pre-multiplied per-cast TOTALS, not per-needle); 'MaxDamage' = TotalDamage x9 = 1+3+5 confirms these three sum to the full aggregate, so it is NOT curated as a 4th hit (would double-count). Modeled as three hits (one per real cast's already-totaled damage) inside a SINGLE R node rather than using 'castCount' (castCount assumes N IDENTICAL repeats of the same hit set, but Gwen's 3 casts are non-identical 1/3/5-needle bursts) -- functionally the same 'one node = full recast sequence' intent as Ahri R's castCount usage, just expressed as three distinct hits since the per-cast damage differs. Tagged 'BurstCeiling' (only slot tagged) as Gwen's single highest realistic combo-damage contribution across her kit.",
   "P": {

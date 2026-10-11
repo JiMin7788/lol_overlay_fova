@@ -176,7 +176,19 @@
                                    Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,18"
                                    Text="적이 가졌다고 가정할 방어룬을 체크하면 데미지 구간의 하한(최악)이 낮아집니다. 적 룬은 API로 읽을 수 없어 유저 입력입니다." />
 
-                        <TextBlock x:Name="SavedCaption" Text="저장된 콤보" Style="{StaticResource SectionHeader}" Margin="0,0,0,12" />
+                        <!-- Header row: caption + share-code import (ComboShareCode). Pasting reads the
+                             clipboard, so a whole Discord message with a FOVA1: code works as-is. -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="SavedCaption" Text="저장된 콤보" Style="{StaticResource SectionHeader}"
+                                       VerticalAlignment="Center" />
+                            <Button x:Name="PasteComboButton" Grid.Column="1" Content="콤보 붙여넣기"
+                                    Style="{StaticResource GhostButton}" FontSize="12" Padding="10,4,10,4"
+                                    Click="PasteComboButton_Click" />
+                        </Grid>
                         <!-- Plain ItemsControl (no inner ScrollViewer) so the outer page scroll owns
                              the wheel. -->
                         <ItemsControl x:Name="SavedList" />

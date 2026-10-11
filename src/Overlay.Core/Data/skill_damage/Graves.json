@@ -16,8 +16,8 @@
   "R": {
     "tags": ["BurstCeiling", "AoeUltimate"],
     "hits": [
-      { "type": "Physical", "calc": "Damage", "count": 1 },
-      { "type": "Physical", "calc": "FalloffDamage", "count": 1 }
-    ]
+      { "type": "Physical", "calc": "Damage", "minCalc": "FalloffDamage", "maxCalc": "Damage", "count": 1 }
+    ],
+    "_noteR_555": "loop 555 (user decision): Collateral Damage hits a target with EITHER the direct shell (Damage) OR the explosion cone behind the first victim (FalloffDamage) - never both, so the old two-hit sum over-counted. One hit, RANGE [FalloffDamage, Damage], anchored at Damage (the aimed direct case - the same anchor-at-the-primary-read convention as Varus Q; the knob/min covers the cone case)."
   }
 }

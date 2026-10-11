@@ -225,10 +225,12 @@ public class SweetSpotAndWallTests : IDisposable
         Assert.True(effect.AppliesToSlot("Q"));
         Assert.False(effect.AppliesToSlot("W"));
 
-        // Gated at four stacks and defaulting unmet, so a plain attack is unchanged.
+        // (loop 552, user decision) The StackGte-4 conditional became MANUAL-ONLY: attaching P via
+        // the "+fx" picker IS the stack assertion, so the hit is the plain full-stack calc and a
+        // plain attack stays unchanged because the effect no longer auto-rides anything.
+        Assert.True(effect.ManualOnly);
         var hit = Assert.Single(effect.Hits);
-        Assert.Equal("StackGte", hit.ConditionType);
-        Assert.Equal(4, hit.ConditionValue);
-        Assert.True(ConditionResolution.IsUserAssumed(ConditionType.StackGte));
+        Assert.Null(hit.ConditionType);
+        Assert.Equal("OnHitBonus", hit.Calc);
     }
 }

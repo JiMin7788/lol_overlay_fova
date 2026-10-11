@@ -125,13 +125,25 @@ public class ConfigManagerTests : IDisposable
 
         Assert.Equal(true, config.Get("overlay.items.comboResult.enabled"));
         Assert.Equal(true, config.Get("overlay.items.itemAlert.enabled"));
-        Assert.Equal(true, config.Get("overlay.items.recallTimer.enabled"));
         Assert.Equal(true, config.Get("overlay.items.notification.enabled"));
         Assert.Equal(true, config.Get("overlay.items.statusCard.enabled"));
         Assert.Equal(true, config.Get("overlay.items.inhibitorTimers.enabled"));
         Assert.Equal(true, config.Get("overlay.items.nexusTurretTimers.enabled")); // patch 15.1, default-ON like inhibitors
 
         Assert.Equal(false, config.Get("overlay.items.globalGold.enabled"));
+    }
+
+    [Fact]
+    public void GatedEnemyStateFeatures_DefaultToDisabled()
+    {
+        // 1.0 plan, gated tier: off until Riot answers the feature inquiry. AppComposition's
+        // GetBool fallbacks and SettingsView's toggle fallback must agree (§122: UI/core mismatch).
+        using var config = new ConfigManager(_path);
+
+        Assert.Equal(false, config.Get("overlay.items.recallTimer.enabled"));
+        Assert.Equal(false, config.Get("overlay.items.laneReturn.enabled"));
+        Assert.Equal(false, config.Get("overlay.items.enemyJunglerSpotted.enabled"));
+        Assert.Equal(false, config.Get("overlay.items.enemyItemAlert.enabled"));
     }
 
     [Fact]

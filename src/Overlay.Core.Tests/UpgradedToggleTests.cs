@@ -226,21 +226,21 @@ public class UpgradedToggleTests : IDisposable
     // ── the empowered-auto riders (no new condition needed — the engine already had this) ──
 
     [Fact]
-    public void DravenQ_ScoresOnTheAutoItEmpowers_NotOnTheCast()
+    public void DravenQ_FoldsItsEmpoweredAxeSwing_OnePerCast()
     {
         Init("Draven");
 
-        // A Spinning Axe that is never thrown at anything deals nothing.
-        Assert.Equal(0, Run("Draven", null, "Q").TotalDamage, 2);
-
+        // (loop 553, Camille-Q-class fold) One Q cast = ONE empowered axe attack, folded into the
+        // Q node: Q alone = the swing (total AD) + the axe bonus. The old model (rider on following
+        // AAs, maxProcs 2) is replaced — a juggled second empowered attack is a second Q node.
         double aa = Run("Draven", null, "AA").TotalDamage;
-        double qaa = Run("Draven", null, "Q", "AA").TotalDamage;
-        Assert.True(qaa > aa + 1);
+        double q = Run("Draven", null, "Q").TotalDamage;
+        double axe = q - aa;
+        Assert.True(axe > 1, "Q must fold the swing plus a real axe bonus");
 
-        // Two axes is the cap the wiki states, so a third auto in the same combo is plain.
-        double axe = qaa - aa;
-        double twoAxes = Run("Draven", null, "Q", "Q", "AA", "AA", "AA").TotalDamage;
-        Assert.Equal(3 * aa + 2 * axe, twoAxes, 1);
+        // AAs sequenced around Q stay plain, and each Q folds exactly its own swing.
+        Assert.Equal(q + aa, Run("Draven", null, "Q", "AA").TotalDamage, 1);
+        Assert.Equal(2 * q + 3 * aa, Run("Draven", null, "Q", "Q", "AA", "AA", "AA").TotalDamage, 1);
     }
 
     [Fact]

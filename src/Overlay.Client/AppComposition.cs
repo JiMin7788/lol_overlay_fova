@@ -7,6 +7,7 @@ using Overlay.Core.ChampionDb;
 using Overlay.Core.Combo;
 using Overlay.Core.Config;
 using Overlay.Core.Damage;
+using Overlay.Core.Flags;
 using Overlay.Core.Gold;
 using Overlay.Core.Hotkeys;
 using Overlay.Core.Inhibitor;
@@ -68,6 +69,10 @@ public sealed class AppComposition : IDisposable
     // M29: HOME-window ad slot. Constructed in the ctor (it reads config), disposed with the rest.
     private readonly AdSlotService _ads;
 
+    // Remote force-OFF switch for the gated features (1.0 plan). Constructed in the ctor so its
+    // disk cache is in force before StartSubsystems reads it; see ApplyRemoteFlags.
+    private readonly RemoteFlags _flags;
+
     // M01
     private LiveClientPoller? _poller;
     private LiveClientEventPublisher? _publisher;
@@ -103,13 +108,13 @@ public sealed class AppComposition : IDisposable
     public LaneReturnPredictor? LaneReturnPredictor => _laneReturn;
 
     // M30 — gated on overlay.items.enemyJunglerSpotted.enabled. Real API-field diffs
-    // (CS/item change on the enemy JUNGLE-position row), no coordinate estimate — default ON,
-    // same convention as InhibitorTimer/NexusTurretTimer below.
+    // (CS/item change on the enemy JUNGLE-position row), no coordinate estimate — default OFF (1.0 gated tier),
+    // gated the same way as InhibitorTimer/NexusTurretTimer below.
     private EnemyJunglerSpottedDetector? _enemyJunglerSpotted;
 
     // Enemy legendary-item-completed alert — gated on overlay.items.enemyItemAlert.enabled. Enemy
     // item-list diffs (an enemy's API data only refreshes while visible), no coordinate estimate —
-    // default ON, same convention as _enemyJunglerSpotted above.
+    // default OFF (1.0 gated tier), like _enemyJunglerSpotted above.
     private EnemyItemAlertDetector? _enemyItemAlert;
 
     // M19 §3.2 — gated on overlay.items.inhibitorTimers.enabled
@@ -137,9 +142,9 @@ public sealed class AppComposition : IDisposable
     private RuneEngine? _runeEngine;
 
     // Honest lower-bound missing-HP estimator (see TargetHealthTracker's class doc comment) —
-    // shared cross-cutting service, same lifetime pattern as _runeEngine: constructed once here,
-    // subscribed to GAME.CHAMPION_DIED/GAME.CHAMPION_RESPAWNED, handed to _comboRunner so every
-    // real combo trigger both reads from and records damage into the SAME instance.
+    // constructed and subscribed to GAME.CHAMPION_DIED/GAME.CHAMPION_RESPAWNED, but NOT handed to
+    // _comboRunner (loop 38 continuation 21 revert, see StartSubsystems): every live combo trigger
+    // starts from the target's MaxHP. Kept alive only for a possible future feature.
     private TargetHealthTracker? _targetHealthTracker;
 
     // M13. Uses the low-level keyboard hook (LowLevelHotkeyHook) rather than RegisterHotKey
@@ -209,6 +214,20 @@ public sealed class AppComposition : IDisposable
     private const string DefaultAdEndpoint =
         "https://raw.githubusercontent.com/JiMin7788/lol_overlay_fova/main/ads/manifest.json";
 
+    /// <summary>Remote kill-switch document (see <see cref="RemoteFlags"/>), next to the ad manifest
+    /// in the public repo. Not user-configurable: it can only turn features off.</summary>
+    private const string DefaultFlagsEndpoint =
+        "https://raw.githubusercontent.com/JiMin7788/lol_overlay_fova/main/flags.json";
+
+    /// <summary>M39 telemetry Worker base URL (deployed 2026-08-28, loop 545 — Cloudflare Worker
+    /// + D1, source in telemetry-worker/). Overridable via "telemetry": { "endpoint": ... };
+    /// to disable telemetry use "telemetry": { "enabled": false }, not an empty endpoint.</summary>
+    private const string DefaultTelemetryEndpoint = "https://fova-telemetry.pjm71420.workers.dev";
+
+    /// <summary>M39 telemetry + crash reporting. Constructed in the ctor, disposed with the rest.
+    /// Same wiring rationale as <see cref="Ads"/>: exactly one instance for the app lifetime.</summary>
+    public Overlay.Core.Telemetry.TelemetryService Telemetry { get; }
+
     /// <summary>The champion set available to the combo builder / stats — the FULL cached
     /// roster once the M11 repository has loaded (so combos can be built for any of the ~173
     /// cached champions), falling back to the sampled 5 until then / if the load failed.</summary>
@@ -234,6 +253,23 @@ public sealed class AppComposition : IDisposable
         AdLog(_ads.IsConfigured
             ? $"ctor: configured, endpoint={endpoint}"
             : $"ctor: NOT configured (enabled={adsEnabled}, endpoint='{endpoint}')");
+
+        _flags = new RemoteFlags(DefaultFlagsEndpoint);
+        _flags.Changed += ApplyRemoteFlags;
+        _ = _flags.RefreshAsync(_cts.Token);
+
+        // M39: anonymous telemetry + crash reports. Same empty-means-default rule as ads.endpoint
+        // above; the global crash handlers (App.Report) reach the service through App.CrashSink so
+        // a crash anywhere is durably queued even while this composition owns the instance.
+        var telemetryEndpoint = GetString("telemetry.endpoint", DefaultTelemetryEndpoint);
+        if (string.IsNullOrWhiteSpace(telemetryEndpoint)) telemetryEndpoint = DefaultTelemetryEndpoint;
+        Telemetry = new Overlay.Core.Telemetry.TelemetryService(
+            GetBool("telemetry.enabled", true), telemetryEndpoint,
+            appVersion: typeof(AppComposition).Assembly
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion ?? "unknown");
+        App.CrashSink = Telemetry.RecordCrash;
+        _ = Telemetry.StartupAsync(_cts.Token); // flush queued crashes from a prior run + launch ping
 
         // M33: champ-select assistant. Kill switch champSelect.enabled (default true); when off,
         // neither the connector loop nor the HOME panel ever exists.
@@ -432,9 +468,13 @@ public sealed class AppComposition : IDisposable
         _items = new ItemTracker();
         _items.Start();
 
-        // M08 Recall Timer
-        _recall = new RecallTimer();
-        _recall.Start();
+        // M08 Recall Timer. Its HUD toggle is read live per frame, so only the remote flag gates
+        // construction (a forced-off timer must not speak either).
+        if (!_flags.IsForcedOff("recallTimer"))
+        {
+            _recall = new RecallTimer();
+            _recall.Start();
+        }
 
         // M19 §3.2 Inhibitor Timer — default ON (loop 71, user request; real API-backed data).
         if (GetBool("overlay.items.inhibitorTimers.enabled", true))
@@ -450,9 +490,9 @@ public sealed class AppComposition : IDisposable
             _nexusTurretTimer.Start();
         }
 
-        // (loop 125) Same-lane enemy return predictor — default ON. Needs the static map-distance presets;
+        // (loop 125) Same-lane enemy return predictor — default OFF (1.0 gated tier, pending Riot). Needs the static map-distance presets;
         // if that bundled file is missing/corrupt the feature simply stays off (never crashes startup).
-        if (GetBool("overlay.items.laneReturn.enabled", true))
+        if (GetBool("overlay.items.laneReturn.enabled", false) && !_flags.IsForcedOff("laneReturn"))
         {
             try
             {
@@ -465,23 +505,27 @@ public sealed class AppComposition : IDisposable
             }
         }
 
-        // M30 Enemy Jungler Spotted Alert — default ON (real API field diffs, honest: no
+        // M30 Enemy Jungler Spotted Alert — default OFF (1.0 gated tier, pending Riot; real API field diffs, honest: no
         // coordinate/direction claim). Silently does nothing outside ranked/draft, where the
         // Live Client never populates `position` (see EnemyJunglerLocator).
-        if (GetBool("overlay.items.enemyJunglerSpotted.enabled", true))
+        if (GetBool("overlay.items.enemyJunglerSpotted.enabled", false) && !_flags.IsForcedOff("enemyJunglerSpotted"))
         {
             _enemyJunglerSpotted = new EnemyJunglerSpottedDetector(() => _latestSnapshot);
             _enemyJunglerSpotted.Start();
         }
 
-        // Enemy legendary-item-completed alert — default ON. Enemy item-list diffs imply the enemy
+        // Enemy legendary-item-completed alert — default OFF (1.0 gated tier, pending Riot). Enemy item-list diffs imply the enemy
         // was just visible (the API only refreshes an enemy row while in sight), so no minimap-image
         // coupling is needed; ally completions stay with ItemTracker above.
-        if (GetBool("overlay.items.enemyItemAlert.enabled", true))
+        if (GetBool("overlay.items.enemyItemAlert.enabled", false) && !_flags.IsForcedOff("enemyItemAlert"))
         {
             _enemyItemAlert = new EnemyItemAlertDetector(() => _latestSnapshot);
             _enemyItemAlert.Start();
         }
+
+        // A refresh that landed between the gates above and these assignments raised Changed
+        // while the fields were still null; re-apply so it cannot be missed.
+        ApplyRemoteFlags();
 
         // M04 Combo Editor (kept live for the session; a future dashboard UI drives it).
         // Share one stateless ComboEngine — and one RuneEngine (see _runeEngine's doc comment) —
@@ -770,6 +814,17 @@ public sealed class AppComposition : IDisposable
     }
 
     /// <summary>Flips a boolean config flag (its enable toggle); the overlay reacts on its next frame.</summary>
+    /// <summary>Stops any gated subsystem the remote flags now force off. Needed because the first
+    /// launch after an update has no cached flags, so the subsystems start before the fetch lands.
+    /// Un-forcing does not restart anything; that takes effect on the next launch.</summary>
+    private void ApplyRemoteFlags()
+    {
+        if (_flags.IsForcedOff("recallTimer")) Interlocked.Exchange(ref _recall, null)?.Dispose();
+        if (_flags.IsForcedOff("laneReturn")) Interlocked.Exchange(ref _laneReturn, null)?.Dispose();
+        if (_flags.IsForcedOff("enemyJunglerSpotted")) Interlocked.Exchange(ref _enemyJunglerSpotted, null)?.Dispose();
+        if (_flags.IsForcedOff("enemyItemAlert")) Interlocked.Exchange(ref _enemyItemAlert, null)?.Dispose();
+    }
+
     private void ToggleConfigFlag(string key, bool fallback)
         => _config.Set(key, !GetBool(key, fallback));
 
@@ -1022,6 +1077,10 @@ public sealed class AppComposition : IDisposable
         _minimapVision?.Dispose();
         _minimapCapture?.Dispose();
         _ads.Dispose(); // M29: flushes the batched impression beacons
+        _flags.Changed -= ApplyRemoteFlags;
+        _flags.Dispose();
+        App.CrashSink = null; // M39: no reports into a disposed service (queue-only would be fine, but be tidy)
+        Telemetry.Dispose();
         Lcu?.Dispose(); // M33
 
         _cts.Dispose();

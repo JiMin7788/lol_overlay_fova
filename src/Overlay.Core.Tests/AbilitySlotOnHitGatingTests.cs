@@ -294,11 +294,11 @@ public class AbilitySlotOnHitGatingTests : IDisposable
     }
 
     [Fact]
-    public void Rengar_SavageryEmpowersOnlyTheAutoThatFollowsQ_OrderSensitive()
+    public void Rengar_SavageryFoldsItsStab_OrderInsensitive()
     {
-        // A third empowered champion (beyond Locke/Viktor): Rengar Q "Savagery" empowers only the
-        // next auto. Its whole payload IS that empowered attack (Q has no direct hit), and any Q-node
-        // fallback damage is identical in both orderings, so [Q,AA]-[AA,Q] is exactly one QBonusDamage.
+        // (loop 553, Camille-Q-class fold) Savagery is one empowered stab with an attack reset, so
+        // the swing is FOLDED into the Q node: Q = total AD + QBonusDamage (ferocity unmet baseline).
+        // Node order no longer matters — the cast carries its own attack.
         var rengar = LoadChampionFromBin("Rengar");
         ChampionRepository.Initialize(new[] { rengar });
 
@@ -307,9 +307,12 @@ public class AbilitySlotOnHitGatingTests : IDisposable
         double qBonus = SkillDamage.ComputeCalcDamage(rengar, "Q", "QBonusDamage", stats, level)!.Value;
         Assert.True(qBonus > 1, "Rengar Q empowered hit must resolve to a real value");
 
+        var q = RunCombo("Rengar", new[] { "Q" }, Snapshot("Rengar", stats, level));
+        Assert.Equal(80.0 + qBonus, q.TotalDamage, precision: 2);
+
         var afterQ = RunCombo("Rengar", new[] { "Q", "AA" }, Snapshot("Rengar", stats, level));
         var beforeQ = RunCombo("Rengar", new[] { "AA", "Q" }, Snapshot("Rengar", stats, level));
-        Assert.Equal(qBonus, afterQ.TotalDamage - beforeQ.TotalDamage, precision: 2);
+        Assert.Equal(afterQ.TotalDamage, beforeQ.TotalDamage, precision: 2);
 
         // A bare auto with no Q is pure AD — the empowerment does not leak onto it.
         var bare = RunCombo("Rengar", new[] { "AA" }, Snapshot("Rengar", stats, level));
