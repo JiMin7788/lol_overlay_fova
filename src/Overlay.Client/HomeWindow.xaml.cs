@@ -101,6 +101,14 @@ public partial class HomeWindow : Window
 
         MainContent.Content = _homeView;
 
+#if LIGHT
+        // 1.0 plan (RELEASE_1_0_PLAN.md, "Out of the public product"): the stats tab and its tier
+        // list need match data from a production key, which the app does not have; the search tab
+        // only searches the current game's scoreboard. Hidden in the public build, kept in full.
+        NavSearch.Visibility = Visibility.Collapsed;
+        NavStats.Visibility = Visibility.Collapsed;
+#endif
+
         // M29: the one ad slot. (loop 521) The row is reclaimed WHENEVER there is nothing to show —
         // no endpoint, an unfilled/failed slot, or in-game dormancy — so an empty slot never renders
         // as a black band clipping the content (the previous behavior reserved it unconditionally
@@ -128,6 +136,8 @@ public partial class HomeWindow : Window
             // the choice survives a restart; defaults to Platinum+ rather than the widest sample.
             string bracket = _composition.Config.Get("champSelect.recBracket") as string ?? "";
             if (bracket.Length == 0) bracket = Overlay.Core.Stats.RecBrackets.Default;
+#if !LIGHT
+            // Public build: no recommendation rail (same reason as the hidden stats tab).
             if (_composition.Config.Get("champSelect.recDir") is string recDir
                 && !string.IsNullOrWhiteSpace(recDir))
             {
@@ -137,6 +147,7 @@ public partial class HomeWindow : Window
                 // the rune cards and the item section always describe the same patch.
                 itemRecs = new Overlay.Core.ChampSelect.FileItemRecommendationSource(recDir, bracket);
             }
+#endif
 
             _homeView.ChampSelectHomeSlot.Content = new Overlay.Client.ChampSelect.ChampSelectPanel(
                 lcu, presets,

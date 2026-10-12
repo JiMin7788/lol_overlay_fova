@@ -342,15 +342,17 @@ public static class ChampionBinParser
             // (§16 P-round) K'Sante mark %HP: an unlabeled-hash part that linearly interpolates two
             // NAMED DataValues by champion level (min → max) — the DataValue-sourced sibling of
             // ByCharLevelInterpolationCalculationPart. CommunityDragon leaves the __type and both field
-            // names as content hashes, so they are read by the exact hashes observed in ksante.bin.json
-            // ({ee18a47b} appears only there). A missing/renamed hash → null name → LookupDataValue
+            // names as content hashes. A missing/renamed field → null name → LookupDataValue
             // throws → the calc resolves to null and the curated %HP hit is dropped (safe fallback).
+            // (loop 565) CommunityDragon has since resolved the two field names to StartDataValue /
+            // EndDataValue (seen in 16.20 ksante and zaahen; kayn/milio/udyr still hashed), and the
+            // hashed-only read silently dropped K'Sante's mark (16 → 8.82). Read both spellings.
             case "{ee18a47b}":
                 return new CalculationPart
                 {
                     PartKind = CalculationPart.Kind.ByCharLevelInterpolationByDataValue,
-                    InterpolationStartDataValue = GetString(part, "{0589a59c}"), // -> "MarkDamagePercentMin"
-                    InterpolationEndDataValue = GetString(part, "{0b65bc23}"),   // -> "MarkDamagePercentMax"
+                    InterpolationStartDataValue = GetString(part, "StartDataValue") ?? GetString(part, "{0589a59c}"),
+                    InterpolationEndDataValue = GetString(part, "EndDataValue") ?? GetString(part, "{0b65bc23}"),
                 };
             case "EffectValueCalculationPart":
                 return new CalculationPart

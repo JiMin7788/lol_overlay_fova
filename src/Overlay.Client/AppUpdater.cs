@@ -51,7 +51,11 @@ internal static class AppUpdater
         try
         {
             var info = await mgr.CheckForUpdatesAsync().ConfigureAwait(false);
-            if (info is null) return;
+            if (info is null)
+            {
+                Log($"up to date ({mgr.CurrentVersion})");
+                return;
+            }
             await mgr.DownloadUpdatesAsync(info, cancelToken: ct).ConfigureAwait(false);
             Log($"downloaded {info.TargetFullRelease.Version} (current {mgr.CurrentVersion}); applies on exit");
         }

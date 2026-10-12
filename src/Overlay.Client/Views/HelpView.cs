@@ -18,11 +18,19 @@ namespace Overlay.Client.Views;
 /// </summary>
 public sealed class HelpView : UserControl
 {
+    // The public (LIGHT) build has no minimap capture and no search tab, so no sections for them.
     private static readonly string[] Sections =
+#if LIGHT
+    {
+        "intro", "overlay", "combo", "timers",
+        "champselect", "comp", "spells", "wards", "data", "legal",
+    };
+#else
     {
         "intro", "overlay", "combo", "timers", "minimap",
-        "champselect", "comp", "spells", "wards", "search", "data",
+        "champselect", "comp", "spells", "wards", "search", "data", "legal",
     };
+#endif
 
     /// <summary>Roughly 70 characters at this size. Long measures are the usual reason a wall of
     /// help text is tiring: the eye loses the line it was on coming back from the right edge.</summary>

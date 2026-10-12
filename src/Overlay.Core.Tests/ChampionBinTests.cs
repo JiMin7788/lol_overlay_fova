@@ -512,4 +512,25 @@ public class ChampionBinTests
         Assert.Contains(q.SpellCalculations["TotalDamage"].FormulaParts,
             p => p.PartKind == CalculationPart.Kind.StatByNamedDataValue && p.DataValue == "APRatio");
     }
+
+    // CommunityDragon resolves hashed field names over time: {ee18a47b}'s endpoint fields were
+    // {0589a59c}/{0b65bc23} and became StartDataValue/EndDataValue in 16.20 (K'Sante P, Zaahen).
+    // Reading only one spelling silently drops the %HP term, so both must parse the same.
+    [Theory]
+    [InlineData("StartDataValue", "EndDataValue")]
+    [InlineData("{0589a59c}", "{0b65bc23}")]
+    public void ParseSpell_DataValueInterpolationPart_ReadsResolvedAndHashedFieldNames(string startKey, string endKey)
+    {
+        string json = "{\"mSpellCalculations\":{\"PercentHealthDamage\":{\"__type\":\"GameCalculation\","
+            + "\"mFormulaParts\":[{\"__type\":\"{ee18a47b}\",\"" + startKey + "\":\"MarkDamagePercentMin\",\""
+            + endKey + "\":\"MarkDamagePercentMax\"}]}}}";
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+        var part = Assert.Single(ChampionBinParser.ParseSpell(doc.RootElement)
+            .SpellCalculations["PercentHealthDamage"].FormulaParts);
+
+        Assert.Equal(CalculationPart.Kind.ByCharLevelInterpolationByDataValue, part.PartKind);
+        Assert.Equal("MarkDamagePercentMin", part.InterpolationStartDataValue);
+        Assert.Equal("MarkDamagePercentMax", part.InterpolationEndDataValue);
+    }
 }
