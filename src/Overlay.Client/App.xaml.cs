@@ -42,6 +42,11 @@ public partial class App : Application
             typeof(DependencyObject), new FrameworkPropertyMetadata(15000));
 
         base.OnStartup(e);
+
+        // Created here rather than via StartupUri so an autostart launch can stay in the tray.
+        var home = new HomeWindow();
+        if (!Program.StartInBackground) home.Show();
+        else if (!home.CanStartHidden) home.ShowDashboard(activate: false);
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -217,6 +217,8 @@ public static class Localization
         ["help.data.title"] = "데이터 출처 · 광고",
         ["help.data.body"] = "Data Dragon, CommunityDragon, 로컬 라이브 클라이언트 API, 로컬 LCU API만 사용합니다. 광고는 데스크톱 홈 화면 한 곳뿐이며 게임 중에는 완전히 비활성화됩니다.",
         ["help.legal.title"] = "Riot Games 고지",
+        ["tray.open"] = "Fova 열기",
+        ["tray.exit"] = "종료",
         ["help.legal.body"] = "Fova는 Riot Games의 보증을 받지 않았으며, Riot Games 또는 Riot Games 자산의 제작·관리에 공식적으로 관여하는 누구의 견해나 의견도 대변하지 않습니다. Riot Games 및 모든 관련 자산은 Riot Games, Inc.의 상표 또는 등록 상표입니다.\n\nFova isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.",
 
         // ── Settings: spells ─────────────────────────────────────────
@@ -250,19 +252,13 @@ public static class Localization
         ["status.detected"] = "게임 감지됨",
 
         // ── Home / dashboard ─────────────────────────────────────────
-        ["home.title"] = "대시보드",
-        ["home.subtitle"] = "게임 상태와 저장된 설정을 한눈에 확인하세요.",
-        ["home.gameState"] = "게임 상태",
         ["home.savedCombos"] = "저장된 콤보",
-        ["home.liveStats"] = "실시간 통계",
-        ["home.emptyState"] = "게임에 입장하면 실시간 통계가 표시됩니다.",
+        ["home.emptyState"] = "게임에 들어가면 오버레이가 자동으로 켜지고, 내 챔피언·레벨·골드가 여기에 표시됩니다.",
         ["home.champion"] = "챔피언",
         ["home.level"] = "레벨",
         ["home.gold"] = "보유 골드",
         ["home.ad"] = "AD",
         ["home.ap"] = "AP",
-        ["home.idle"] = "대기 중",
-        ["home.detected"] = "게임 감지됨",
 
         // ── User search ──────────────────────────────────────────────
         ["search.title"] = "유저검색",
@@ -279,20 +275,17 @@ public static class Localization
         ["search.unknown"] = "(알 수 없음)",
 
         // ── Settings ─────────────────────────────────────────────────
-        ["settings.title"] = "설정",
         ["settings.language"] = "언어",
         ["settings.languageDesc"] = "앱 표시 언어를 선택합니다. 변경 시 즉시 적용됩니다.",
         ["settings.korean"] = "한국어",
         ["settings.english"] = "English",
 
         // ── Combo settings ───────────────────────────────────────────
-        ["combo.title"] = "콤보설정",
         ["combo.build"] = "콤보 만들기",
         ["combo.champion"] = "챔피언",
         ["combo.championSelect"] = "챔피언 선택",
         ["combo.championSearch"] = "챔피언 검색",
         ["combo.palette"] = "스킬 팔레트",
-        ["combo.paletteSkills"] = "스킬",
         ["combo.paletteMore"] = "아이템",
         ["combo.paletteHint"] = "챔피언을 선택하면 스킬이 표시됩니다.",
         ["combo.itemSearch"] = "아이템 검색으로 추가",
@@ -472,6 +465,8 @@ public static class Localization
         ["help.data.title"] = "Data sources & ads",
         ["help.data.body"] = "Uses Data Dragon, CommunityDragon, the local Live Client API, and the local LCU API only. The single ad slot lives on the desktop home screen and is fully disabled during games.",
         ["help.legal.title"] = "Riot Games notice",
+        ["tray.open"] = "Open Fova",
+        ["tray.exit"] = "Exit",
         ["help.legal.body"] = "Fova isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.",
 
         // ── Settings: spells ─────────────────────────────────────────
@@ -504,19 +499,13 @@ public static class Localization
         ["status.waiting"] = "Waiting for game",
         ["status.detected"] = "Game detected",
 
-        ["home.title"] = "Dashboard",
-        ["home.subtitle"] = "See your game state and saved settings at a glance.",
-        ["home.gameState"] = "Game State",
         ["home.savedCombos"] = "Saved Combos",
-        ["home.liveStats"] = "Live Stats",
-        ["home.emptyState"] = "Live stats appear once you enter a game.",
+        ["home.emptyState"] = "The overlay turns on by itself when you enter a game; your champion, level and gold show here.",
         ["home.champion"] = "Champion",
         ["home.level"] = "Level",
         ["home.gold"] = "Gold",
         ["home.ad"] = "AD",
         ["home.ap"] = "AP",
-        ["home.idle"] = "Idle",
-        ["home.detected"] = "Game detected",
 
         ["search.title"] = "User Search",
         ["search.placeholder"] = "Enter summoner name",
@@ -531,19 +520,16 @@ public static class Localization
         ["search.dead"] = "Dead",
         ["search.unknown"] = "(unknown)",
 
-        ["settings.title"] = "Settings",
         ["settings.language"] = "Language",
         ["settings.languageDesc"] = "Choose the app display language. Changes apply immediately.",
         ["settings.korean"] = "한국어",
         ["settings.english"] = "English",
 
-        ["combo.title"] = "Combo Settings",
         ["combo.build"] = "Build a Combo",
         ["combo.champion"] = "Champion",
         ["combo.championSelect"] = "Select champion",
         ["combo.championSearch"] = "Search champions",
         ["combo.palette"] = "Skill Palette",
-        ["combo.paletteSkills"] = "Skills",
         ["combo.paletteMore"] = "Items",
         ["combo.paletteHint"] = "Select a champion to show its skills.",
         ["combo.itemSearch"] = "Search items to add",

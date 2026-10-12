@@ -5,13 +5,26 @@ namespace Overlay.Client;
 /// <summary>Entry point (csproj StartupObject) so Velopack runs before WPF starts.</summary>
 internal static class Program
 {
+    /// <summary>Started by the autostart Run entry (<see cref="Autostart.BackgroundArg"/>): wait in
+    /// the tray instead of opening the dashboard.</summary>
+    internal static bool StartInBackground { get; private set; }
+
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         // Must come first: during install/update/uninstall Velopack launches the exe with hook
         // arguments, and this call handles them and exits. It also applies an update that was
         // downloaded but not applied (the app died before a clean exit).
-        VelopackApp.Build().Run();
+        VelopackApp.Build()
+            .OnBeforeUninstallFastCallback(_ => Autostart.Remove())
+            .Run();
+
+        if (!SingleInstance.TryAcquire())
+        {
+            SingleInstance.SignalFirstInstance();
+            return;
+        }
+        StartInBackground = args.Contains(Autostart.BackgroundArg);
 
         AppUpdater.Initialize();
         // Every start, not an OnFirstRun hook: a silent install never delivers the first-run

@@ -40,4 +40,17 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
+  <!--
+    Per-monitor DPI aware (v2), loop 565. Without it WPF is only system-DPI aware: on a monitor
+    whose display scale differs from the primary's, Windows bitmap-stretches the overlay and
+    virtualizes the League window's coordinates, so the overlay lands at the wrong size/place.
+    With it, GetClientRect/ClientToScreen return physical pixels everywhere and each window
+    renders at its own monitor's scale. dpiAware true/pm is the pre-1607 fallback.
+  -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+    </windowsSettings>
+  </application>
 </assembly>

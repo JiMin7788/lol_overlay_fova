@@ -68,6 +68,25 @@ public partial class SettingsView : UserControl
     {
         _composition = composition;
         LoadFromConfig();
+        UpdateFeatureVisibility();
+    }
+
+    /// <summary>Hide switches for features this build or the remote flags have turned off, so the
+    /// page only offers what will actually do something. The minimap-vision cards are compiled
+    /// out of the public (LIGHT) build; recall / lane-return follow <c>flags.json</c>, which can
+    /// arrive after startup — hence re-run whenever the overlay page is opened.</summary>
+    private void UpdateFeatureVisibility()
+    {
+        if (_composition is null) return;
+#if LIGHT
+        EnemyPresenceCard.Visibility = Visibility.Collapsed;
+        AdvancedCard.Visibility = Visibility.Collapsed;
+        NotificationRow.Visibility = Visibility.Collapsed;
+#endif
+        RecallTimerRow.Visibility = _composition.IsFeatureForcedOff("recallTimer")
+            ? Visibility.Collapsed : Visibility.Visible;
+        LaneReturnSection.Visibility = _composition.IsFeatureForcedOff("laneReturn")
+            ? Visibility.Collapsed : Visibility.Visible;
     }
 
     // ── Sub-navigation ──────────────────────────────────────────────────────
@@ -78,8 +97,8 @@ public partial class SettingsView : UserControl
         if (GeneralPanel is null) return;
 
         GeneralPanel.Visibility = PillGeneral.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        LanguagePanel.Visibility = PillLanguage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         OverlayPanel.Visibility = PillOverlay.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        if (PillOverlay.IsChecked == true) UpdateFeatureVisibility();
     }
 
     // ── Initial load from config ────────────────────────────────────────────
@@ -104,6 +123,8 @@ public partial class SettingsView : UserControl
             RuneAutoApplyToggle.IsChecked = GetBool(cfg, "runes.autoApply", true);
             // M39 telemetry (default TRUE — first-run disclosure banner owns the initial notice).
             TelemetryToggle.IsChecked = GetBool(cfg, "telemetry.enabled", true);
+            // Start with League (default FALSE — never auto-launch without an explicit opt-in).
+            AutostartToggle.IsChecked = GetBool(cfg, "general.autoStartWithGame", false);
             // Flash key (champSelect.flashKey): unset -> neither radio checked (the first-run
             // banner owns the initial ask); user can change it here anytime.
             var flashKey = cfg.Get("champSelect.flashKey") as string;
@@ -277,6 +298,15 @@ public partial class SettingsView : UserControl
         // Persist only — ComboRunner re-reads runes.autoApply live on every combo trigger, so the
         // change takes effect without restarting the runner or the app.
         _composition.Config.Set("runes.autoApply", RuneAutoApplyToggle.IsChecked == true);
+    }
+
+    // ── Start with League ───────────────────────────────────────────────────
+
+    /// <summary>HomeWindow follows the key (Run entry + tray), so this only writes it.</summary>
+    private void AutostartToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncing || _composition is null) return;
+        _composition.Config.Set("general.autoStartWithGame", AutostartToggle.IsChecked == true);
     }
 
     // ── M39: anonymous telemetry + crash reports ────────────────────────────
@@ -621,16 +651,23 @@ public partial class SettingsView : UserControl
 
     private void ApplyLanguage()
     {
-        TitleLabel.Text = Localization.L("settings.title");
         LanguageCaption.Text = Localization.L("settings.language");
         LanguageDesc.Text = Localization.L("settings.languageDesc");
         PillGeneral.Content = SL("기본", "General");
-        PillLanguage.Content = SL("언어", "Language");
         PillOverlay.Content = SL("오버레이", "Overlay");
 
-        GeneralCaption.Text = SL("기본", "General");
-        MonitorDesc.Text = SL("앱 표시 관련 기본값입니다.", "App-level display defaults.");
-        MonitorLabel.Text = SL("타겟 모니터 (0 = 주 모니터)", "Target monitor (0 = primary)");
+        AppCaption.Text = SL("앱", "App");
+        RuneCaption.Text = SL("룬 · 점멸", "Runes & Flash");
+        DisplayCaption.Text = SL("표시", "Display");
+        HotkeysCaption.Text = SL("단축키", "Hotkeys");
+        MonitorLabel.Text = SL("미리보기 모니터", "Preview monitor");
+        MonitorHint.Text = SL("게임 창이 없을 때(미리보기) 오버레이를 띄울 모니터입니다. 0 = 주 모니터. 게임 중에는 항상 롤 창을 따라갑니다.",
+            "Where the overlay shows when no game window exists (preview). 0 = primary. In game it always follows the League window.");
+
+        AutostartToggleCaption.Text = SL("롤 실행 시 자동 실행", "Start with League");
+        AutostartToggleDesc.Text = SL(
+            "Windows 시작 시 트레이에서 대기하다가 롤 클라이언트가 켜지면 Fova 창을 띄웁니다. 켜 두면 창을 닫아도 트레이에 남고, 트레이 아이콘 메뉴의 [종료]로 끕니다.",
+            "Waits in the tray from Windows sign-in and opens Fova when the League client starts. While on, closing the window keeps Fova in the tray; exit from the tray icon's menu.");
 
         TelemetryCaption.Text = SL("데이터", "Data");
         TelemetryToggleCaption.Text = SL("익명 사용 통계·오류 리포트", "Anonymous usage stats & crash reports");
@@ -645,30 +682,28 @@ public partial class SettingsView : UserControl
             "켜면 Ctrl+Shift를 누른 채 드래그해 오버레이 위치를 옮길 수 있습니다. 키를 안 누른 동안에는 클릭이 게임으로 통과됩니다.",
             "When on, hold Ctrl+Shift and drag to reposition overlay elements. Clicks pass through to the game while the keys are not held.");
 
-        HotkeyCaption.Text = SL("오버레이 표시 단축키", "Overlay toggle hotkey");
+        HotkeyCaption.Text = SL("오버레이 전체 표시/숨김", "Show/hide overlay");
         HotkeyDesc.Text = SL(
-            "오버레이를 켜고 끄는 전역 단축키입니다. 기본값 SHIFT+TAB 은 롤 점수판과 겹칠 수 있어 변경할 수 있습니다.",
-            "Global hotkey to show/hide the overlay. The default SHIFT+TAB can overlap LoL's scoreboard, so it is rebindable.");
+            "기본값 SHIFT+TAB은 롤 점수판 키와 겹칠 수 있습니다. 버튼을 누른 뒤 새 키를 입력하세요.",
+            "The default SHIFT+TAB can overlap LoL's scoreboard key. Click, then press the new keys.");
         if (!_capturingHotkey)
             HotkeyButton.Content = _toggleHotkey;
 
-        SkillHotkeyCaption.Text = SL("스킬 데미지 오버레이 단축키", "Skill-damage overlay hotkey");
-        SkillHotkeyDesc.Text = SL(
-            "스킬별 데미지 오버레이를 켜고 끄는 전역 단축키입니다 (기본값 ALT+2).",
-            "Global hotkey to show/hide the per-skill damage overlay (default ALT+2).");
+        SkillHotkeyCaption.Text = SL("스킬 데미지 오버레이", "Skill-damage overlay");
+        SkillHotkeyDesc.Text = SL("스킬별 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+2).",
+            "Shows/hides the per-skill damage overlay (default ALT+2).");
         if (!_capturingSkillHotkey)
             SkillHotkeyButton.Content = _skillOverlayHotkey;
 
-        ComboHotkeyCaption.Text = SL("콤보 오버레이 단축키", "Combo overlay hotkey");
-        ComboHotkeyDesc.Text = SL(
-            "콤보 결과 오버레이를 켜고 끄는 전역 단축키입니다 (기본값 ALT+1).",
-            "Global hotkey to show/hide the combo result overlay (default ALT+1).");
+        ComboHotkeyCaption.Text = SL("콤보 오버레이", "Combo overlay");
+        ComboHotkeyDesc.Text = SL("콤보 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+1).",
+            "Shows/hides the combo damage overlay (default ALT+1).");
         if (!_capturingComboHotkey)
             ComboHotkeyButton.Content = _comboOverlayHotkey;
 
         ItemsCaption.Text = SL("오버레이 항목", "Overlay Items");
-        ItemsDesc.Text = SL("표시할 항목을 선택합니다 (엔진은 추후 단계에서 연결됩니다).",
-            "Choose which items to show (engines land in a later phase).");
+        ItemsDesc.Text = SL("끄면 게임 화면에서 숨겨집니다. 위치는 '이동 여부'를 켠 뒤 오버레이에서 직접 드래그해 옮깁니다.",
+            "Turn off to hide in game. To reposition, turn on Movable and drag the element on the overlay.");
 
         InhibCaption.Text = SL("구조물 타이머", "Structure Timers");
         InhibDesc.Text = SL("억제기 5:00 · 넥서스 포탑 3:00 리젠 카운트다운 (미니맵 위)",
@@ -691,8 +726,8 @@ public partial class SettingsView : UserControl
         LaneReturnModeDesc.Text = SL("어떤 적이 죽었을 때 타이머를 띄울지 선택 (모든 적 / 지정한 적 / 같은 라인).",
             "Which enemy deaths show a return timer (all / designated / same lane).");
         TimerMmSsCaption.Text = SL("타이머 분:초 표기", "Timer as M:SS");
-        TimerMmSsDesc.Text = SL("끄면 초 단위(예: 83), 켜면 분:초(예: 1:23)로 표시합니다. 적 복귀·구조물(억제기/넘서스 포탑) 타이머 공통.",
-            "Off: seconds (e.g. 83). On: M:SS (e.g. 1:23). Applies to the enemy-return and structure (inhibitor/Nexus turret) timers.");
+        TimerMmSsDesc.Text = SL("끄면 초 단위(예: 83), 켜면 분:초(예: 1:23)로 표시합니다. 오버레이의 모든 타이머에 적용됩니다.",
+            "Off: seconds (e.g. 83). On: M:SS (e.g. 1:23). Applies to every timer on the overlay.");
 
         // M31 §B/§C: enemy-presence voice + minimap afterimage.
         EnemyPresenceCaption.Text = SL("적 위치 안내", "Enemy Presence");
@@ -721,10 +756,6 @@ public partial class SettingsView : UserControl
             _afterimageRoleLabels[key].Text = SL(ko, en);
 
         // M02 pending-change #1: core HUD element toggles.
-        CoreItemsCaption.Text = SL("기본 HUD 요소", "Core HUD Elements");
-        CoreItemsDesc.Text = SL(
-            "항상 표시되던 요소들입니다. 끄면 숨겨지고, '이동 여부'를 켠 뒤 Ctrl+Shift를 누른 채 드래그하면 위치를 각각 옮길 수 있습니다.",
-            "Elements that were always shown. Turn off to hide; with \"Movable\" on, hold Ctrl+Shift and drag each on the overlay to reposition it independently.");
         ComboResultCaption.Text = SL("콤보 결과 카드", "Combo Result Card");
         ItemAlertCaption.Text = SL("아이템 알림", "Item Alert");
         RecallTimerCaption.Text = SL("귀환 타이머", "Recall Timer");

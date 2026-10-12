@@ -1990,8 +1990,8 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
     /// <summary>Reference game-viewport height (DIPs) the HUD geometry was authored against — the
     /// combo/skill card, portrait row, toast, etc. base sizes all look right at this height. A 4K
-    /// (3840×2160) game viewport at 100% display scaling. The auto-fit factor below scales everything
-    /// down proportionally on smaller viewports so the overlay isn't ~2× oversized at 1080p.</summary>
+    /// (3840×2160) game viewport at 100% display scaling (the authoring PC). The auto-fit factor
+    /// below scales everything proportionally on other viewports and display scales.</summary>
     private const double ReferenceViewportHeight = 2160.0;
 
     /// <summary>Read the effective HUD scale = user's <c>overlay.scale</c> knob (M19 §2, clamped 0.5–2.0)
@@ -2005,33 +2005,19 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         double s = _config.Get("overlay.scale") is double d ? d : 1.0;
         s = s > 0 ? Math.Clamp(s, 0.5, 2.0) : 1.0;
 
-        // Auto-fit to the game viewport's DEVICE-pixel height, not the WPF DIP height. Under Windows
-        // display scaling (e.g. a 4K monitor at 150%, or a 1080p game window on that desktop) a
-        // full-viewport surface reports only ~1440/720 DIP, so dividing the DIP height by the 2160
-        // (4K device-px) reference produced ~0.67-0.4 and the whole overlay rendered far too small.
-        // Multiplying by the surface DPI recovers the real on-screen pixels, so a 4K viewport maps to
-        // autoFit=1.0 regardless of the display-scaling %, and the overlay stays proportional to the
-        // actual LoL window across fullscreen / borderless / windowed.
-        double deviceHeight = surfaceHeight > 0 ? surfaceHeight * SurfaceDpiScaleY() : 0;
-        double autoFit = deviceHeight > 0 ? deviceHeight / ReferenceViewportHeight : 1.0;
-        autoFit = Math.Clamp(autoFit, 0.4, 2.0);
+        // Auto-fit to the game viewport's DIP height. Everything is drawn in DIPs, which WPF
+        // multiplies by the display scale on the way to the screen, so the HUD covers
+        // (base × autoFit × dpi) device pixels of a (dipHeight × dpi)-pixel viewport: with
+        // autoFit = dipHeight / reference the dpi cancels and the HUD is the same FRACTION of the LoL
+        // window at any resolution and any display scale (1080p at 100% or 150%, 4K at 100% or 150%).
+        // (loop 565) The previous fit used the DEVICE height here, which applied the display scale a
+        // second time: the overlay grew by the scale factor on high-DPI PCs (1.5× at 150%) relative
+        // to 100% PCs — the "too big on one PC, too small on another" report.
+        double autoFit = surfaceHeight > 0 ? surfaceHeight / ReferenceViewportHeight : 1.0;
+        // Floor low enough for a 720p window at 150% (480 DIP → 0.22); only guards a degenerate size.
+        autoFit = Math.Clamp(autoFit, 0.2, 2.0);
 
         return s * autoFit;
-    }
-
-    /// <summary>Vertical device-pixels-per-DIP for the render surface (1.0 at 100% display scaling,
-    /// 1.5 at 150%, …). Used by <see cref="ReadScale"/> to convert the DIP surface height into the
-    /// game viewport's real device-pixel height so auto-fit is display-scaling-independent. Falls back
-    /// to 1.0 before the surface is connected to a PresentationSource.</summary>
-    private double SurfaceDpiScaleY()
-    {
-        var src = System.Windows.PresentationSource.FromVisual(_surface);
-        if (src?.CompositionTarget is { } ct)
-        {
-            double m = ct.TransformToDevice.M22;
-            if (m > 0 && !double.IsNaN(m)) return m;
-        }
-        return 1.0;
     }
 
     /// <summary>(loop 519) Stop the render loop while the overlay window is hidden. Hiding the

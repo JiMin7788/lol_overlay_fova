@@ -33,11 +33,6 @@ public partial class HomeView : UserControl
     /// construction and whenever the language changes; live values are set by <see cref="Refresh"/>.</summary>
     private void ApplyLanguage()
     {
-        TitleLabel.Text = Localization.L("home.title");
-        SubtitleLabel.Text = Localization.L("home.subtitle");
-        GameStateCaption.Text = Localization.L("home.gameState");
-        SavedCombosCaption.Text = Localization.L("home.savedCombos");
-        LiveStatsCaption.Text = Localization.L("home.liveStats");
         EmptyStateLabel.Text = Localization.L("home.emptyState");
         ChampionCaption.Text = Localization.L("home.champion");
         LevelCaption.Text = Localization.L("home.level");
@@ -51,12 +46,12 @@ public partial class HomeView : UserControl
     {
         if (_composition is null) return;
 
-        ComboCountValue.Text = CountSavedCombos().ToString(CultureInfo.InvariantCulture);
+        SavedCombosLine.Text = Localization.L("home.savedCombos") + " "
+            + CountSavedCombos().ToString(CultureInfo.InvariantCulture);
 
         var snapshot = _composition.LatestSnapshot;
         bool inGame = snapshot is { HasData: true };
 
-        GameStateValue.Text = inGame ? Localization.L("home.detected") : Localization.L("home.idle");
         InGamePanel.Visibility = inGame ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
         EmptyState.Visibility = inGame ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
 

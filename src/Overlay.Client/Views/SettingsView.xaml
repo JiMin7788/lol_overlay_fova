@@ -4,41 +4,70 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600">
+    <UserControl.Resources>
+        <!-- One width for every settings card: cards used to size to their own text, so the page
+             read as a ragged column of different widths. -->
+        <Style x:Key="SettingsCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Width" Value="620" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
+        <Style x:Key="GroupCaption" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+    </UserControl.Resources>
     <ScrollViewer Style="{StaticResource HiddenScroll}">
         <StackPanel Margin="4">
+            <!-- The page title lives in the window header; no second one here. -->
 
-            <TextBlock x:Name="TitleLabel" Text="설정" Style="{StaticResource TitleText}" Margin="0,0,0,18" />
-
-            <!-- Sub-navigation: 기본 / 언어 / 오버레이 -->
+            <!-- Sub-navigation: 기본 / 오버레이 (language moved into 기본) -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
                 <RadioButton x:Name="PillGeneral" Style="{StaticResource SubNavPill}" GroupName="settingsNav"
                              IsChecked="True" Checked="Pill_Checked" />
-                <RadioButton x:Name="PillLanguage" Style="{StaticResource SubNavPill}" GroupName="settingsNav"
-                             Checked="Pill_Checked" />
                 <RadioButton x:Name="PillOverlay" Style="{StaticResource SubNavPill}" GroupName="settingsNav"
                              Checked="Pill_Checked" />
             </StackPanel>
 
             <!-- ── 기본 (General) ─────────────────────────────────────── -->
             <StackPanel x:Name="GeneralPanel">
-                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left">
+                <!-- App: language + start with League -->
+                <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
-                        <TextBlock x:Name="GeneralCaption" Style="{StaticResource CaptionText}" />
-                        <TextBlock x:Name="MonitorDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,6,0,12" />
-                        <TextBlock x:Name="MonitorLabel" Style="{StaticResource CaptionText}" Margin="0,0,0,6" />
-                        <TextBox x:Name="MonitorBox" Style="{StaticResource ThemedTextBox}" Width="120"
-                                 HorizontalAlignment="Left" MaxLength="2"
-                                 PreviewTextInput="MonitorBox_PreviewTextInput"
-                                 LostFocus="MonitorBox_LostFocus" />
+                        <TextBlock x:Name="AppCaption" Style="{StaticResource GroupCaption}" />
+                        <DockPanel>
+                        <ComboBox x:Name="LanguageCombo" Style="{StaticResource ThemedComboBox}" Width="160" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                  SelectionChanged="LanguageCombo_SelectionChanged">
+                            <ComboBoxItem Content="한국어" Tag="ko" />
+                            <ComboBoxItem Content="English" Tag="en" />
+                        </ComboBox>
+                            <StackPanel>
+                                <TextBlock x:Name="LanguageCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="LanguageDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,16,0,0">
+                            <ToggleButton x:Name="AutostartToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="AutostartToggle_Changed" Unchecked="AutostartToggle_Changed" />
+                            <StackPanel>
+                                <TextBlock x:Name="AutostartToggleCaption" Text="롤 실행 시 자동 실행"
+                                           Style="{StaticResource CaptionText}" />
+                                <TextBlock x:Name="AutostartToggleDesc"
+                                           Text="Windows 시작 시 트레이에서 대기하다가 롤 클라이언트가 켜지면 Fova 창을 띄웁니다. 켜 두면 창을 닫아도 트레이에 남고, 트레이 아이콘 메뉴의 [종료]로 끕니다."
+                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- 룬 자동적용 (Auto-apply equipped runes) -->
-                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left" Margin="0,16,0,0">
+                <!-- Combo + champ select: equipped runes, Flash key -->
+                <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
-                        <TextBlock x:Name="RuneCaption" Text="룬" Style="{StaticResource CaptionText}" />
-                        <DockPanel Margin="0,12,0,0">
+                        <TextBlock x:Name="RuneCaption" Style="{StaticResource GroupCaption}" />
+                        <DockPanel>
                             <ToggleButton x:Name="RuneAutoApplyToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="RuneAutoApplyToggle_Changed" Unchecked="RuneAutoApplyToggle_Changed" />
@@ -51,13 +80,8 @@
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- 점멸 키 (Flash key, 2026-07-25): preset applies place Flash on this key. -->
-                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left" Margin="0,16,0,0">
-                    <StackPanel>
-                        <TextBlock x:Name="FlashKeyCaption" Text="점멸 키" Style="{StaticResource CaptionText}" />
+                        <StackPanel Margin="0,16,0,0">
+                        <TextBlock x:Name="FlashKeyCaption" Text="점멸 키" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
                         <TextBlock x:Name="FlashKeyDesc" Text="프리셋 적용 시 점멸을 이 키로 정렬합니다"
                                    Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
                                    Margin="0,4,12,0" TextWrapping="Wrap" />
@@ -67,14 +91,15 @@
                             <RadioButton x:Name="FlashKeyFRadio" GroupName="flashKey" Content="F 점멸"
                                          Foreground="{StaticResource Text}" Margin="18,0,0,0" Checked="FlashKey_Changed" />
                         </StackPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- M39 익명 텔레메트리 (anonymous telemetry + crash reports) -->
-                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left" Margin="0,16,0,0">
+                <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
-                        <TextBlock x:Name="TelemetryCaption" Text="데이터" Style="{StaticResource CaptionText}" />
-                        <DockPanel Margin="0,12,0,0">
+                        <TextBlock x:Name="TelemetryCaption" Style="{StaticResource GroupCaption}" />
+                        <DockPanel>
                             <ToggleButton x:Name="TelemetryToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="TelemetryToggle_Changed" Unchecked="TelemetryToggle_Changed" />
@@ -91,30 +116,13 @@
                 </Border>
             </StackPanel>
 
-            <!-- ── 언어 (Language) ────────────────────────────────────── -->
-            <StackPanel x:Name="LanguagePanel" Visibility="Collapsed">
-                <Border Style="{StaticResource Card}" MaxWidth="520" HorizontalAlignment="Left">
-                    <StackPanel>
-                        <TextBlock x:Name="LanguageCaption" Text="언어" Style="{StaticResource CaptionText}" />
-                        <TextBlock x:Name="LanguageDesc" Text="앱 표시 언어를 선택합니다. 변경 시 즉시 적용됩니다."
-                                   Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
-                                   Margin="0,6,0,12" />
-                        <ComboBox x:Name="LanguageCombo" Style="{StaticResource ThemedComboBox}" Width="220"
-                                  HorizontalAlignment="Left" SelectionChanged="LanguageCombo_SelectionChanged">
-                            <ComboBoxItem Content="한국어" Tag="ko" />
-                            <ComboBoxItem Content="English" Tag="en" />
-                        </ComboBox>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
             <!-- ── 오버레이 (Overlay) ─────────────────────────────────── -->
             <StackPanel x:Name="OverlayPanel" Visibility="Collapsed">
 
-                <!-- Opacity / size / movable / toggle-hotkey -->
-                <Border Style="{StaticResource Card}" MaxWidth="560" HorizontalAlignment="Left">
+                <!-- Display: opacity / size / movable / preview monitor -->
+                <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
-
+                        <TextBlock x:Name="DisplayCaption" Style="{StaticResource GroupCaption}" />
                         <!-- Opacity -->
                         <DockPanel Margin="0,0,0,4">
                             <TextBlock x:Name="OpacityValue" DockPanel.Dock="Right"
@@ -136,7 +144,6 @@
                                 Minimum="0.75" Maximum="1.5" TickFrequency="0.05" IsSnapToTickEnabled="True"
                                 SmallChange="0.05" LargeChange="0.1" Margin="0,0,0,18"
                                 ValueChanged="ScaleSlider_ValueChanged" />
-
                         <!-- Movable -->
                         <DockPanel Margin="0,0,0,16">
                             <ToggleButton x:Name="MovableToggle" Style="{StaticResource ToggleSwitch}"
@@ -148,46 +155,84 @@
                                            Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
                             </StackPanel>
                         </DockPanel>
-
-                        <!-- Toggle hotkey -->
-                        <TextBlock x:Name="HotkeyCaption" Style="{StaticResource CaptionText}" />
-                        <TextBlock x:Name="HotkeyDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,8" />
-                        <Button x:Name="HotkeyButton" Style="{StaticResource GhostButton}"
-                                HorizontalAlignment="Left" Focusable="True"
-                                Click="HotkeyButton_Click"
-                                PreviewKeyDown="HotkeyButton_PreviewKeyDown"
-                                LostFocus="HotkeyButton_LostFocus" />
-
-                        <!-- Skill-damage overlay hotkey (§40, default Alt+2) -->
-                        <TextBlock x:Name="SkillHotkeyCaption" Style="{StaticResource CaptionText}" Margin="0,18,0,0" />
-                        <TextBlock x:Name="SkillHotkeyDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,8" />
-                        <Button x:Name="SkillHotkeyButton" Style="{StaticResource GhostButton}"
-                                HorizontalAlignment="Left" Focusable="True"
-                                Click="SkillHotkeyButton_Click"
-                                PreviewKeyDown="SkillHotkeyButton_PreviewKeyDown"
-                                LostFocus="SkillHotkeyButton_LostFocus" />
-
-                        <!-- Combo overlay hotkey (§40 sibling, default Alt+1) -->
-                        <TextBlock x:Name="ComboHotkeyCaption" Style="{StaticResource CaptionText}" Margin="0,18,0,0" />
-                        <TextBlock x:Name="ComboHotkeyDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,8" />
-                        <Button x:Name="ComboHotkeyButton" Style="{StaticResource GhostButton}"
-                                HorizontalAlignment="Left" Focusable="True"
-                                Click="ComboHotkeyButton_Click"
-                                PreviewKeyDown="ComboHotkeyButton_PreviewKeyDown"
-                                LostFocus="ComboHotkeyButton_LostFocus" />
+                        <DockPanel>
+                            <TextBox x:Name="MonitorBox" Style="{StaticResource ThemedTextBox}" Width="64"
+                                     DockPanel.Dock="Right" VerticalAlignment="Center" MaxLength="2"
+                                     PreviewTextInput="MonitorBox_PreviewTextInput"
+                                     LostFocus="MonitorBox_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="MonitorLabel" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="MonitorHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- Overlay items (opt-in engine items; persist only for now) -->
-                <Border Style="{StaticResource Card}" MaxWidth="560" HorizontalAlignment="Left" Margin="0,14,0,0">
+                <!-- Hotkeys: one row each, button on the right -->
+                <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
-                        <TextBlock x:Name="ItemsCaption" Style="{StaticResource CaptionText}" Margin="0,0,0,4" />
-                        <TextBlock x:Name="ItemsDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,0,0,12" />
+                        <TextBlock x:Name="HotkeysCaption" Style="{StaticResource GroupCaption}" />
+                        <DockPanel Margin="0,0,0,0">
+                            <Button x:Name="HotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
+                                    VerticalAlignment="Center" MinWidth="110" Focusable="True"
+                                    Click="HotkeyButton_Click" PreviewKeyDown="HotkeyButton_PreviewKeyDown" LostFocus="HotkeyButton_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="HotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="HotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,14,0,0">
+                            <Button x:Name="ComboHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
+                                    VerticalAlignment="Center" MinWidth="110" Focusable="True"
+                                    Click="ComboHotkeyButton_Click" PreviewKeyDown="ComboHotkeyButton_PreviewKeyDown" LostFocus="ComboHotkeyButton_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="ComboHotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="ComboHotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0,14,0,0">
+                            <Button x:Name="SkillHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
+                                    VerticalAlignment="Center" MinWidth="110" Focusable="True"
+                                    Click="SkillHotkeyButton_Click" PreviewKeyDown="SkillHotkeyButton_PreviewKeyDown" LostFocus="SkillHotkeyButton_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="SkillHotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="SkillHotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
 
+                <!-- Overlay items: every HUD element switch in one list (was two cards). -->
+                <Border Style="{StaticResource SettingsCard}">
+                    <StackPanel>
+                        <TextBlock x:Name="ItemsCaption" Style="{StaticResource GroupCaption}" Margin="0,0,0,4" />
+                        <TextBlock x:Name="ItemsDesc" Style="{StaticResource BodyText}"
+                                   Foreground="{StaticResource TextDim}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        <DockPanel Margin="0,0,0,12">
+                            <ToggleButton x:Name="ComboResultToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="ComboResultToggle_Changed" Unchecked="ComboResultToggle_Changed" />
+                            <TextBlock x:Name="ComboResultCaption" Style="{StaticResource CaptionText}"
+                                       Foreground="{StaticResource Text}" />
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <ToggleButton x:Name="StatusCardToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="StatusCardToggle_Changed" Unchecked="StatusCardToggle_Changed" />
+                            <TextBlock x:Name="StatusCardCaption" Style="{StaticResource CaptionText}"
+                                       Foreground="{StaticResource Text}" />
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <ToggleButton x:Name="ItemAlertToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="ItemAlertToggle_Changed" Unchecked="ItemAlertToggle_Changed" />
+                            <TextBlock x:Name="ItemAlertCaption" Style="{StaticResource CaptionText}"
+                                       Foreground="{StaticResource Text}" />
+                        </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="InhibToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
@@ -200,7 +245,7 @@
                             </StackPanel>
                         </DockPanel>
 
-                        <DockPanel>
+                        <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="GoldToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="GoldToggle_Changed" Unchecked="GoldToggle_Changed" />
@@ -211,10 +256,40 @@
                                            Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
                             </StackPanel>
                         </DockPanel>
-
+                        <!-- (user request) Timer display format: seconds (default) vs 분:초 (M:SS). Applies to
+                             the enemy return timer + 구조물(억제기/넘서스 포탑) timers. -->
+                        <DockPanel Margin="0,0,0,12">
+                            <ToggleButton x:Name="TimerMmSsToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="TimerMmSsToggle_Changed" Unchecked="TimerMmSsToggle_Changed" />
+                            <StackPanel>
+                                <TextBlock x:Name="TimerMmSsCaption" Style="{StaticResource CaptionText}"
+                                           Foreground="{StaticResource Text}" />
+                                <TextBlock x:Name="TimerMmSsDesc" Style="{StaticResource BodyText}"
+                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DockPanel>
+                        <!-- Hidden while the remote flag keeps the recall timer off. -->
+                        <DockPanel x:Name="RecallTimerRow" Margin="0,0,0,12">
+                            <ToggleButton x:Name="RecallTimerToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="RecallTimerToggle_Changed" Unchecked="RecallTimerToggle_Changed" />
+                            <TextBlock x:Name="RecallTimerCaption" Style="{StaticResource CaptionText}"
+                                       Foreground="{StaticResource Text}" />
+                        </DockPanel>
+                        <!-- Minimap-vision notifications: full build only. -->
+                        <DockPanel x:Name="NotificationRow" Margin="0,0,0,12">
+                            <ToggleButton x:Name="NotificationToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="NotificationToggle_Changed" Unchecked="NotificationToggle_Changed" />
+                            <TextBlock x:Name="NotificationCaption" Style="{StaticResource CaptionText}"
+                                       Foreground="{StaticResource Text}" />
+                        </DockPanel>
+                        <!-- Hidden while the remote flag keeps the lane-return timer off. -->
+                        <StackPanel x:Name="LaneReturnSection">
                         <!-- (loop 130) My lane, for the same-lane enemy return timer's travel distance
                              (the Live Client omits positions in most games). -->
-                        <StackPanel Margin="0,14,0,0">
+                        <StackPanel Margin="0,0,0,12">
                             <TextBlock x:Name="LaneReturnLaneCaption" Style="{StaticResource CaptionText}"
                                        Foreground="{StaticResource Text}" />
                             <TextBlock x:Name="LaneReturnLaneDesc" Style="{StaticResource BodyText}"
@@ -230,7 +305,7 @@
                         </StackPanel>
 
                         <!-- (loop 141) Which enemy deaths get a return timer. -->
-                        <StackPanel Margin="0,14,0,0">
+                        <StackPanel Margin="0,0,0,12">
                             <TextBlock x:Name="LaneReturnModeCaption" Style="{StaticResource CaptionText}"
                                        Foreground="{StaticResource Text}" />
                             <TextBlock x:Name="LaneReturnModeDesc" Style="{StaticResource BodyText}"
@@ -242,26 +317,12 @@
                                 <ComboBoxItem Content="같은 라인 적" Tag="sameLane" />
                             </ComboBox>
                         </StackPanel>
-
-                        <!-- (user request) Timer display format: seconds (default) vs 분:초 (M:SS). Applies to
-                             the enemy return timer + 구조물(억제기/넘서스 포탑) timers. -->
-                        <DockPanel Margin="0,14,0,0">
-                            <ToggleButton x:Name="TimerMmSsToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="TimerMmSsToggle_Changed" Unchecked="TimerMmSsToggle_Changed" />
-                            <StackPanel>
-                                <TextBlock x:Name="TimerMmSsCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="TimerMmSsDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </DockPanel>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- (M31 §B/§C) Enemy presence: spoken location alerts + the last-seen minimap
-                     portrait. Both ride the same UI.ENEMY_PRESENCE alert, so they belong together. -->
-                <Border Style="{StaticResource Card}" MaxWidth="560" HorizontalAlignment="Left" Margin="0,14,0,0">
+                <!-- (M31 §B/§C) Enemy presence: full build only (minimap capture). -->
+                <Border x:Name="EnemyPresenceCard" Style="{StaticResource SettingsCard}">
                     <StackPanel>
                         <TextBlock x:Name="EnemyPresenceCaption" Style="{StaticResource CaptionText}" />
                         <TextBlock x:Name="EnemyPresenceDesc" Style="{StaticResource BodyText}"
@@ -341,9 +402,8 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Advanced (collapsed by default) — minimap-position calibration is a coordinate
-                     alignment tool, not something most users need to touch; keep it out of the way. -->
-                <Border Style="{StaticResource Card}" MaxWidth="560" HorizontalAlignment="Left" Margin="0,14,0,0">
+                <!-- Advanced (collapsed by default): minimap calibration / debug, full build only. -->
+                <Border x:Name="AdvancedCard" Style="{StaticResource SettingsCard}">
                     <StackPanel>
                         <Border x:Name="AdvancedHeader" Background="Transparent" Cursor="Hand"
                                 MouseLeftButtonUp="AdvancedHeader_Click">
@@ -378,58 +438,6 @@
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- M02 pending-change #1: enable toggles for every remaining core HUD element
-                     type (opt-OUT — default on, unlike the opt-in engine items above). Position
-                     for each is set by dragging it on the overlay itself while "이동 여부" is on,
-                     not from a control here. -->
-                <Border Style="{StaticResource Card}" MaxWidth="560" HorizontalAlignment="Left" Margin="0,14,0,0">
-                    <StackPanel>
-                        <TextBlock x:Name="CoreItemsCaption" Style="{StaticResource CaptionText}" Margin="0,0,0,4" />
-                        <TextBlock x:Name="CoreItemsDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,0,0,12" />
-
-                        <DockPanel Margin="0,0,0,12">
-                            <ToggleButton x:Name="ComboResultToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="ComboResultToggle_Changed" Unchecked="ComboResultToggle_Changed" />
-                            <TextBlock x:Name="ComboResultCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
-
-                        <DockPanel Margin="0,0,0,12">
-                            <ToggleButton x:Name="ItemAlertToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="ItemAlertToggle_Changed" Unchecked="ItemAlertToggle_Changed" />
-                            <TextBlock x:Name="ItemAlertCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
-
-                        <DockPanel Margin="0,0,0,12">
-                            <ToggleButton x:Name="RecallTimerToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="RecallTimerToggle_Changed" Unchecked="RecallTimerToggle_Changed" />
-                            <TextBlock x:Name="RecallTimerCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
-
-                        <DockPanel Margin="0,0,0,12">
-                            <ToggleButton x:Name="NotificationToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="NotificationToggle_Changed" Unchecked="NotificationToggle_Changed" />
-                            <TextBlock x:Name="NotificationCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
-
-                        <DockPanel>
-                            <ToggleButton x:Name="StatusCardToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="StatusCardToggle_Changed" Unchecked="StatusCardToggle_Changed" />
-                            <TextBlock x:Name="StatusCardCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>

@@ -110,6 +110,9 @@ public partial class MainWindow : Window
     private static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
 
     [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
     private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
                                             int X, int Y, int cx, int cy, uint uFlags);
 
@@ -633,8 +636,11 @@ public partial class MainWindow : Window
                 // reappears on Alt-Tab. SWP_NOACTIVATE keeps the game's focus.
                 ReassertTopmost();
 
-                // Only reposition when the game rect changed since the last apply.
-                if (_lastGameRect is { } prev && RectEquals(prev, rect))
+                // Only reposition when the game rect changed since the last apply — or when this
+                // window no longer covers it: under per-monitor DPI, WPF answers a monitor change
+                // (WM_DPICHANGED) by resizing the window to Windows' suggested rect.
+                if (_lastGameRect is { } prev && RectEquals(prev, rect)
+                    && GetWindowRect(_hwnd, out RECT own) && RectEquals(own, rect))
                     return;
 
                 ApplyDeviceRect(rect);
@@ -767,10 +773,19 @@ public partial class MainWindow : Window
         return true;
     }
 
-    /// <summary>Apply a device-pixel screen rect to this window, converting to WPF DIPs
-    /// via the PresentationSource DPI matrix (correct at non-100% display scaling).</summary>
+    /// <summary>Apply a device-pixel screen rect to this window. The app is per-monitor DPI aware
+    /// (app.manifest), so the rect is physical pixels and goes straight to SetWindowPos; converting
+    /// to DIPs first would use THIS window's current monitor DPI, which is wrong when the game sits
+    /// on a monitor with a different scale. The DIP path remains only for before the HWND exists.</summary>
     private void ApplyDeviceRect(RECT bounds)
     {
+        if (_hwnd != IntPtr.Zero)
+        {
+            SetWindowPos(_hwnd, HWND_TOPMOST, bounds.Left, bounds.Top,
+                bounds.Right - bounds.Left, bounds.Bottom - bounds.Top, SWP_NOACTIVATE);
+            return;
+        }
+
         double dpiScaleX = 1.0, dpiScaleY = 1.0;
         var source = PresentationSource.FromVisual(this);
         if (source?.CompositionTarget != null)

@@ -51,20 +51,12 @@ public sealed class HelpView : UserControl
     {
         _list.Children.Clear();
 
-        var title = new TextBlock
-        {
-            Text = Localization.L("nav.help"),
-            FontSize = 18,
-            FontWeight = FontWeights.SemiBold,
-        };
-        title.SetResourceReference(TextBlock.ForegroundProperty, "Text");
-        _list.Children.Add(title);
-
+        // No page title: the window header already says "도움말".
         var subtitle = new TextBlock
         {
             Text = Localization.L("help.page.subtitle"),
             FontSize = 12,
-            Margin = new Thickness(0, 3, 0, 14),
+            Margin = new Thickness(0, 0, 0, 14),
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = TextColumn,
             HorizontalAlignment = HorizontalAlignment.Left,
@@ -130,6 +122,9 @@ public sealed class HelpView : UserControl
             BorderThickness = new Thickness(1),
             Margin = new Thickness(0, 0, 16, 10),
             HorizontalAlignment = HorizontalAlignment.Left,
+            // Same width for every card (text column + padding): they used to shrink to their
+            // text, so short sections made a ragged right edge.
+            Width = TextColumn + 34,
         };
         card.SetResourceReference(Border.BackgroundProperty, "Surface");
         card.SetResourceReference(Border.BorderBrushProperty, "Border");

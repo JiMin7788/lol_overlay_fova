@@ -10,7 +10,7 @@
     <ScrollViewer x:Name="PageScroll" Style="{StaticResource HiddenScroll}">
         <StackPanel Margin="4">
 
-            <TextBlock x:Name="TitleLabel" Text="콤보설정" Style="{StaticResource TitleText}" Margin="0,0,0,16" />
+            <!-- No page title: the window header already says "콤보설정". -->
 
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -33,7 +33,12 @@
                             <WrapPanel x:Name="ChampionPanel" Orientation="Horizontal" />
                         </ScrollViewer>
 
-                        <TextBlock x:Name="PaletteCaption" Text="스킬 팔레트" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <TextBlock x:Name="PaletteCaption" Text="스킬 팔레트" Style="{StaticResource CaptionText}" Margin="0,16,0,2" />
+                        <!-- The how-to sits right under the heading it explains (it used to come after
+                             the item and rune folds, far from the skills). -->
+                        <TextBlock x:Name="DragHint" Text="스킬을 아래로 드래그해 순서에 추가하세요."
+                                   Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                   Margin="0,0,0,8" />
                         <!-- Palette: drag a chip DOWN into the sequence. Also a drop target so a
                              sequence chip dragged UP here is deleted. -->
                         <Border x:Name="PaletteZone" AllowDrop="True" Background="Transparent"
@@ -41,8 +46,6 @@
                             <!-- Labeled palette categories so runes/items can be added as further
                                  sections later (task 5). Today only the 스킬 section is populated. -->
                             <StackPanel>
-                                <TextBlock x:Name="PaletteSkillsLabel" Text="스킬" Style="{StaticResource CaptionText}"
-                                           Margin="0,0,0,6" />
                                 <WrapPanel x:Name="PalettePanel" Orientation="Horizontal" />
                                 <TextBlock x:Name="PaletteHint" Text="챔피언을 선택하면 스킬이 표시됩니다."
                                            Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}" />
@@ -89,10 +92,6 @@
                                 </StackPanel>
                             </StackPanel>
                         </Border>
-
-                        <TextBlock x:Name="DragHint" Text="스킬을 아래로 드래그해 순서에 추가하세요."
-                                   Style="{StaticResource CaptionText}" Foreground="{StaticResource TextDim}"
-                                   Margin="0,10,0,6" />
 
                         <TextBlock x:Name="SequenceCaption" Text="콤보 순서" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
                         <!-- Sequence drop zone: palette chips land here (insertion indicator shows

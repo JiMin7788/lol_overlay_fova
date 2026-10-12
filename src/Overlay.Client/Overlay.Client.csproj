@@ -32,6 +32,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- WinForms only for the tray icon (TrayHost: NotifyIcon). Part of the same Desktop Runtime,
+         so the payload does not grow. Its implicit usings are removed below — they would make
+         Application, MessageBox, etc. ambiguous across the WPF code. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- WFAC010 asks a WinForms app to set its DPI mode in code; this is a WPF app, where the
+         per-monitor DPI mode can only come from app.manifest. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <!-- asInvoker since loop 512 — League runs at medium integrity, so the keyboard hook
          needs no elevation (measured in a live game). See app.manifest for the history. -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -42,6 +49,11 @@
     <!-- Program.Main runs VelopackApp before WPF starts (Velopack install/update hooks). -->
     <StartupObject>Overlay.Client.Program</StartupObject>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Bundle overlay-config.json next to the assembly so

@@ -284,6 +284,10 @@ public sealed class AppComposition : IDisposable
     /// rest of the graph; the HOME panel is its only consumer (zero in-game surface).</summary>
     public Overlay.Core.Lcu.LcuConnector? Lcu { get; }
 
+    /// <summary>True when the remote flags keep <paramref name="feature"/> off (Settings hides its
+    /// switches then).</summary>
+    public bool IsFeatureForcedOff(string feature) => _flags.IsForcedOff(feature);
+
     /// <summary>M33 per-champion rune/spell preset store (null iff <see cref="Lcu"/> is null).</summary>
     public Overlay.Core.ChampSelect.ChampSelectPresets? ChampSelectStore { get; }
 

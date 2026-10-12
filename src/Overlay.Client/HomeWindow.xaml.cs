@@ -72,6 +72,11 @@ public partial class HomeWindow : Window
     private readonly AdBanner? _adBanner;
 
     private MainWindow? _overlay;
+
+    // "Start with League" (general.autoStartWithGame): tray icon + client watch while on, and
+    // closing the window then hides it instead of exiting. Exit goes through the tray menu.
+    private TrayHost? _tray;
+    private bool _exiting;
     private bool _hotkeysWired;
 
     public HomeWindow()
@@ -214,6 +219,55 @@ public partial class HomeWindow : Window
             _adBanner?.EnsureStarted(this);
         };
         Closed += OnClosed;
+
+        SyncAutostart();
+        _autostartSub = _composition.Config.OnChange("general.autoStartWithGame",
+            _ => Dispatcher.Invoke(SyncAutostart));
+        Closing += (_, e) =>
+        {
+            if (_tray is null || _exiting) return;
+            e.Cancel = true;
+            Hide();
+        };
+        // A second launch (shortcut while waiting in the tray) brings this window up instead.
+        SingleInstance.ListenForShow(() => Dispatcher.BeginInvoke(() => ShowDashboard(activate: true)));
+    }
+
+    private readonly string _autostartSub;
+
+    /// <summary>False when an autostart launch should show the dashboard anyway: the setting was
+    /// turned off (no tray to come back from), or the League client is already running.</summary>
+    internal bool CanStartHidden => _tray is { ClientAlreadyRunning: false };
+
+    /// <summary>Show (or restore) the dashboard. Without activation when the League client is
+    /// what triggered it, so the client keeps focus.</summary>
+    internal void ShowDashboard(bool activate)
+    {
+        ShowActivated = activate;
+        Show();
+        ShowActivated = true;
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        if (activate) Activate();
+    }
+
+    private void SyncAutostart()
+    {
+        bool on = _composition.Config.Get("general.autoStartWithGame") is true;
+        Autostart.Apply(on);
+        if (on && _tray is null)
+            _tray = new TrayHost(() => IsVisible, () => ShowDashboard(activate: false),
+                () => ShowDashboard(activate: true), ExitFromTray);
+        else if (!on && _tray is not null)
+        {
+            _tray.Dispose();
+            _tray = null;
+        }
+    }
+
+    private void ExitFromTray()
+    {
+        _exiting = true;
+        Close();
     }
 
     /// <summary>(loop 521) Reserve or reclaim the bottom ad row. Reserved only while a creative is
@@ -470,6 +524,8 @@ public partial class HomeWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _tray?.Dispose();
+        EventBus.Unsubscribe(_autostartSub);
         _adBanner?.Shutdown();
         Localization.LanguageChanged -= ApplyLanguage;
         EventBus.Unsubscribe(_connSub);

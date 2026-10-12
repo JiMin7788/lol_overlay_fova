@@ -389,14 +389,12 @@ public partial class ComboSettingsView : UserControl
 
     private void ApplyLanguage()
     {
-        TitleLabel.Text = Localization.L("combo.title");
         TargetCaption.Text = Localization.L("target.title");
         TargetHint.Text = Localization.L("target.hint");
         BuildCaption.Text = Localization.L("combo.build");
         ChampionCaption.Text = Localization.L("combo.champion");
         ChampionSearchBox.Tag = Localization.L("combo.championSearch");
         PaletteCaption.Text = Localization.L("combo.palette");
-        PaletteSkillsLabel.Text = Localization.L("combo.paletteSkills");
         ItemCaption.Text = Localization.L("combo.paletteMore");
         ItemSearchBox.Tag = Localization.L("combo.itemSearch");
         ItemHint.Text = Localization.L("combo.itemHint");
