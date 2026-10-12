@@ -33,7 +33,7 @@ public sealed class ChampionIconProvider
 {
     /// <summary>Cached Data Dragon patch version — matches <see cref="AbilityIconProvider"/>
     /// and the on-disk offline cache the app ships with.</summary>
-    private const string Version = "16.13.1";
+    private static string Version => Overlay.Core.ChampionDb.DDragonData.CurrentVersion;
 
     private const string BaseUrl = "https://ddragon.leagueoflegends.com";
 
@@ -82,7 +82,7 @@ public sealed class ChampionIconProvider
                 return;
             }
 
-            var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "champion");
+            var dir = DDragonIconProvider.ImgDir("champion");
             Directory.CreateDirectory(dir);
             var path = Path.Combine(dir, id + ".png");
 
@@ -172,12 +172,5 @@ public sealed class ChampionIconProvider
     /// discovering the version dir rather than hardcoding it (newest wins), mirroring
     /// <see cref="Overlay.Core.ChampionDb.ChampionSummary"/>.</summary>
     private static string? FindSummaryPath()
-    {
-        var root = Path.Combine(AppContext.BaseDirectory, "data", "ddragon");
-        if (!Directory.Exists(root)) return null;
-        var files = Directory.GetFiles(root, "champion.json", SearchOption.AllDirectories);
-        if (files.Length == 0) return null;
-        Array.Sort(files, StringComparer.Ordinal);
-        return files[^1];
-    }
+        => Overlay.Core.ChampionDb.DDragonData.CurrentDir is { } dir ? Path.Combine(dir, "champion.json") : null;
 }

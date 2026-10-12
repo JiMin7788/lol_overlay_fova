@@ -128,6 +128,9 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
   2025-05-29), advertising exists only as a single static banner in the desktop app's home
   window, and the ad slot hard-disables the moment a game is detected. Fova is free for all
   players.
+- **Anonymous usage stats and crash reports only** (an install id minted on your PC, app and
+  Windows version, scrubbed error text) — no account or game data; switch it off in Settings.
+  익명 사용 통계·오류 리포트만 보내며 끌 수 있습니다: [개인정보 안내](https://jimin7788.github.io/lol_overlay_fova/privacy.html)
 
 ## 쓰는 법 · Usage
 

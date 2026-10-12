@@ -35,7 +35,7 @@ public static class AbilityIconProvider
 {
     /// <summary>Cached Data Dragon patch version — matches <c>AppComposition.DataDragonVersion</c>
     /// and the on-disk offline cache the app ships with.</summary>
-    private const string Version = "16.13.1";
+    private static string Version => Overlay.Core.ChampionDb.DDragonData.CurrentVersion;
 
     private const string BaseUrl = "https://ddragon.leagueoflegends.com";
 
@@ -75,14 +75,16 @@ public static class AbilityIconProvider
     /// Best-effort: returns an empty map (never throws) on any failure. Split out of
     /// <see cref="LoadIconsAsync"/> so both the editor's ImageSource load AND the overlay's
     /// <see cref="AbilityIconPathOrNull"/> path resolver share one JSON-parse.</summary>
-    private static async Task<IReadOnlyDictionary<string, string>> ResolveSlotFullsAsync(
+    internal static async Task<IReadOnlyDictionary<string, string>> ResolveSlotFullsAsync(
         string championId, CancellationToken ct)
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(championId)) return map;
 
         var championJson = Path.Combine(
-            AppContext.BaseDirectory, "data", "ddragon", Version, "champion", championId + ".json");
+            Overlay.Core.ChampionDb.DDragonData.CurrentDir
+                ?? Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version),
+            "champion", championId + ".json");
         if (!File.Exists(championJson) && !await TryFetchChampionJsonAsync(championJson, championId, ct).ConfigureAwait(false))
             return map;
 
@@ -167,7 +169,7 @@ public static class AbilityIconProvider
         if (!fulls.TryGetValue(slot, out var full) || string.IsNullOrEmpty(full)) return null;
 
         var kind = slot == "P" ? "passive" : "spell";
-        var path = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", kind, full);
+        var path = Path.Combine(DDragonIconProvider.ImgDir(kind), full);
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
 
         // Filename known but the PNG isn't cached yet — kick off the icon download (idempotent, cached).
@@ -324,7 +326,7 @@ public static class AbilityIconProvider
     /// caching it to disk on first use, and returns it as a frozen <see cref="ImageSource"/>.</summary>
     private static async Task<ImageSource?> LoadIconAsync(string kind, string full, CancellationToken ct)
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", kind);
+        var dir = DDragonIconProvider.ImgDir(kind);
         Directory.CreateDirectory(dir);
         var path = Path.Combine(dir, full);
 

@@ -592,7 +592,7 @@ public sealed class MinimapVisionPipeline : IDisposable
         {
             string? circle = DDragonIconProvider.ChampionCircleIconPathOrNull(championId);
             string path = circle ?? Path.Combine(
-                AppContext.BaseDirectory, "data", "ddragon", _ddragonVersion, "img", "champion", championId + ".png");
+                AppPaths.AssetCacheDir, "ddragon", _ddragonVersion, "img", "champion", championId + ".png");
             wasCircle = circle is not null;
             if (!File.Exists(path)) return null;
 

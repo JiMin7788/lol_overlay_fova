@@ -21,7 +21,7 @@ public static class DDragonIconProvider
 {
     /// <summary>Cached Data Dragon patch version — matches <see cref="AbilityIconProvider"/> and
     /// <see cref="ChampionIconProvider"/>.</summary>
-    private const string Version = "16.13.1";
+    internal static string Version => Overlay.Core.ChampionDb.DDragonData.CurrentVersion;
 
     private const string BaseUrl = "https://ddragon.leagueoflegends.com";
 
@@ -48,6 +48,51 @@ public static class DDragonIconProvider
     private static readonly ConcurrentDictionary<string, Task> EnsureInFlight = new(StringComparer.Ordinal);
     private const int FailureRetryMs = 60_000;
 
+    /// <summary>Data Dragon image directory for one kind ("champion", "item", "spell", "passive").
+    /// Shared with <see cref="AbilityIconProvider"/>, <see cref="ChampionIconProvider"/> and
+    /// <see cref="AssetPrefetcher"/>, which must all read and write the same files.</summary>
+    internal static string ImgDir(string kind) => Path.Combine(AppPaths.AssetCacheDir, "ddragon", Version, "img", kind);
+
+    internal static string GameAssetDir => Path.Combine(AppPaths.AssetCacheDir, "cdragon", "img");
+
+    internal static string PerkDir => Path.Combine(AppPaths.AssetCacheDir, "ddragon", "img", "perk");
+
+    /// <summary>The cache file name for a CommunityDragon game-asset path (see <see cref="LoadGameAssetIconAsync"/>).</summary>
+    internal static string GameAssetFileName(string relativePath) => relativePath.Replace('/', '_');
+
+    internal const string CDragonGameRoot = CDragonGameUrl;
+    internal const string DDragonRoot = BaseUrl;
+
+    /// <summary>Download-only: writes <paramref name="url"/> to <paramref name="dir"/>/<paramref name="fileName"/>
+    /// unless a non-empty file is already there, without decoding it (the prefetcher fetches ~1,500
+    /// icons; decoding them would hold them all in memory). True when the file exists afterwards.</summary>
+    internal static async Task<bool> DownloadIfMissingAsync(string dir, string fileName, string url, CancellationToken ct)
+    {
+        if (!StaysWithin(dir, fileName)) return false;
+        var path = Path.Combine(dir, fileName);
+        if (File.Exists(path) && new FileInfo(path).Length > 0) return true;
+        try
+        {
+            Directory.CreateDirectory(dir);
+            var bytes = await Http.GetByteArrayAsync(url, ct).ConfigureAwait(false);
+            if (bytes.Length == 0) return false;
+            var tmp = path + ".part";
+            await File.WriteAllBytesAsync(tmp, bytes, ct).ConfigureAwait(false);
+            File.Move(tmp, path, overwrite: true);
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { return false; }
+    }
+
+    /// <summary>GET a small text document (a Data Dragon list), or null on any failure.</summary>
+    internal static async Task<string?> GetStringOrNullAsync(string url, CancellationToken ct)
+    {
+        try { return await Http.GetStringAsync(url, ct).ConfigureAwait(false); }
+        catch (OperationCanceledException) { throw; }
+        catch { return null; }
+    }
+
     private static HttpClient CreateClient()
     {
         var http = new HttpClient();
@@ -60,7 +105,7 @@ public static class DDragonIconProvider
     public static Task<ImageSource?> LoadChampionPortraitAsync(string championId, CancellationToken ct = default)
         => LoadAsync(
             memoryKey: "champion:" + championId,
-            diskDir: Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "champion"),
+            diskDir: ImgDir("champion"),
             fileName: championId + ".png",
             url: $"{BaseUrl}/cdn/{Version}/img/champion/{championId}.png",
             ct);
@@ -73,7 +118,7 @@ public static class DDragonIconProvider
     public static string? ItemIconPathOrNull(string itemId)
     {
         if (string.IsNullOrWhiteSpace(itemId)) return null;
-        var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "item");
+        var dir = ImgDir("item");
         if (!StaysWithin(dir, itemId + ".png")) return null;
         var path = Path.Combine(dir, itemId + ".png");
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
@@ -85,7 +130,7 @@ public static class DDragonIconProvider
     public static Task<ImageSource?> LoadItemIconAsync(string itemId, CancellationToken ct = default)
         => LoadAsync(
             memoryKey: "item:" + itemId,
-            diskDir: Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "item"),
+            diskDir: ImgDir("item"),
             fileName: itemId + ".png",
             url: $"{BaseUrl}/cdn/{Version}/img/item/{itemId}.png",
             ct);
@@ -97,7 +142,7 @@ public static class DDragonIconProvider
     public static string? SummonerIconPathOrNull(string spellId)
     {
         if (string.IsNullOrWhiteSpace(spellId)) return null;
-        var dir = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "spell");
+        var dir = ImgDir("spell");
         if (!StaysWithin(dir, spellId + ".png")) return null;
         var path = Path.Combine(dir, spellId + ".png");
         if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
@@ -111,7 +156,7 @@ public static class DDragonIconProvider
     public static Task<ImageSource?> LoadSummonerIconAsync(string spellId, CancellationToken ct = default)
         => LoadAsync(
             memoryKey: "summoner:" + spellId,
-            diskDir: Path.Combine(AppContext.BaseDirectory, "data", "ddragon", Version, "img", "spell"),
+            diskDir: ImgDir("spell"),
             fileName: spellId + ".png",
             url: $"{BaseUrl}/cdn/{Version}/img/spell/{spellId}.png",
             ct);
@@ -124,10 +169,10 @@ public static class DDragonIconProvider
     public static Task<ImageSource?> LoadGameAssetIconAsync(string relativePath, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(relativePath)) return Task.FromResult<ImageSource?>(null);
-        var safeFileName = relativePath.Replace('/', '_');
+        var safeFileName = GameAssetFileName(relativePath);
         return LoadAsync(
             memoryKey: "cdasset:" + relativePath,
-            diskDir: Path.Combine(AppContext.BaseDirectory, "data", "cdragon", "img"),
+            diskDir: GameAssetDir,
             fileName: safeFileName,
             url: $"{CDragonGameUrl}/{relativePath}",
             ct);
@@ -143,7 +188,7 @@ public static class DDragonIconProvider
         var safeFileName = iconPath.Replace('/', '_');
         return LoadAsync(
             memoryKey: "rune:" + iconPath,
-            diskDir: Path.Combine(AppContext.BaseDirectory, "data", "ddragon", "img", "perk"),
+            diskDir: PerkDir,
             fileName: safeFileName,
             url: $"{BaseUrl}/cdn/img/{iconPath}",
             ct);
@@ -153,7 +198,7 @@ public static class DDragonIconProvider
     /// <see cref="ChampionCircleIconPathOrNull"/>). Separate from <c>cdragon/img</c> so the minimap's
     /// template set can be inspected — or deleted to force a refetch — on its own.</summary>
     private static string CircleIconDir =>
-        Path.Combine(AppContext.BaseDirectory, "data", "cdragon", "minimap");
+        Path.Combine(AppPaths.AssetCacheDir, "cdragon", "minimap");
 
     /// <summary>Champions whose minimap icon is filed under something other than
     /// <c>{name}_circle_0</c> or <c>{name}_circle</c> — mostly the champion's ORIGINAL internal

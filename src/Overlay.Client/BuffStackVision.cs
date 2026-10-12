@@ -193,7 +193,7 @@ public sealed class BuffStackVision : IDisposable
     {
         try
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "data", "ddragon", _ddragonVersion,
+            string path = Path.Combine(AppPaths.AssetCacheDir, "ddragon", _ddragonVersion,
                 "img", "spell", iconFile);
             if (!File.Exists(path)) { _log?.Invoke($"buffstacks: no spell icon at {path}"); return null; }
 

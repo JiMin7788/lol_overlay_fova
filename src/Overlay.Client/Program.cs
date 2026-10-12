@@ -27,6 +27,11 @@ internal static class Program
         StartInBackground = args.Contains(Autostart.BackgroundArg);
 
         AppUpdater.Initialize();
+        // Data Dragon versions: downloaded ones (kept across app updates) first, the bundled one
+        // as the offline fallback. Before anything reads champion/item data.
+        Overlay.Core.ChampionDb.DDragonData.SetRoots(
+            System.IO.Path.Combine(AppPaths.AssetCacheDir, "ddragon"),
+            System.IO.Path.Combine(AppContext.BaseDirectory, "data", "ddragon"));
         // Every start, not an OnFirstRun hook: a silent install never delivers the first-run
         // signal. Cheap when there is nothing to do (one registry lookup).
         if (AppUpdater.IsInstalled) LegacyInstall.Migrate();

@@ -111,14 +111,7 @@ public static class ChampionSummary
     /// The version dir is discovered rather than hardcoded so a patch bump needs no code
     /// change; the newest (last) matching file wins if more than one version is cached.</summary>
     private static string? FindSummaryPath()
-    {
-        var root = Path.Combine(AppContext.BaseDirectory, "data", "ddragon");
-        if (!Directory.Exists(root)) return null;
-        var files = Directory.GetFiles(root, "champion.json", SearchOption.AllDirectories);
-        if (files.Length == 0) return null;
-        Array.Sort(files, StringComparer.Ordinal);
-        return files[^1];
-    }
+        => DDragonData.CurrentDir is { } dir ? Path.Combine(dir, "champion.json") : null;
 
     private static double GetD(JsonElement obj, string prop)
         => obj.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0.0;

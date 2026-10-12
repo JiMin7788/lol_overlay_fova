@@ -54,7 +54,8 @@ public sealed class AppComposition : IDisposable
 {
     /// <summary>The cached Data Dragon patch version checked into the Core output <c>data/</c>
     /// dir. The offline cache is keyed on this version.</summary>
-    private const string DataDragonVersion = "16.13.1";
+    /// <summary>The Data Dragon version this session runs on (newest downloaded, else bundled).</summary>
+    private static string DataDragonVersion => DDragonData.CurrentVersion;
 
     /// <summary>Fallback champion set (the originally sampled 5) used only before the M11
     /// repository finishes loading the full roster, or if that load fails. Once
@@ -302,6 +303,10 @@ public sealed class AppComposition : IDisposable
 
         // Background update check/download; applied when the app exits (AppUpdater).
         _ = AppUpdater.CheckAndDownloadAsync(_cts.Token);
+        // Every icon downloaded once in the background, so nothing waits on a CDN later.
+        _ = AssetPrefetcher.RunAsync(_cts.Token);
+        // A newer Data Dragon patch is downloaded now and used from the next launch.
+        _ = DDragonUpdater.RefreshAsync(_cts.Token);
 
         // Fire-and-forget: the internal try/catch keeps a startup failure from surfacing as
         // an unobserved task exception, and the UI thread is never blocked.
@@ -316,7 +321,8 @@ public sealed class AppComposition : IDisposable
         try
         {
             var baseDir = AppContext.BaseDirectory;
-            var ddragonCacheDir = Path.Combine(baseDir, "data", "ddragon", DataDragonVersion);
+            var ddragonCacheDir = DDragonData.CurrentDir
+                ?? Path.Combine(baseDir, "data", "ddragon", DDragonData.BundledVersion);
 
             // item.ko_KR.json (Part 3) is fetched by DDragonClient.EnsureCachedAsync alongside
             // item.json, but an old cache predating that fetch (or an offline first run before it

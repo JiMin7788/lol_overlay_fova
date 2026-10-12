@@ -1294,7 +1294,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // when there is actually something to say, so every other combo's card is unchanged.
         string? killAngleLine = BuildKillAngleLine(cr);
         double killF = 11 * scale, killH = killAngleLine is null ? 0 : killF * 1.35 + 7 * scale;
-        double cardH = padY + headerH + m1 + hpBarH + m2 + boxH + killH + m3 + chipSize + padY;
+        // (1.0 plan, "item freshness") The gauge's max HP comes from the enemy's items, and the game
+        // only reports an enemy's items as of when they were last seen — so it can lag. Said once,
+        // under the gauge. A fixed note rather than a time: the Live Client API does not say when an
+        // enemy was last visible, and "items last changed N ago" would read as if it did.
+        double freshF = 9 * scale, freshH = hud.TargetMaxHp > 0 ? freshF * 1.35 + 3 * scale : 0;
+        double cardH = padY + headerH + m1 + hpBarH + freshH + m2 + boxH + killH + m3 + chipSize + padY;
 
         var (dx, dy) = GetOffset("comboResult");
         double x = centerX - cardW / 2 + dx, yy = y + dy;
@@ -1347,8 +1352,9 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             // The bright cut line marks the guaranteed-kill HP (rMin): at or below it, the kill is sure.
             double cutX = innerX + hpBarW * killMin;
             into.Add(Rect(cutX - 1 * scale, cy - 2 * scale, 2 * scale, hpBarH + 4 * scale, HpMinLine));
+            into.Add(Text("최대 체력: 적 아이템을 마지막으로 본 시점 기준", innerX, cy + hpBarH + 3 * scale, NameDim, freshF));
         }
-        cy += hpBarH + m2;
+        cy += hpBarH + freshH + m2;
 
         double boxGap = 9 * scale, boxW = (barW - boxGap) / 2, numF = 30 * scale;
         string maxText = rMax.ToString("0", CultureInfo.InvariantCulture);

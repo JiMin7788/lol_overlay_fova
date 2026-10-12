@@ -36,10 +36,8 @@ public static class ChampionInfoDb
             var map = new Dictionary<int, Info>();
             try
             {
-                var root = Path.Combine(AppContext.BaseDirectory, "data", "ddragon");
-                var file = Directory.GetFiles(root, "champion.json", SearchOption.AllDirectories)
-                    .OrderBy(p => p, StringComparer.Ordinal).LastOrDefault();
-                if (file is not null)
+                var file = DDragonData.CurrentDir is { } dir ? Path.Combine(dir, "champion.json") : null;
+                if (file is not null && File.Exists(file))
                 {
                     using var doc = JsonDocument.Parse(File.ReadAllText(file));
                     foreach (var champ in doc.RootElement.GetProperty("data").EnumerateObject())
