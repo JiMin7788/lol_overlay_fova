@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fova — 개인정보 안내</title>
+<meta name="description" content="Fova가 보내는 익명 사용 통계와 오류 리포트, 그리고 앱이 연결하는 곳에 대한 안내.">
+<style>
+  :root{
+    --bg:#0F1117; --surface:#181B22; --surface-hi:#20242E;
+    --border:#2A2F3A; --text:#E4E8EE; --dim:#95A0AC; --gold:#C89B3C; --gold-dim:#B7995E;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;
+    line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--gold-dim)}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  header{padding:48px 0 20px}
+  header a{color:var(--text);text-decoration:none;font-weight:800;font-size:22px}
+  h1{font-size:26px;margin:18px 0 6px}
+  .sub{color:var(--dim);font-size:14px}
+  section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin:18px 0}
+  h2{font-size:17px;margin-bottom:10px}
+  p,li{font-size:14.5px}
+  p+p{margin-top:8px}
+  ul{padding-left:20px}
+  li{margin:4px 0}
+  code{background:var(--surface-hi);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--dim);font-weight:600}
+  footer{margin:40px 0;padding-top:20px;border-top:1px solid var(--border);color:var(--dim);font-size:12.5px;text-align:center}
+  footer p{margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="index.html">← Fova</a>
+    <h1>개인정보 안내</h1>
+    <p class="sub">Fova가 무엇을 보내고 무엇을 보내지 않는지, 앱이 어디에 연결하는지 정리했습니다.</p>
+  </header>
+
+  <section>
+    <h2>익명 사용 통계 · 오류 리포트</h2>
+    <p>Fova는 앱이 얼마나 쓰이는지와 어디서 오류가 나는지 알기 위해 아래 두 가지만 보냅니다.
+       설정 &gt; 기본 &gt; 데이터에서 언제든 끌 수 있고, 처음 실행할 때 홈 화면에서도 안내합니다.</p>
+    <table>
+      <tr><th>언제</th><th>보내는 내용</th></tr>
+      <tr><td>앱을 켤 때 1번</td><td>익명 설치 ID, 앱 버전, Windows 버전</td></tr>
+      <tr><td>앱 오류가 났을 때</td><td>위 세 가지 + 오류가 난 위치와 오류 내용. 오류 내용 안의 사용자 폴더 경로(<code>C:\Users\이름\…</code>)는 보내기 전에 <code>~</code>로 지웁니다.</td></tr>
+    </table>
+    <p><b>익명 설치 ID</b>는 처음 실행할 때 내 PC에서 무작위로 만든 값입니다. 설치본 하나를 구분할 뿐, 사람이나 계정과 연결되지 않습니다.
+       값은 <code>%LocalAppData%\Fova\telemetry\install_id</code>에 있습니다.</p>
+  </section>
+
+  <section>
+    <h2>보내지 않는 것</h2>
+    <ul>
+      <li>Riot 계정, 소환사명, 전적 등 계정·게임 정보</li>
+      <li>키 입력 내용 — 단축키 감지는 등록한 키 조합만 확인하고, 입력을 기록하거나 보내지 않습니다</li>
+      <li>화면 캡처, 하드웨어 식별 정보</li>
+      <li>광고·분석용 외부 SDK — 쓰지 않습니다</li>
+    </ul>
+    <p>받는 서버는 Fova가 직접 운영하는 Cloudflare Worker입니다. Fova는 IP 주소와 쿠키를 저장하지 않습니다.
+       서버를 호스팅하는 Cloudflare는 연결을 처리하는 과정에서 자체 정책에 따라 접속 정보를 다룰 수 있습니다.</p>
+  </section>
+
+  <section>
+    <h2>앱이 연결하는 곳</h2>
+    <p>위 통계 외에, 앱은 동작에 필요한 공개 데이터를 아래에서 받습니다. 이 요청에는 내 정보를 담지 않습니다.</p>
+    <table>
+      <tr><th>대상</th><th>용도</th></tr>
+      <tr><td>내 PC의 롤 클라이언트·게임 (로컬 API)</td><td>게임 상태, 룬 페이지 — 내 PC 밖으로 나가지 않습니다</td></tr>
+      <tr><td>Riot Data Dragon, CommunityDragon</td><td>챔피언·아이템·스킬 데이터와 아이콘</td></tr>
+      <tr><td>GitHub (이 프로젝트 저장소)</td><td>자동 업데이트, 기능 설정 파일, 홈 화면 배너</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>끄기 · 문의</h2>
+    <p>설정 &gt; 기본 &gt; 데이터의 "익명 사용 통계·오류 리포트"를 끄면 그 뒤로는 아무것도 보내지 않습니다.</p>
+    <p>궁금한 점은 <a href="https://github.com/JiMin7788/lol_overlay_fova/issues">GitHub 이슈</a>로 남겨 주세요.</p>
+  </section>
+
+  <footer>
+    <p>Fova isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+       <br>Fova는 Riot Games의 보증을 받지 않았으며, Riot Games 또는 Riot Games 자산의 제작·관리에 공식적으로 관여하는 누구의 견해나 의견도 대변하지 않습니다. Riot Games 및 모든 관련 자산은 Riot Games, Inc.의 상표 또는 등록 상표입니다.</p>
+    <p><a href="index.html">← Fova 홈</a></p>
+  </footer>
+</div>
+</body>
+</html>
