@@ -27,6 +27,9 @@ internal static class AppUpdater
     /// Program.Main calls before anything reads <see cref="AppPaths"/>.</summary>
     public static bool IsInstalled { get; private set; }
 
+    /// <summary>The installed release version ("0.3.6"), or null outside a Velopack install.</summary>
+    public static string? CurrentVersion => IsInstalled ? _manager?.CurrentVersion?.ToString() : null;
+
     public static void Initialize()
     {
         try

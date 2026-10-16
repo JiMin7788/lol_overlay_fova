@@ -193,6 +193,13 @@
                         <ItemsControl x:Name="SavedList" />
                         <TextBlock x:Name="EmptySaved" Text="아직 저장된 콤보가 없습니다." Style="{StaticResource BodyText}"
                                    Foreground="{StaticResource TextDim}" />
+                        <!-- Built-in combos for the selected champion (ComboPresets); [추가] saves one. -->
+                        <StackPanel x:Name="PresetPanel" Margin="0,18,0,0" Visibility="Collapsed">
+                            <TextBlock x:Name="PresetCaption" Text="추천 콤보" Style="{StaticResource CaptionText}" />
+                            <TextBlock x:Name="PresetHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                       Margin="0,4,0,8" TextWrapping="Wrap" />
+                            <ItemsControl x:Name="PresetList" />
+                        </StackPanel>
                         <TextBlock x:Name="SavedHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
                                    Margin="0,12,0,0"
                                    Text="게임 입장 후 등록한 단축키를 누르면 콤보 데미지가 오버레이에 표시됩니다." />

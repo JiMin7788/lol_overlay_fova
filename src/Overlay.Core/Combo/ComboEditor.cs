@@ -304,6 +304,60 @@ public sealed class ComboEditor
         return GetCombo(draft.Id);
     }
 
+    // ── Built-in presets (see ComboPresets) ──────────────────────────────────────────────
+
+    /// <summary>Saves <paramref name="preset"/> as a NEW combo for <paramref name="championId"/>, built
+    /// from the champion's live palette the same way the editor builds one by hand: each slot's
+    /// palette node, re-identified as <c>{slot}_{n}</c>. "Ignite" / "Flash" become the same summoner
+    /// nodes the editor offers. Binds the first of ALT+1…ALT+9 this champion's combos don't use yet
+    /// (user request: presets on Alt+1, 2, 3), none when all nine are taken — the bound key is
+    /// returned. Throws <see cref="ComboImportException"/> — and saves nothing — when a slot is not
+    /// on this champion's palette.</summary>
+    public (ComboDraft Combo, string? Hotkey) AddPreset(string championId, ComboPresets.Preset preset)
+    {
+        var palette = LoadPalette(championId).AvailableNodes.ToDictionary(n => n.Id, StringComparer.Ordinal);
+        var nodes = new List<ComboNode>();
+        for (int i = 0; i < preset.Sequence.Count; i++)
+        {
+            var slot = preset.Sequence[i];
+            var template = palette.TryGetValue(slot, out var n) ? n
+                : slot is "Ignite" or "Flash" ? SummonerNode(slot)
+                : throw new ComboImportException($"Preset '{preset.Name}' uses '{slot}', which {championId} does not have");
+            nodes.Add(template with { Id = $"{slot}_{i}" });
+        }
+
+        var draft = CreateCombo(championId, preset.Name);
+        foreach (var node in nodes) AddNode(draft.Id, node);
+        SaveCombo(draft.Id);
+
+        var hotkey = FirstFreeNumberHotkey(championId);
+        if (hotkey is not null) BindHotkey(draft.Id, hotkey);
+        return (GetCombo(draft.Id), hotkey);
+    }
+
+    /// <summary>ALT+1…ALT+9, the first one no combo of <paramref name="championId"/> is bound to.</summary>
+    private string? FirstFreeNumberHotkey(string championId)
+    {
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (_config.Get("hotkeys.comboSlots") is IDictionary<string, object?> slots)
+            foreach (var (key, value) in slots)
+            {
+                if (value is null || string.IsNullOrWhiteSpace(value.ToString())) continue;
+                var (hotkey, champ) = SplitSlotKey(key);
+                if (string.Equals(champ, championId, StringComparison.Ordinal)) used.Add(hotkey);
+            }
+        for (int n = 1; n <= 9; n++)
+            if (!used.Contains($"ALT+{n}")) return $"ALT+{n}";
+        return null;
+    }
+
+    /// <summary>The summoner-spell nodes the editor's palette offers (Ignite: level-scaled true
+    /// damage resolved at trigger time; Flash: 0 damage, marks a dash for dash-triggered runes).</summary>
+    private static ComboNode SummonerNode(string id) => new(
+        Id: id, NodeType: ComboNodeType.Summoner, Name: id,
+        Cooldown: 0, Mana: 0, Damage: 0, DamageType: ComboDamageType.True,
+        RatioAD: 0, RatioBonusAD: 0, RatioAP: 0, CastTime: 0, Delay: 0, TravelTime: 0);
+
     // ── Persistence + save event ─────────────────────────────────────────────────
 
     /// <summary>Persists the combo (as a serialized <see cref="SavedCombo"/>) via M14 and

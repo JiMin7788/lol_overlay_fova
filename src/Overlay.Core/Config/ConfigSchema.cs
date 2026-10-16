@@ -485,6 +485,11 @@ public sealed class GeneralConfig
     /// <summary>Documented default: "en-US".</summary>
     [JsonPropertyName("language")]
     public string Language { get; set; } = "en-US";
+
+    /// <summary>True once the one-time HOME first-run guide (how to get a combo on screen, and the
+    /// Shift+Tab / scoreboard overlap) has been dismissed.</summary>
+    [JsonPropertyName("firstRunGuideShown")]
+    public bool FirstRunGuideShown { get; set; }
 }
 
 public sealed class CombosConfig

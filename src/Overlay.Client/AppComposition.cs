@@ -623,7 +623,17 @@ public sealed class AppComposition : IDisposable
     public void RefreshComboHotkeys()
     {
         if (_hotkeys is null) return; // not wired yet; WireHotkeys registers current combos on first show.
+        // Combos win a shared key (e.g. a combo on ALT+1 vs the combo-card toggle's default ALT+1):
+        // free the overlay-card keys, register the combos, then re-register the cards, which skip
+        // any key a combo now holds. Same order as startup, so the outcome no longer depends on
+        // whether the combo was bound before or after the app started.
+        foreach (var id in _overlayCardHotkeyRegIds)
+        {
+            try { _hotkeys.Unregister(id); } catch { /* already gone */ }
+        }
+        _overlayCardHotkeyRegIds.Clear();
         RegisterComboHotkeys();
+        RegisterOverlayCardHotkeys();
     }
 
     /// <summary>Unregisters the previously-registered combo hotkeys, then re-registers one OS-level

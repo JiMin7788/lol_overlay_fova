@@ -209,6 +209,23 @@
                         <Button x:Name="FlashKeyF" Content="F 점멸" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
                     </StackPanel>
                 </Border>
+                <!-- First-run guide (1.0 plan, must-add 4): how to get a combo on screen, and that the
+                     default overlay key overlaps the scoreboard. Shown once (general.firstRunGuideShown). -->
+                <Border x:Name="FirstRunGuide" Margin="28,12,28,0" Visibility="Collapsed"
+                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
+                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="FirstRunOpenCombo" Content="콤보설정 열기" Style="{StaticResource GhostButton}" />
+                            <Button x:Name="FirstRunDismiss" Content="닫기" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Text="Fova 시작하기" FontWeight="SemiBold" Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="FirstRunGuideText" Foreground="{StaticResource TextDim}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0" LineHeight="20" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
                 <!-- M39 one-time telemetry disclosure (2026-08-26): shown once, only while telemetry
                      is actually configured+on; both buttons dismiss it forever (telemetry.noticeShown). -->
                 <Border x:Name="TelemetryNotice" Margin="28,12,28,0" Visibility="Collapsed"

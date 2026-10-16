@@ -23,12 +23,12 @@ public sealed class HelpView : UserControl
 #if LIGHT
     {
         "intro", "overlay", "combo", "timers",
-        "champselect", "comp", "spells", "wards", "data", "legal",
+        "champselect", "comp", "spells", "wards", "data", "report", "legal",
     };
 #else
     {
         "intro", "overlay", "combo", "timers", "minimap",
-        "champselect", "comp", "spells", "wards", "search", "data", "legal",
+        "champselect", "comp", "spells", "wards", "search", "data", "report", "legal",
     };
 #endif
 
@@ -113,6 +113,7 @@ public sealed class HelpView : UserControl
         var stack = new StackPanel();
         stack.Children.Add(heading);
         stack.Children.Add(body);
+        if (key == "report") stack.Children.Add(ReportButton());
 
         var card = new Border
         {
@@ -129,5 +130,45 @@ public sealed class HelpView : UserControl
         card.SetResourceReference(Border.BackgroundProperty, "Surface");
         card.SetResourceReference(Border.BorderBrushProperty, "Border");
         return card;
+    }
+
+    /// <summary>[버그 신고]: zip of version + recent logs, shown in Explorer, plus a pre-filled
+    /// GitHub issue. The status line says where the zip went, or why it could not be made.</summary>
+    private static UIElement ReportButton()
+    {
+        var status = new TextBlock
+        {
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = TextColumn,
+            Margin = new Thickness(0, 8, 0, 0),
+            Visibility = Visibility.Collapsed,
+        };
+        status.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+
+        var button = new Button
+        {
+            Content = Localization.L("help.report.button"),
+            Margin = new Thickness(0, 12, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        button.SetResourceReference(StyleProperty, "PrimaryButton");
+        button.Click += (_, _) =>
+        {
+            try
+            {
+                status.Text = Localization.F("help.report.done", BugReport.CreateAndOpen());
+            }
+            catch (Exception ex)
+            {
+                status.Text = Localization.F("help.report.failed", ex.Message);
+            }
+            status.Visibility = Visibility.Visible;
+        };
+
+        var panel = new StackPanel();
+        panel.Children.Add(button);
+        panel.Children.Add(status);
+        return panel;
     }
 }

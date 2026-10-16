@@ -690,14 +690,14 @@ public partial class SettingsView : UserControl
             HotkeyButton.Content = _toggleHotkey;
 
         SkillHotkeyCaption.Text = SL("스킬 데미지 오버레이", "Skill-damage overlay");
-        SkillHotkeyDesc.Text = SL("스킬별 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+2).",
-            "Shows/hides the per-skill damage overlay (default ALT+2).");
+        SkillHotkeyDesc.Text = SL("스킬별 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+2). 같은 키를 콤보에 지정하면 콤보가 우선합니다.",
+            "Shows/hides the per-skill damage overlay (default ALT+2). A combo bound to the same key takes precedence.");
         if (!_capturingSkillHotkey)
             SkillHotkeyButton.Content = _skillOverlayHotkey;
 
         ComboHotkeyCaption.Text = SL("콤보 오버레이", "Combo overlay");
-        ComboHotkeyDesc.Text = SL("콤보 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+1).",
-            "Shows/hides the combo damage overlay (default ALT+1).");
+        ComboHotkeyDesc.Text = SL("콤보 예상 데미지 표시를 켜고 끕니다 (기본값 ALT+1). 같은 키를 콤보에 지정하면 콤보가 우선합니다.",
+            "Shows/hides the combo damage overlay (default ALT+1). A combo bound to the same key takes precedence.");
         if (!_capturingComboHotkey)
             ComboHotkeyButton.Content = _comboOverlayHotkey;
 

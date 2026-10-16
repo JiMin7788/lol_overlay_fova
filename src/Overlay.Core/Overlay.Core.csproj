@@ -92,6 +92,12 @@
     <!-- M31 detail-mode voice: camp/objective anchors for the nearest-camp lookup. Point data,
          unlike map_regions.json's region grid (which drives simple mode). Same link convention.
          Cross-checked against the grid by tools/validate_jungle_camps.py. -->
+    <!-- Built-in combos per champion (ComboPresets): name + slot sequence, sourced from community
+         guides (each entry lists its sources). Same lowercase link convention. -->
+    <None Include="Data\combo_presets.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\combo_presets.json</Link>
+    </None>
     <None Include="Data\jungle_camps.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>data\jungle_camps.json</Link>

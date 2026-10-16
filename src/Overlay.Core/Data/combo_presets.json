@@ -1,0 +1,4487 @@
+{
+  "_note": "Built-in combos per champion (ComboPresets). Each entry: kind (trade|allin), nameKo, sequence of palette slot ids (P/Q/W/E/R, AA, curated variant slots such as Q2, Ignite, Flash), and the community-guide sources it came from (found by web search 2026-10-12, remaining champions 2026-10-16; WebSearch summaries of Mobalytics/Mobafire/Metabot/1v9 etc.). Play advice, not game data. A recast whose second press deals no separate damage is listed once (see 'adjusted'), because the calculator counts every node. Validated by ComboPresetsTests.",
+  "Aatrox": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-Q2-AA-Q3-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "Q2",
+        "AA",
+        "Q3",
+        "E"
+      ],
+      "sources": [
+        "https://www.thebackdash.com/league-of-legends/best-aatrox-build-guide"
+      ],
+      "note": "Mobalytics' shorter trade is Q then E mid-animation to land the sweet spot."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-Q-AA-Q2-AA-Flash-Q3)",
+      "sequence": [
+        "W",
+        "E",
+        "Q",
+        "AA",
+        "Q2",
+        "AA",
+        "Flash",
+        "Q3"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aatrox/combos"
+      ],
+      "note": "Flash mid-air on Q3 to land the sweet spot; post-6 variants open with R."
+    }
+  ],
+  "Darius": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-W)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Darius/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-W-Q-AA-E-AA-R)",
+      "sequence": [
+        "AA",
+        "W",
+        "Q",
+        "AA",
+        "E",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Darius/combos",
+        "https://esports.gg/news/league-of-legends/how-to-play-darius-in-league/"
+      ]
+    }
+  ],
+  "Garen": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Garen/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-AA-E-R)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "AA",
+        "E",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/garen/combos"
+      ]
+    }
+  ],
+  "Fiora": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-E-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/fiora-top-lane-build-guides-runes-items-and-abilities-64d41c48"
+      ],
+      "note": "Tacter adds a Tiamat active before the last AA (item actives skipped)."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-AA-E-Flash-Q-AA)",
+      "sequence": [
+        "R",
+        "AA",
+        "E",
+        "Flash",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/fiora/combos"
+      ],
+      "note": "Hit a vital with each step."
+    }
+  ],
+  "Jax": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-W-AA-E-AA)",
+      "sequence": [
+        "AA",
+        "W",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Jax/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order E-Q-E-AA-W-AA; E recast ends the same E: one E hit",
+      "nameKo": "풀콤 (E-Q-AA-W-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Jax/combos"
+      ],
+      "note": "Second E is the recast (stun) mid-leap."
+    }
+  ],
+  "Camille": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-E-AA-Q-R-AA-AA-Q2)",
+      "sequence": [
+        "E",
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "R",
+        "AA",
+        "AA",
+        "Q2"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Camille/combos"
+      ]
+    }
+  ],
+  "Riven": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-W-Q)",
+      "sequence": [
+        "E",
+        "AA",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Riven/combos"
+      ],
+      "note": "Exitlag's beginner version: W AA Q."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-Flash-AA-W-Q-AA-AA)",
+      "sequence": [
+        "E",
+        "R",
+        "Flash",
+        "AA",
+        "W",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Riven/combos"
+      ]
+    }
+  ],
+  "Sett": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-AA-Q-AA-AA)",
+      "sequence": [
+        "AA",
+        "AA",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Sett/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-AA-AA-Q-AA-AA-R-AA-AA-W)",
+      "sequence": [
+        "E",
+        "AA",
+        "AA",
+        "Q",
+        "AA",
+        "AA",
+        "R",
+        "AA",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Sett/combos"
+      ]
+    }
+  ],
+  "Renekton": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-W-Q-AA-E)",
+      "sequence": [
+        "E",
+        "AA",
+        "W",
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://www.pocketgamer.co.uk/wild-rift/renekton-guide/"
+      ],
+      "note": "Source is a Wild Rift guide (skill numbers mapped to Q/W/E); same pattern as the PC all-in minus Flash/R."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Flash-W-AA-R-E-Q-AA-E)",
+      "sequence": [
+        "Flash",
+        "W",
+        "AA",
+        "R",
+        "E",
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/renekton/combos",
+        "https://www.pocketgamer.co.uk/wild-rift/renekton-guide/"
+      ]
+    }
+  ],
+  "Irelia": [
+    {
+      "kind": "trade",
+      "adjusted": "guide order E-E-Q-AA; first E press only places the blade: one E hit",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/question/irelia-tips-anyone-2166"
+      ],
+      "note": "Pre-6; finish with Q back to a minion."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order E-R-Flash-Q-E-AA-Q-AA-Q-W-Q; first E press only places the blade: one E hit",
+      "nameKo": "풀콤 (E-R-Flash-Q-AA-Q-AA-Q-W-Q)",
+      "sequence": [
+        "E",
+        "R",
+        "Flash",
+        "Q",
+        "AA",
+        "Q",
+        "AA",
+        "Q",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/irelia/combos"
+      ]
+    }
+  ],
+  "Yone": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-AA-W-AA-Q)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA",
+        "W",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://www.mobafire.com/profile/oymega-960206/blog?tag=otp"
+      ],
+      "note": "With Q3 stacked beforehand (community blog)."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order E-Flash-R-Q-W-AA-AA-Q-E; E return is not a separate hit",
+      "nameKo": "풀콤 (E-Flash-R-Q-W-AA-AA-Q)",
+      "sequence": [
+        "E",
+        "Flash",
+        "R",
+        "Q",
+        "W",
+        "AA",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/yone/combos"
+      ]
+    }
+  ],
+  "Mordekaiser": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/attack-speed-ap-mordekaiser-593984"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-Q-AA)",
+      "sequence": [
+        "E",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/mordekaiser/combos"
+      ]
+    }
+  ],
+  "LeeSin": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-R-AA-Q2)",
+      "sequence": [
+        "Q",
+        "E",
+        "R",
+        "AA",
+        "Q2"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/a-complex-guide-to-lee-sin-442954",
+        "https://pol1.lr.ggtyler.dev/r/LeeSinMains/wiki/combo_guide"
+      ],
+      "note": "r/LeeSinMains wiki variant opens with AA: AA Q E R Q2."
+    }
+  ],
+  "Khazix": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-AA-Q)",
+      "sequence": [
+        "W",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://op.gg/nl/lol/champions/khazix"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-W-AA-Q-R-AA-Q-E)",
+      "sequence": [
+        "R",
+        "W",
+        "AA",
+        "Q",
+        "R",
+        "AA",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/KhaZix/combos"
+      ],
+      "note": "Recast R to re-stealth, then E away."
+    }
+  ],
+  "Graves": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-AA-Q-E-AA-R-AA)",
+      "sequence": [
+        "W",
+        "Flash",
+        "AA",
+        "Q",
+        "E",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/graves/combos"
+      ]
+    }
+  ],
+  "Viego": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-E-AA-Q-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/viego/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-AA-Q-R-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/viego/combos",
+        "https://metabot.gg/en/league/guides/Viego"
+      ],
+      "note": "Metabot orders it E W Q R AA."
+    }
+  ],
+  "Kayn": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-W-Q)",
+      "sequence": [
+        "E",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Kayn/combos"
+      ],
+      "note": "E through a wall, W, Q back into the wall."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order E-W-Q-R-R; R exit is the same R hit",
+      "nameKo": "풀콤 (E-W-Q-R)",
+      "sequence": [
+        "E",
+        "W",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Kayn/combos",
+        "https://www.dexerto.com/league-of-legends/lol-kayn-guide-best-builds-runes-tips-tricks-skins-1649225/"
+      ],
+      "note": "Shadow-form version; Dexerto says the Rhaast combo uses the same order."
+    }
+  ],
+  "Elise": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-AA-Q-R-QSpider-WSpider-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "AA",
+        "Q",
+        "R",
+        "QSpider",
+        "WSpider",
+        "AA"
+      ],
+      "sources": [
+        "https://www.aramonly.com/guide/elise/ap-build/",
+        "https://metabot.gg/en/league/champion/Elise/guide"
+      ],
+      "note": "Metabot's gank order: Q E R QSpider WSpider AA."
+    }
+  ],
+  "Ekko": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-Flash-AA-Q-AA-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "Flash",
+        "AA",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Ekko/combos"
+      ],
+      "note": "Short burst variant: E Q R AA."
+    }
+  ],
+  "Diana": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-W-Q-AA-AA)",
+      "sequence": [
+        "AA",
+        "W",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Diana/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-Q-W-AA-E-AA-E-AA)",
+      "sequence": [
+        "R",
+        "Flash",
+        "Q",
+        "W",
+        "AA",
+        "E",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Diana/combos"
+      ]
+    }
+  ],
+  "MasterYi": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-E-Q-AA-W-AA)",
+      "sequence": [
+        "R",
+        "E",
+        "Q",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/MasterYi/combos"
+      ],
+      "note": "W right after the first AA lands to reset the attack."
+    }
+  ],
+  "Vi": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-AA-E-AA-R-AA-E-AA)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "AA",
+        "E",
+        "AA",
+        "R",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/vi/combos"
+      ]
+    }
+  ],
+  "JarvanIV": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/jarvaniv/aram-builds"
+      ],
+      "note": "Pre-6 gank combo."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-R-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/JarvanIV/combos",
+        "https://mobalytics.gg/lol/champions/jarvaniv/aram-builds"
+      ],
+      "note": "Mobalytics' rift page also lists Q Flash E R AA."
+    }
+  ],
+  "Ahri": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://tacter.com/lol/guides/ahri-mid-build-guide-60ecae00"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Flash-Q-R-W-AA)",
+      "sequence": [
+        "E",
+        "Flash",
+        "Q",
+        "R",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ahri/combos"
+      ]
+    }
+  ],
+  "Zed": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-E-Q)",
+      "sequence": [
+        "W",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/26-16-acee1s-zed-guide-650580"
+      ],
+      "note": "Metabot orders it W Q E AA."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order W-R-W-E-Q-R; final R press only swaps back; the mark pop is the one R hit",
+      "nameKo": "풀콤 (W-R-W-E-Q)",
+      "sequence": [
+        "W",
+        "R",
+        "W",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/zed/combos"
+      ],
+      "note": "Mobafire's all-in: R AA E Q AA Ignite."
+    }
+  ],
+  "Yasuo": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-Q)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/25-09-komaris-challenger-yasuo-guide-639917"
+      ],
+      "note": "Some guides use E Q AA (E-Q circle)."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-Flash-AA-R)",
+      "sequence": [
+        "E",
+        "Q",
+        "Flash",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/yasuo/combos"
+      ],
+      "note": "With Q3 stacked beforehand."
+    }
+  ],
+  "Sylas": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-AA-E)",
+      "sequence": [
+        "Q",
+        "W",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Sylas/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order E-Flash-E-AA-Q-AA-W-AA-AA; E1 dash deals nothing; the chain (E2) is the E hit",
+      "nameKo": "풀콤 (Flash-E-AA-Q-AA-W-AA-AA)",
+      "sequence": [
+        "Flash",
+        "E",
+        "AA",
+        "Q",
+        "AA",
+        "W",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Sylas/combos"
+      ]
+    }
+  ],
+  "Leblanc": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/leblanc/combos"
+      ],
+      "note": "W back out after the AA."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-W-E)",
+      "sequence": [
+        "R",
+        "Q",
+        "W",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/leblanc/combos"
+      ],
+      "note": "R mimics W to get into range."
+    }
+  ],
+  "Akali": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-Q-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://www.exitlag.com/blog/akali-league-of-legends/"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-E-W-E2-AA-Q-R2)",
+      "sequence": [
+        "R",
+        "E",
+        "W",
+        "E2",
+        "AA",
+        "Q",
+        "R2"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/akali/combos"
+      ],
+      "note": "Exitlag's kill combo differs: Q AA E E2 Q R R2."
+    }
+  ],
+  "Syndra": [
+    {
+      "kind": "trade",
+      "adjusted": "guide order Q-E-W-W; W pick-up deals nothing; the throw is the W hit",
+      "nameKo": "견제 (Q-E-W)",
+      "sequence": [
+        "Q",
+        "E",
+        "W"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/syndra-mid-lane-build-guides-runes-items-and-abilities-c20e3d05",
+        "https://www.oneesports.gg/league-of-legends/syndra-build-runes-guide-chawy/"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order Q-W-W-E-Flash-R; W pick-up deals nothing; the throw is the W hit",
+      "nameKo": "풀콤 (Q-W-E-Flash-R)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "Flash",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/syndra/combos"
+      ]
+    }
+  ],
+  "Orianna": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W)",
+      "sequence": [
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/orianna-mid-lane-build-guides-runes-items-and-abilities-3002ca54",
+        "https://www.mobafire.com/league-of-legends/build/challenger-season-16-orianna-guide-trisend3-650146"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-R-Q-W-E-AA)",
+      "sequence": [
+        "Q",
+        "R",
+        "Q",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/orianna-mid-lane-build-guides-runes-items-and-abilities-3002ca54"
+      ],
+      "note": "Mobalytics' featured all-in: R + Flash, then Q W AA E."
+    }
+  ],
+  "Katarina": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-W-R-E-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "W",
+        "R",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Katarina/combos"
+      ]
+    }
+  ],
+  "Viktor": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-R-Q-E-AA-AA-AA)",
+      "sequence": [
+        "W",
+        "Flash",
+        "R",
+        "Q",
+        "E",
+        "AA",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Viktor/combos"
+      ],
+      "note": "Alternate: Q Flash E R AA AA."
+    }
+  ],
+  "Lux": [
+    {
+      "kind": "trade",
+      "adjusted": "guide order E-AA-E; E recast detonates the same zone: one E hit",
+      "nameKo": "견제 (E-AA)",
+      "sequence": [
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Lux/combos"
+      ],
+      "note": "Recast E right before the AA lands."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order Q-E-R-E; E recast is the same E hit; AA consumes the passive",
+      "nameKo": "풀콤 (Q-E-R-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Lux/combos"
+      ]
+    }
+  ],
+  "Fizz": [
+    {
+      "kind": "trade",
+      "adjusted": "guide order Q-AA-W-E-E; E recast is the same E hit",
+      "nameKo": "견제 (Q-AA-W-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/fizz/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order Q-R-E-E-AA-W; E recast is the same E hit",
+      "nameKo": "풀콤 (Q-R-E-AA-W)",
+      "sequence": [
+        "Q",
+        "R",
+        "E",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/fizz/combos"
+      ],
+      "note": "R mid-Q-dash to hide the shark."
+    }
+  ],
+  "Talon": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-Q-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://tacter.com/lol/guides/talon-jungle-build-guides-runes-items-and-abilities-a0cac7f9"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-Q-R-AA)",
+      "sequence": [
+        "W",
+        "Flash",
+        "Q",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/talon/combos"
+      ]
+    }
+  ],
+  "Qiyana": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-E-Q)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Qiyana/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-W-R-Q)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "R",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Qiyana/combos"
+      ]
+    }
+  ],
+  "Jhin": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-W-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Jhin/guide"
+      ],
+      "note": "Land the 4th shot after the W root."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-E-Q-W-Flash-R)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q",
+        "W",
+        "Flash",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Jhin/combos"
+      ]
+    }
+  ],
+  "Kaisa": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-R-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/KaiSa/combos"
+      ],
+      "note": "Tacter variant: W R AA Q E."
+    }
+  ],
+  "Ezreal": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-Q)",
+      "sequence": [
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://tacter.com/lol/guides/ezreal-adc-build-guides-runes-items-and-abilities-40aee332"
+      ],
+      "note": "Land W first, detonate with Q."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-Q-AA-E-AA-W-AA)",
+      "sequence": [
+        "R",
+        "Flash",
+        "Q",
+        "AA",
+        "E",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ezreal/combos"
+      ]
+    }
+  ],
+  "Lucian": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-E-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lucian/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-AA-Q-AA-W-AA)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lucian/combos"
+      ],
+      "note": "Extended trade; no sourced combo includes R."
+    }
+  ],
+  "Draven": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/draven/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-Flash-AA)",
+      "sequence": [
+        "E",
+        "R",
+        "Flash",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/draven/combos"
+      ]
+    }
+  ],
+  "Samira": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-W-E-Q-AA)",
+      "sequence": [
+        "AA",
+        "W",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Samira/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-AA-W-AA-R-Q-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA",
+        "W",
+        "AA",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Samira/combos"
+      ]
+    }
+  ],
+  "Ashe": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-Q-R-AA-W-AA)",
+      "sequence": [
+        "AA",
+        "Q",
+        "R",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ashe/combos"
+      ],
+      "note": "With max Q stacks."
+    }
+  ],
+  "Caitlyn": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Q-E-AA-R)",
+      "sequence": [
+        "W",
+        "Q",
+        "E",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Caitlyn/combos"
+      ]
+    }
+  ],
+  "Vayne": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-E-AA-Q)",
+      "sequence": [
+        "R",
+        "Q",
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/vayne/combos"
+      ]
+    }
+  ],
+  "Jinx": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-AA-W-R)",
+      "sequence": [
+        "E",
+        "AA",
+        "W",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/jinx/combos"
+      ]
+    }
+  ],
+  "MissFortune": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-AA-Q-R)",
+      "sequence": [
+        "E",
+        "W",
+        "AA",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/MissFortune/combos"
+      ]
+    }
+  ],
+  "Pyke": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Pyke/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-Q-AA-R)",
+      "sequence": [
+        "AA",
+        "Q",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Pyke/combos"
+      ],
+      "note": "R once the target is in execute range."
+    }
+  ],
+  "Leona": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-W-AA-Q-AA)",
+      "sequence": [
+        "E",
+        "R",
+        "W",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/leona/combos"
+      ]
+    }
+  ],
+  "Thresh": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-E-AA)",
+      "sequence": [
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/thresh/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-R-E)",
+      "sequence": [
+        "Q",
+        "R",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/thresh/combos"
+      ],
+      "note": "Tacter's basic combo: Q E."
+    }
+  ],
+  "Nautilus": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Flash-Q-AA-R-AA-W-E-AA)",
+      "sequence": [
+        "Flash",
+        "Q",
+        "AA",
+        "R",
+        "AA",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Nautilus/combos"
+      ]
+    }
+  ],
+  "Blitzcrank": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/blitzcrank/aram-builds"
+      ],
+      "note": "Source page is ARAM; the hook combo is mode-independent."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-AA-E-AA-R)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://www.aramonly.com/guide/blitzcrank/ap-build/",
+        "https://op.gg/lol/champions/Blitzcrank/build/support"
+      ],
+      "note": "op.gg: Q E R; aramonly suggests R before E vs. mobile targets."
+    }
+  ],
+  "Brand": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-W)",
+      "sequence": [
+        "E",
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/brand/combos",
+        "https://www.mobafire.com/profile/harrylol-715756/blog/brand-guide-season-6"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-W-R-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/brand/combos"
+      ]
+    }
+  ],
+  "Zyra": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-W-Q)",
+      "sequence": [
+        "E",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Zyra/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "guide order R-E-W-W-Q; second W seed adds no damage of its own",
+      "nameKo": "풀콤 (R-E-W-Q)",
+      "sequence": [
+        "R",
+        "E",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Zyra/combos"
+      ]
+    }
+  ],
+  "Akshan": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide order AA-Q-AA-E-R-E; the final E recast only exits the swing (no separate hit), so E is listed once.",
+      "nameKo": "풀콤 (AA-Q-AA-E-R)",
+      "sequence": [
+        "AA",
+        "Q",
+        "AA",
+        "E",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Akshan/combos"
+      ]
+    }
+  ],
+  "Alistar": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Q-E-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/alistar/combos",
+        "https://1v9.gg/blog/league-of-legends-lol-alistar-champion-guide-best-build-runes-items-combos"
+      ],
+      "note": "Cast Q right as W connects; E then auto for the Trample stun."
+    }
+  ],
+  "Ambessa": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-Q2)",
+      "sequence": [
+        "Q",
+        "AA",
+        "Q2"
+      ],
+      "sources": [
+        "https://tacter.com/lol/guides/ambessa-top-lane-build-guides-runes-items-and-abilities-patch-1422-97269533"
+      ],
+      "note": "Short poke: Q1, auto, then recast Q2 and back off."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-Flash-AA-Q2-R-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "Flash",
+        "AA",
+        "Q2",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ambessa/combos?lane=top"
+      ]
+    }
+  ],
+  "Amumu": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-W-Q-E-AA)",
+      "sequence": [
+        "R",
+        "Flash",
+        "W",
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Amumu/combos"
+      ],
+      "note": "Flash mid-R animation to extend its range, then W Q E AA."
+    }
+  ],
+  "Anivia": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E)",
+      "sequence": [
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/combo-burst-cc-79293"
+      ],
+      "note": "Time E so it lands right after Q chills the target for double damage."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide order Q-Q-W-E-R-AA-E-R; Q detonate recast and the R toggle-off listed once.",
+      "nameKo": "풀콤 (Q-W-E-R-AA-E)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "R",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/anivia/combos"
+      ],
+      "note": "W behind the target, then E and R under them."
+    }
+  ],
+  "Annie": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-W-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/annie/combos"
+      ],
+      "note": "Surprise trade; best with stun ready."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-Flash-R-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "Flash",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/annie/combos"
+      ],
+      "note": "At 3-4 passive stacks, E then W so the stun comes up for Flash-R."
+    }
+  ],
+  "Aphelios": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (QCalibrum-R-AA-AA)",
+      "sequence": [
+        "QCalibrum",
+        "R",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/aphelios-adc-build-guides-runes-items-and-abilities-461da66c"
+      ],
+      "note": "Calibrum main: Q and R instantly, then AA twice to pop the marks."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide order R-Q-W-Q (Infernum main, Severum off); W is a weapon swap with no damage and is omitted.",
+      "nameKo": "풀콤 (RInfernum-QInfernum-QSeverum)",
+      "sequence": [
+        "RInfernum",
+        "QInfernum",
+        "QSeverum"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aphelios/combos"
+      ],
+      "note": "Cast R, Q, W instantly one after another, then Q."
+    }
+  ],
+  "AurelionSol": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q)",
+      "sequence": [
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aurelionsol/combos"
+      ],
+      "note": "Singularity pulls them in, breathe Q while they are inside."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Q-E-R-Q)",
+      "sequence": [
+        "W",
+        "Q",
+        "E",
+        "R",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aurelionsol/combos"
+      ],
+      "note": "Fly in with W, breathe Q, then E-R and finish with another Q."
+    }
+  ],
+  "Aurora": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: Q-AA-E-Q; the Q recast is listed once (no separate Q2 slot).",
+      "nameKo": "견제 (Q-AA-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aurora/combos?irole=mid"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: R-Q-E-W-Q with teleports at the R edges; the final Q recast is listed once (no separate Q2 slot).",
+      "nameKo": "풀콤 (R-Q-E-W)",
+      "sequence": [
+        "R",
+        "Q",
+        "E",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/aurora/combos?tl=80"
+      ]
+    }
+  ],
+  "Azir": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-AA-Q-AA)",
+      "sequence": [
+        "W",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/azir/combos"
+      ],
+      "note": "Soldier autos; Q repositions soldiers onto the target."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-R)",
+      "sequence": [
+        "E",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/azir/combos",
+        "https://www.mobafire.com/league-of-legends/build/how-to-shurima-101-484397"
+      ],
+      "note": "Shurima Shuffle: Q mid-dash toward the target, R them back to your team."
+    }
+  ],
+  "Bard": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-E-Q-AA)",
+      "sequence": [
+        "R",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/bard/combos"
+      ],
+      "note": "Gank: R then E toward the target, Q stun as they leave stasis."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-AA)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/bard/combos"
+      ],
+      "note": "Flash to line Q up with a wall or second target for the stun."
+    }
+  ],
+  "Belveth": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-R-Q-AA-E-AA)",
+      "sequence": [
+        "W",
+        "R",
+        "Q",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/belveth/combos"
+      ]
+    }
+  ],
+  "Braum": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide W-AA-Q-AA-AA; P added for the Concussive Blows stun proc on the 4th stack.",
+      "nameKo": "견제 (W-AA-Q-AA-AA-P)",
+      "sequence": [
+        "W",
+        "AA",
+        "Q",
+        "AA",
+        "AA",
+        "P"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/braum/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide Q-AA-R-AA-AA; P added for the passive proc on the 4th stack.",
+      "nameKo": "풀콤 (Q-AA-R-AA-AA-P)",
+      "sequence": [
+        "Q",
+        "AA",
+        "R",
+        "AA",
+        "AA",
+        "P"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/braum/combos"
+      ],
+      "note": "Standard level 6 combo."
+    }
+  ],
+  "Briar": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-WBite-Q-E)",
+      "sequence": [
+        "W",
+        "WBite",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/briar/mayhem-builds"
+      ],
+      "note": "Guide lists W, W, Q, E: the second W press is the Snack Attack bite."
+    }
+  ],
+  "Cassiopeia": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-E-E)",
+      "sequence": [
+        "Q",
+        "E",
+        "E",
+        "E"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Cassiopeia",
+        "https://www.tacter.com/lol/guides/cassiopeia-6ea02de"
+      ],
+      "note": "Only commit after Q lands; spam E on the poisoned target."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-W-E-E-Q-E-E)",
+      "sequence": [
+        "R",
+        "Flash",
+        "W",
+        "E",
+        "E",
+        "Q",
+        "E",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Cassiopeia/combos"
+      ]
+    }
+  ],
+  "Chogath": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W)",
+      "sequence": [
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/chogath-top-monster-401972"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-Q-E-AA-R)",
+      "sequence": [
+        "W",
+        "Flash",
+        "Q",
+        "E",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ChoGath/combos"
+      ],
+      "note": "Hold R as the true-damage execute."
+    }
+  ],
+  "Corki": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-R-AA)",
+      "sequence": [
+        "Q",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/corki/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-AA-Q-R-W-AA-R-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "R",
+        "W",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/corki/combos"
+      ],
+      "note": "Open with Package-empowered W (Special Delivery)."
+    }
+  ],
+  "DrMundo": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: Q -> W activate -> auto with E. W listed once (activation and recast are one damage source).",
+      "nameKo": "견제 (Q-W-E-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/DrMundo/guide"
+      ]
+    }
+  ],
+  "Evelynn": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-E-Q-AA-R)",
+      "sequence": [
+        "W",
+        "Flash",
+        "E",
+        "Q",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Evelynn/combos"
+      ],
+      "note": "Flash-E-Q as Allure is about to complete, then AA and R after the Q animation."
+    }
+  ],
+  "Fiddlesticks": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-Flash-W-E-AA)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/fiddlesticks/combos"
+      ],
+      "note": "Terrify, Flash in, drain with W and silence with E."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-Q-E-W)",
+      "sequence": [
+        "R",
+        "Flash",
+        "Q",
+        "E",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/fiddlesticks/combos",
+        "https://www.mobafire.com/league-of-legends/build/fiddlesticks-guide-s3-303443"
+      ],
+      "note": "Flash as the R channel completes, then Q-E-W back to back."
+    }
+  ],
+  "Galio": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: Q-AA(passive proc)-E-W; the passive-empowered auto is the P node.",
+      "nameKo": "견제 (Q-P-E-W)",
+      "sequence": [
+        "Q",
+        "P",
+        "E",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Galio/guide?build=3"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: AA-E(backwards)-Q-AA-W-W(recast at max charge)-AA-AA; the W charge+release is listed once, and the auto after E+Q is the passive (P).",
+      "nameKo": "풀콤 (AA-E-Q-P-W-AA-AA)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q",
+        "P",
+        "W",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/galio/combos"
+      ]
+    }
+  ],
+  "Gangplank": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: E-AA-AA-Q(barrel)-AA; the two autos only lower barrel health and deal no champion damage, so they are dropped.",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gangplank/combos"
+      ],
+      "note": "Q the barrel once it is one hit from exploding."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: E-E-Q-Flash-E; the chained barrels detonate onto the target as one explosion, so E is listed once.",
+      "nameKo": "풀콤 (E-Q-Flash)",
+      "sequence": [
+        "E",
+        "Q",
+        "Flash"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gangplank/combos"
+      ]
+    }
+  ],
+  "Gnar": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-E-Q-AA)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gnar/combos"
+      ],
+      "note": "Mini Gnar; aim for the third-hit W proc."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide order E-AA-R-AA-W-AA-Q-AA with 'E and Flash before R'; the opening AA dropped to fit E-Flash-R.",
+      "nameKo": "풀콤 (EMega-Flash-R-AA-WMega-AA-QMega-AA)",
+      "sequence": [
+        "EMega",
+        "Flash",
+        "R",
+        "AA",
+        "WMega",
+        "AA",
+        "QMega",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gnar/combos"
+      ],
+      "note": "Transform first; R into a wall."
+    }
+  ],
+  "Gragas": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W-R-E-Q-AA-Q; the second Q is the barrel detonation (no separate hit), listed once.",
+      "nameKo": "풀콤 (W-R-E-Q-AA)",
+      "sequence": [
+        "W",
+        "R",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gragas/combos",
+        "https://www.mobafire.com/league-of-legends/build/gragas-decent-guide-614980"
+      ],
+      "note": "Alt engage: E-Flash-R into Q. Q-R can be cast during E."
+    }
+  ],
+  "Gwen": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-AA-E-Q)",
+      "sequence": [
+        "AA",
+        "AA",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://invenglobal.com/articles/13817/gwen-lol-guide-how-to-play-combos-items-laning"
+      ],
+      "note": "Stack passive with autos for more Q snips, dash in with E, then Q."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide R-AA-E-AA-R-Q-AA-W-R-Flash; R recasts have no distinct slot so R is listed once, trailing W and Flash dropped (no damage).",
+      "nameKo": "풀콤 (R-AA-E-AA-Q-AA)",
+      "sequence": [
+        "R",
+        "AA",
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/gwen/combos?irole=mid"
+      ]
+    }
+  ],
+  "Hecarim": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-Q-W)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Hecarim/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-AA-R-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "AA",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/hecarim/combos"
+      ],
+      "note": "R behind the target and Q them mid-air."
+    }
+  ],
+  "Heimerdinger": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: R-Q-E-Q-W-AA; the R press is folded into the empowered turret (QUlt).",
+      "nameKo": "풀콤 (QUlt-E-Q-W-AA)",
+      "sequence": [
+        "QUlt",
+        "E",
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/heimerdinger/combos"
+      ],
+      "note": "Cast the empowered turret right after R, then E, Q, W as fast as possible."
+    }
+  ],
+  "Hwei": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (EQ-Flash-R-WE-QQ-AA)",
+      "sequence": [
+        "EQ",
+        "Flash",
+        "R",
+        "WE",
+        "QQ",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/hwei/combos"
+      ],
+      "note": "QQ alone is the main lane poke (Skill-Capped)."
+    }
+  ],
+  "Illaoi": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-P)",
+      "sequence": [
+        "Q",
+        "AA",
+        "P"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Illaoi"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-Flash-W-AA-Q-AA-W)",
+      "sequence": [
+        "E",
+        "R",
+        "Flash",
+        "W",
+        "AA",
+        "Q",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/illaoi/combos"
+      ],
+      "note": "Flash during the R animation when the target is far."
+    }
+  ],
+  "Ivern": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ivern/combos"
+      ],
+      "note": "Self-engage: E yourself toward the enemy, then Q."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-R-E-AA-Q-AA)",
+      "sequence": [
+        "W",
+        "R",
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ivern/combos"
+      ],
+      "note": "E on Daisy; Q the target while Daisy knocks it up."
+    }
+  ],
+  "Janna": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-R-W)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "R",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/janna/combos"
+      ],
+      "note": "Double-tap Q, then Flash behind the target and R to knock them into your team."
+    }
+  ],
+  "Jayce": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (QCannon-ECannon-AA)",
+      "sequence": [
+        "QCannon",
+        "ECannon",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Jayce/guide"
+      ],
+      "note": "Fire Shock Blast through the Acceleration Gate for the long-range poke."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-W-E-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Jayce/guide"
+      ],
+      "note": "Swap to Hammer: To the Skies, Lightning Field, Thundering Blow, then autos."
+    }
+  ],
+  "Kalista": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-Q-AA-E)",
+      "sequence": [
+        "AA",
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://tacter.com/lol/guides/kalista-adc-build-guides-runes-items-and-abilities-1f24192a"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-AA-AA-AA-Q-E)",
+      "sequence": [
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kalista/combos?igRole=ADC"
+      ],
+      "note": "Stack spears with autos, Q through, then Rend."
+    }
+  ],
+  "Karma": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-Flash-W-AA-E-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "Flash",
+        "W",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/karma/combos"
+      ],
+      "note": "Flash during the empowered Q animation."
+    }
+  ],
+  "Karthus": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-E-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/karthus/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-W-E-Flash-Q-Q)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "Flash",
+        "Q",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/karthus/combos"
+      ],
+      "note": "E is a toggle; keep spamming Q after Flash."
+    }
+  ],
+  "Kassadin": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-W)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Kassadin/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-W-E-Q)",
+      "sequence": [
+        "R",
+        "Flash",
+        "W",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kassadin/combos",
+        "https://thebackdash.com/gaming/league-of-legends/best-kassadin-build-guide/"
+      ],
+      "note": "Finish quickly after Riftwalk."
+    }
+  ],
+  "Kayle": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-AA-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kayle/combos"
+      ],
+      "note": "Use E as the second AA finishes."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide R-Flash-Q-E-EAA; the E-empowered attack is the E damage instance, so it is listed once as E.",
+      "nameKo": "풀콤 (R-Flash-Q-E)",
+      "sequence": [
+        "R",
+        "Flash",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kayle/combos"
+      ]
+    }
+  ],
+  "Kennen": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide order E-R-Flash-W-Q-E-AA; the E recast only ends Lightning Rush (no separate damage), so E is listed once.",
+      "nameKo": "풀콤 (E-R-Flash-W-Q-AA)",
+      "sequence": [
+        "E",
+        "R",
+        "Flash",
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kennen/combos",
+        "https://tacter.com/lol/guides/kennen-top-lane-build-guides-runes-items-and-abilities-cec7b00f"
+      ],
+      "note": "Flank from fog; R then Flash into the backline."
+    }
+  ],
+  "Kindred": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-E)",
+      "sequence": [
+        "Q",
+        "W",
+        "E"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Kindred"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-AA-E-AA-AA-Q-AA)",
+      "sequence": [
+        "R",
+        "AA",
+        "E",
+        "AA",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kindred/combos?igRole=MID"
+      ],
+      "note": "Execute right as R ends; third hit on E target procs Mounting Dread."
+    }
+  ],
+  "Kled": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide ends with a second E to dash out; the recast has no separate slot, so E is listed once.",
+      "nameKo": "견제 (AA-AA-AA-AA-AA-Q-E-AA-AA)",
+      "sequence": [
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "Q",
+        "E",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kled/aram-builds"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-E-Q-AA-AA-AA)",
+      "sequence": [
+        "R",
+        "E",
+        "Q",
+        "AA",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Kled/combos"
+      ]
+    }
+  ],
+  "KogMaw": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Flash-Q-W-AA)",
+      "sequence": [
+        "E",
+        "Flash",
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kogmaw/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-Q-R-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "Q",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/kogmaw/combos"
+      ],
+      "note": "Activate W first, then keep auto-attacking."
+    }
+  ],
+  "Ksante": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: Q-AA-W-E; trailing E (Footwork dash/shield, no damage) dropped.",
+      "nameKo": "견제 (Q-AA-W)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/KSante/guide?role=TOP"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: E-Q-W-AA-R; leading E (engage dash, no damage) dropped.",
+      "nameKo": "풀콤 (Q-W-AA-R)",
+      "sequence": [
+        "Q",
+        "W",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/KSante/guide?role=TOP"
+      ]
+    }
+  ],
+  "Lillia": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide E-Q-Flash-R-W-Q; Q has no distinct recast slot, so the final Q is dropped.",
+      "nameKo": "풀콤 (E-Q-Flash-R-W)",
+      "sequence": [
+        "E",
+        "Q",
+        "Flash",
+        "R",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lillia/combos?lane=mid"
+      ],
+      "note": "Sleep them with R, finish with W as they wake."
+    }
+  ],
+  "Lissandra": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-E-Q-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lissandra/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide order E-E(recast)-Flash-W-R-Q; the E recast is a teleport with no separate damage, so E is listed once.",
+      "nameKo": "풀콤 (E-Flash-W-R-Q)",
+      "sequence": [
+        "E",
+        "Flash",
+        "W",
+        "R",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lissandra/combos"
+      ],
+      "note": "Recast E at max range, then Flash-W-R yourself and Q once free."
+    }
+  ],
+  "Locke": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-Q2-Q3-E-AA)",
+      "sequence": [
+        "Q",
+        "Q2",
+        "Q3",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://esports.gg/guides/league-of-legends/locke-kit-analyzed/"
+      ],
+      "note": "Pop nail stacks with E or autos; E-first opener can catch opponents off guard."
+    }
+  ],
+  "Lulu": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Flash-R-AA-E-AA-Q)",
+      "sequence": [
+        "W",
+        "Flash",
+        "R",
+        "AA",
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/lulu/combos"
+      ],
+      "note": "W and R on yourself; E the enemy for Pix-empowered autos."
+    }
+  ],
+  "Malphite": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-W-E-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/malphite/aram-builds"
+      ],
+      "note": "W resets the auto attack."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Flash-R-Q-E-W-AA)",
+      "sequence": [
+        "Flash",
+        "R",
+        "Q",
+        "E",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/malphite/combos"
+      ],
+      "note": "Press Q, E and W as fast as possible after landing R."
+    }
+  ],
+  "Malzahar": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-W-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Malzahar/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-W-Flash-E-R)",
+      "sequence": [
+        "Q",
+        "W",
+        "Flash",
+        "E",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/malzahar/combos"
+      ],
+      "note": "Q W quickly, Flash, then E R as fast as possible."
+    }
+  ],
+  "Maokai": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-AA-E)",
+      "sequence": [
+        "Q",
+        "W",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/maokai/combos?tier=S"
+      ],
+      "note": "Q then instantly W; AA and E once you arrive."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Q-R-E-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "R",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/maokai/combos?tier=S"
+      ]
+    }
+  ],
+  "Mel": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-R)",
+      "sequence": [
+        "E",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/mel/combos"
+      ],
+      "note": "Root with Solar Snare so the full Radiant Volley lands, then Golden Eclipse; Flash after E for range."
+    }
+  ],
+  "Milio": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-W-P)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "P"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Milio/guide"
+      ],
+      "note": "Shield ally first, then Q kick; passive burns on allied hits."
+    }
+  ],
+  "MonkeyKing": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-AA-Q-W-R-AA-Q-R2-AA)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q",
+        "W",
+        "R",
+        "AA",
+        "Q",
+        "R2",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/monkeyking/combos",
+        "https://mobalytics.gg/blog/lol-how-to-play-wukong-new-rework-guide/"
+      ],
+      "note": "R ticks lower Q's cooldown, so Q before R."
+    }
+  ],
+  "Morgana": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-W-E-Flash-R-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "Flash",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/morgana/combos"
+      ],
+      "note": "E shield on yourself before flashing in; recast W when ready."
+    }
+  ],
+  "Naafiri": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-Q2-E-AA)",
+      "sequence": [
+        "Q",
+        "Q2",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/naafiri/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-AA-E-Q2-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "AA",
+        "E",
+        "Q2",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/naafiri/combos"
+      ]
+    }
+  ],
+  "Nami": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-AA-Q-AA-R-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/nami/combos?ysclid=123"
+      ],
+      "note": "Self-cast W and E instantly, then AA-Q-AA-R-AA."
+    }
+  ],
+  "Nasus": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-R-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/nasus/combos"
+      ],
+      "note": "Animation-cancel: E and W back to back, then R and Q as fast as possible."
+    }
+  ],
+  "Neeko": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q)",
+      "sequence": [
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://loltheory.gg/lol/synergies/neeko"
+      ],
+      "note": "Q right after E roots for guaranteed blooms."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-R-E-Q-AA)",
+      "sequence": [
+        "W",
+        "R",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/neeko/combos"
+      ]
+    }
+  ],
+  "Nidalee": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide ends with a human E heal if the target survives; it deals no damage and needs another transform, so it is dropped.",
+      "nameKo": "풀콤 (Q-R-WCougar-QCougar-ECougar)",
+      "sequence": [
+        "Q",
+        "R",
+        "WCougar",
+        "QCougar",
+        "ECougar"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/high-elo-nidalee-guide-to-win-542902",
+        "https://mobalytics.gg/lol/champions/nidalee/combos"
+      ],
+      "note": "A landed spear marks the target and extends Pounce range."
+    }
+  ],
+  "Nilah": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-AA-E-R-AA-Q-E)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "AA",
+        "E",
+        "R",
+        "AA",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/nilah/combos"
+      ]
+    }
+  ],
+  "Nocturne": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/nocturne/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide uses R twice (darkness, then dash); R listed once as it hits once.",
+      "nameKo": "풀콤 (R-Q-E-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/nocturne/combos"
+      ],
+      "note": "Q and E can be cast mid-air during the R dash."
+    }
+  ],
+  "Nunu": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide W-E-AA-E-Q-E-AA; E barrage recasts have no distinct slot, so E is listed once.",
+      "nameKo": "견제 (W-E-AA-Q-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Nunu/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-Q-R)",
+      "sequence": [
+        "W",
+        "E",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://dignitas.gg/articles/blogs/Unknown/14830/rolling-over-the-competition-an-in-depth-guide-on-nunu-and-willump"
+      ],
+      "note": "Don't press R twice right away."
+    }
+  ],
+  "Olaf": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-AA-Q)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/olaf/combos"
+      ],
+      "note": "Auto while walking to the axe, pick it up, throw Q again."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-R-W-AA-E-AA-Q)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "R",
+        "W",
+        "AA",
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/olaf/combos"
+      ]
+    }
+  ],
+  "Ornn": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E)",
+      "sequence": [
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/blog/ornn-guide/"
+      ],
+      "note": "E into the Q pillar for the knockup."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: Q-R-W-AA-R(recast)-E; the R recast is listed once (no separate R2 slot).",
+      "nameKo": "풀콤 (Q-R-W-AA-E)",
+      "sequence": [
+        "Q",
+        "R",
+        "W",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Ornn/combos"
+      ]
+    }
+  ],
+  "Pantheon": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-AA-Q-E)",
+      "sequence": [
+        "W",
+        "AA",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/pantheon/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-AA-W-AA-E-AA-Q)",
+      "sequence": [
+        "R",
+        "Q",
+        "AA",
+        "W",
+        "AA",
+        "E",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/pantheon/combos"
+      ]
+    }
+  ],
+  "Poppy": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-Flash-AA-E-AA-R-AA)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "AA",
+        "E",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/poppy/combos"
+      ],
+      "note": "E into a wall for the stun."
+    }
+  ],
+  "Quinn": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-Q-E-AA)",
+      "sequence": [
+        "AA",
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Quinn"
+      ],
+      "note": "Proc Harrier marks with autos between spells."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: R forward, AA, Q, AA, E; leading R (Behind Enemy Lines travel, no damage without Skystrike) dropped.",
+      "nameKo": "풀콤 (AA-Q-AA-E)",
+      "sequence": [
+        "AA",
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/quinn/combos"
+      ],
+      "note": "Flash can cancel the animation after the E knockback."
+    }
+  ],
+  "Rakan": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-AA-W)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Rakan"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-W-Q-E)",
+      "sequence": [
+        "R",
+        "Flash",
+        "W",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/rakan/combos?iRole=ADC"
+      ],
+      "note": "W as soon as the R lockout ends for a guaranteed engage."
+    }
+  ],
+  "Rammus": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-W-R)",
+      "sequence": [
+        "Q",
+        "E",
+        "W",
+        "R"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Rammus/guide"
+      ],
+      "note": "Roll in, taunt the priority target, W to reflect, R for area damage."
+    }
+  ],
+  "RekSai": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: E(tunnel)-Flash-W-AA-Q-AA-E-AA; the opening burrowed tunnel deals no damage and is omitted so it isn't counted as the unburrowed E bite.",
+      "nameKo": "풀콤 (Flash-W-AA-QUnburrowed-AA-E-AA)",
+      "sequence": [
+        "Flash",
+        "W",
+        "AA",
+        "QUnburrowed",
+        "AA",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/reksai/combos"
+      ]
+    }
+  ],
+  "Rell": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-Q-R-E)",
+      "sequence": [
+        "W",
+        "Q",
+        "R",
+        "E"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/13-17-rell-jg-absolute-beast-626304"
+      ],
+      "note": "Flash before W, not after, or the jump may miss."
+    }
+  ],
+  "Renata": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide order R-Summoner-Q-Q-E; Q recast (throw) listed once, summoner assumed Flash.",
+      "nameKo": "풀콤 (R-Flash-Q-E)",
+      "sequence": [
+        "R",
+        "Flash",
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/renata/combos"
+      ]
+    }
+  ],
+  "Rengar": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-W-Q)",
+      "sequence": [
+        "Q",
+        "E",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Rengar"
+      ],
+      "note": "Gank from brush; second Q is the empowered (ferocity) Q, a separate cast."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-AA-E-W-Q-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "AA",
+        "E",
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/rengar/combos"
+      ],
+      "note": "Second Q is a fresh cast, not a recast."
+    }
+  ],
+  "Rumble": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E)",
+      "sequence": [
+        "Q",
+        "E"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Rumble/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide R-E-Flash-Q-W-AA-E-AA; the second harpoon has no distinct slot, so E is listed once.",
+      "nameKo": "풀콤 (R-E-Flash-Q-W-AA)",
+      "sequence": [
+        "R",
+        "E",
+        "Flash",
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/rumble/combos"
+      ]
+    }
+  ],
+  "Ryze": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-Q-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ryze/combos"
+      ],
+      "note": "E resets Q; the second Q spreads to Fluxed targets."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-Q-AA-W-Q-E-Q-AA)",
+      "sequence": [
+        "Q",
+        "E",
+        "Q",
+        "AA",
+        "W",
+        "Q",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ryze/combos"
+      ]
+    }
+  ],
+  "Sejuani": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W-E-AA)",
+      "sequence": [
+        "Q",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Sejuani/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-W-AA-Q-E-R-AA)",
+      "sequence": [
+        "AA",
+        "W",
+        "AA",
+        "Q",
+        "E",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sejuani/combos"
+      ]
+    }
+  ],
+  "Senna": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA)",
+      "sequence": [
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Senna/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-AA-W-AA-R)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Senna/combos"
+      ]
+    }
+  ],
+  "Seraphine": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-E-Q-W-AA)",
+      "sequence": [
+        "R",
+        "Flash",
+        "E",
+        "Q",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/seraphine/combos"
+      ],
+      "note": "Flash instantly after R to extend its range; R-E-Q-W without Flash also works."
+    }
+  ],
+  "Shaco": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-W-AA-E)",
+      "sequence": [
+        "R",
+        "Q",
+        "W",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/shaco/combos",
+        "https://metabot.gg/en/league/guides/Shaco"
+      ],
+      "note": "Use the clone to bait, then Deceive in behind for Backstab."
+    }
+  ],
+  "Shen": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/shen/combos"
+      ],
+      "note": "E cancels the auto attack backswing."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-AA-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/shen/combos"
+      ],
+      "note": "Q mid-air during E, then autos."
+    }
+  ],
+  "Shyvana": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-Q-AA)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/statikk-shyvana-404355"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-EDragon-Flash-Q-AA)",
+      "sequence": [
+        "R",
+        "EDragon",
+        "Flash",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Shyvana/combos"
+      ],
+      "note": "Guide says E as soon as you land from R; in dragon form that E is the dragon-form EDragon."
+    }
+  ],
+  "Singed": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-W-E-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "W",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Singed/combos"
+      ],
+      "note": "Cast W behind you, then Fling the target into it."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-W-Flash-E-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "W",
+        "Flash",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Singed/combos"
+      ]
+    }
+  ],
+  "Sion": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: E-Q-W-AA-AA-W; W's first press is the shield and only the recast deals damage, so W is listed once.",
+      "nameKo": "견제 (E-Q-W-AA-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sion/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W-Q-E-W-AA-R-AA; W's shield press and its damaging recast are listed once.",
+      "nameKo": "풀콤 (W-Q-E-AA-R-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "E",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sion/combos"
+      ]
+    }
+  ],
+  "Sivir": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-W-Q)",
+      "sequence": [
+        "AA",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sivir/combos"
+      ],
+      "note": "W resets the auto; plain AA-Q-AA is the easy version."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-Flash-AA-AA)",
+      "sequence": [
+        "R",
+        "Q",
+        "Flash",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sivir/combos"
+      ],
+      "note": "Q at max range so both passes hit; Flash as Q lands."
+    }
+  ],
+  "Skarner": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: Q-E-AA-Q-R-W; the second Q (rock throw recast) has no separate slot, listed once.",
+      "nameKo": "풀콤 (Q-E-AA-R-W)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA",
+        "R",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/skarner/combos"
+      ],
+      "note": "Short gank: Flash-E-R (E before R)."
+    }
+  ],
+  "Smolder": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA)",
+      "sequence": [
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/smolder/combos?irole=mid"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-R-AA-Q-AA-W-AA-E)",
+      "sequence": [
+        "AA",
+        "R",
+        "AA",
+        "Q",
+        "AA",
+        "W",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/copy-of-145-smolder-adc-in-action-dbbf4a0b"
+      ]
+    }
+  ],
+  "Sona": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-Q-P)",
+      "sequence": [
+        "AA",
+        "Q",
+        "P"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sona/aram-builds"
+      ],
+      "note": "At two Power Chord stacks: AA, Q, then the Power Chord auto (listed as P)."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Q-P)",
+      "sequence": [
+        "R",
+        "Q",
+        "P"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/sona/aram-builds"
+      ],
+      "note": "Engage with R, instantly Q, then the empowered auto (listed as P)."
+    }
+  ],
+  "Soraka": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Flash-Q-E-AA)",
+      "sequence": [
+        "Flash",
+        "Q",
+        "E",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Soraka/combos"
+      ]
+    }
+  ],
+  "Swain": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: E-W-E-Q-AA; the E recast only pulls rooted enemies, so E is listed once.",
+      "nameKo": "견제 (E-W-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/swain/aram-builds"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: Q-Flash-E-W-R-E-AA-R; the E recast pull deals no separate damage, so E is listed once.",
+      "nameKo": "풀콤 (Q-Flash-E-W-R-AA-RDemonflare)",
+      "sequence": [
+        "Q",
+        "Flash",
+        "E",
+        "W",
+        "R",
+        "AA",
+        "RDemonflare"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Swain/combos"
+      ]
+    }
+  ],
+  "TahmKench": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-R-AA-Q)",
+      "sequence": [
+        "W",
+        "R",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/tahmkench/combos"
+      ]
+    }
+  ],
+  "Taliyah": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-W)",
+      "sequence": [
+        "Q",
+        "E",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Taliyah/guide"
+      ],
+      "note": "W into the E minefield to detonate the boulders."
+    }
+  ],
+  "Taric": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-AA)",
+      "sequence": [
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/taric-top-yes-it-does-work-s4-taric-guide-370781"
+      ],
+      "note": "Weave two passive-empowered autos after each spell."
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide W-R-E-Flash-AA-AA-Q-AA-AA-Q; Q has no distinct recast slot, so the final Q is dropped.",
+      "nameKo": "풀콤 (W-R-E-Flash-AA-AA-Q-AA-AA)",
+      "sequence": [
+        "W",
+        "R",
+        "E",
+        "Flash",
+        "AA",
+        "AA",
+        "Q",
+        "AA",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/taric/combos?tier=S"
+      ],
+      "note": "Flash before the E stun activates."
+    }
+  ],
+  "Teemo": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-E-Q)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://metabot.gg/de_DE/league/guides/Teemo",
+        "https://mobalytics.gg/lol/champions/teemo/combos"
+      ],
+      "note": "Auto to apply Toxic Shot poison, blind with Q, back off with W."
+    }
+  ],
+  "Tristana": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide ends with W away to disengage; omitted since that jump lands away from the enemy.",
+      "nameKo": "견제 (AA-E-Q-AA)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/es_ES/league/guides/Tristana"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W in, then E and R; one auto added to stack E before R.",
+      "nameKo": "풀콤 (W-E-AA-R)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/classic/tristana-mid-build-guide"
+      ]
+    }
+  ],
+  "Trundle": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-R-AA-Q-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "R",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/trundle/combos"
+      ],
+      "note": "Place E behind the target to block its escape."
+    }
+  ],
+  "Tryndamere": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-Flash-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "Flash",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/tryndamere/combos"
+      ],
+      "note": "W as soon as E lands; E-Flash-AA to execute low targets."
+    }
+  ],
+  "TwistedFate": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: AA-W-AA (Blue Card); the card auto is the W hit, so the second AA is merged into W.",
+      "nameKo": "견제 (AA-W)",
+      "sequence": [
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/twistedfate/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W (Gold Card)-AA-Q-AA; the card auto is the W hit, so the first AA is merged into W.",
+      "nameKo": "풀콤 (W-Q-AA)",
+      "sequence": [
+        "W",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/twistedfate/combos",
+        "https://samurai-gamers.com/league-of-legends/twisted-fate-champion-guide/"
+      ]
+    }
+  ],
+  "Twitch": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (W-AA-AA-AA-AA-AA-E)",
+      "sequence": [
+        "W",
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/twitch/aram-builds"
+      ],
+      "note": "AA until max Deadly Venom stacks, then E."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-W-R-AA-AA-AA-E)",
+      "sequence": [
+        "Q",
+        "W",
+        "R",
+        "AA",
+        "AA",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Twitch/combos"
+      ],
+      "note": "From stealth: W and instantly R, E at max passive stacks."
+    }
+  ],
+  "Udyr": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-AA-Q-AA)",
+      "sequence": [
+        "E",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Udyr/guide"
+      ],
+      "note": "Approach with E, stun on the first auto, then Q autos for damage."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-R-Q-W)",
+      "sequence": [
+        "E",
+        "R",
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Udyr/guide"
+      ],
+      "note": "Skirmish: E stun, R area slow, Q burst, W for sustain."
+    }
+  ],
+  "Urgot": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-W-P)",
+      "sequence": [
+        "Q",
+        "E",
+        "W",
+        "P"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Urgot/guide?build=5"
+      ],
+      "note": "Step sideways between autos to fire more shotgun knees."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Flash-Q-R-AA-W)",
+      "sequence": [
+        "E",
+        "Flash",
+        "Q",
+        "R",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/urgot/combos?lane=top"
+      ]
+    }
+  ],
+  "Varus": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-AA-AA-E-Q)",
+      "sequence": [
+        "AA",
+        "AA",
+        "AA",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Varus/guide"
+      ],
+      "note": "Three autos apply Blight stacks; E and Q pop them."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-E-AA-AA-AA-AA-Q)",
+      "sequence": [
+        "R",
+        "Flash",
+        "E",
+        "AA",
+        "AA",
+        "AA",
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/varus/combos"
+      ],
+      "note": "Flash mid R animation to extend the engage."
+    }
+  ],
+  "Veigar": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-Q-AA-R-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "Q",
+        "AA",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/veigar/combos"
+      ],
+      "note": "W into stunned targets; R as the execute."
+    }
+  ],
+  "Velkoz": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-W)",
+      "sequence": [
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Velkoz"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-Q-R)",
+      "sequence": [
+        "E",
+        "W",
+        "Q",
+        "R"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/guides/Velkoz"
+      ],
+      "note": "Three passive stacks deal true damage; hold R until targets are locked."
+    }
+  ],
+  "Vex": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-R-R2-W)",
+      "sequence": [
+        "E",
+        "Q",
+        "R",
+        "R2",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/vex/combos?hl=pl-PL"
+      ]
+    }
+  ],
+  "Vladimir": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q)",
+      "sequence": [
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/vladimir/aram-builds"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Flash-R-AA-Q-W)",
+      "sequence": [
+        "E",
+        "Flash",
+        "R",
+        "AA",
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Vladimir/combos"
+      ],
+      "note": "Charge E, Flash forward into R, then AA-Q and W to finish."
+    }
+  ],
+  "Volibear": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-E-AA-R-AA-W)",
+      "sequence": [
+        "Q",
+        "E",
+        "AA",
+        "R",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/volibear/combos"
+      ]
+    }
+  ],
+  "Warwick": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W-E-Flash-Q-E-AA-R; the E recast ends the howl and deals no damage, so E is listed once.",
+      "nameKo": "풀콤 (W-E-Flash-Q-AA-R)",
+      "sequence": [
+        "W",
+        "E",
+        "Flash",
+        "Q",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/warwick/combos",
+        "https://www.tacter.com/lol/guides/warwick-top-lane-build-guides-runes-items-and-abilities-5a3edb4"
+      ]
+    }
+  ],
+  "Xayah": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-AA-E)",
+      "sequence": [
+        "Q",
+        "AA",
+        "E"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/xayah/combos"
+      ],
+      "note": "Recall the Q feathers through the target for the root."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (R-Flash-E-W-AA)",
+      "sequence": [
+        "R",
+        "Flash",
+        "E",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/xayah/combos"
+      ],
+      "note": "R and Flash toward the target while untargetable, then E root."
+    }
+  ],
+  "Xerath": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide poke: Q-W-Q; Q has no extra slot, listed once.",
+      "nameKo": "견제 (Q-W)",
+      "sequence": [
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Xerath/guide"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-Q-AA-R)",
+      "sequence": [
+        "E",
+        "W",
+        "Q",
+        "AA",
+        "R"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Xerath/guide"
+      ]
+    }
+  ],
+  "XinZhao": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (E-Q-W)",
+      "sequence": [
+        "E",
+        "Q",
+        "W"
+      ],
+      "sources": [
+        "https://www.tacter.com/lol/guides/xin-zhao-jungle-build-guide-19dd064b"
+      ]
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-AA-AA-AA-W-AA)",
+      "sequence": [
+        "E",
+        "Q",
+        "AA",
+        "AA",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/XinZhao/combos"
+      ]
+    }
+  ],
+  "Yorick": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (AA-Q)",
+      "sequence": [
+        "AA",
+        "Q"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/forum/general/new-yorick-tips-and-tricks-39886"
+      ],
+      "note": "Q is an auto-attack reset."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-W-AA-Q-AA)",
+      "sequence": [
+        "E",
+        "W",
+        "AA",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/yorick/combos"
+      ]
+    }
+  ],
+  "Yunara": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide: W-E-AA-R-E-AA-AA-W; the second (empowered) E dash deals no separate damage and is omitted.",
+      "nameKo": "풀콤 (W-E-AA-R-AA-AA-W)",
+      "sequence": [
+        "W",
+        "E",
+        "AA",
+        "R",
+        "AA",
+        "AA",
+        "W"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/Yunara/combos"
+      ]
+    }
+  ],
+  "Yuumi": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (W-E-R-Q)",
+      "sequence": [
+        "W",
+        "E",
+        "R",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/yuumi/combos"
+      ],
+      "note": "Bind to an ally first; steer Q for the empowered hit."
+    }
+  ],
+  "Zaahen": [
+    {
+      "kind": "trade",
+      "nameKo": "견제 (Q-E-Q2)",
+      "sequence": [
+        "Q",
+        "E",
+        "Q2"
+      ],
+      "sources": [
+        "https://wecoach.gg/blog/article/how-to-play-zaahen-in-league-of-legends"
+      ],
+      "note": "Auto-attack after each Q cast."
+    },
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (AA-Q-E-W-AA-Q2-R-AA)",
+      "sequence": [
+        "AA",
+        "Q",
+        "E",
+        "W",
+        "AA",
+        "Q2",
+        "R",
+        "AA"
+      ],
+      "sources": [
+        "https://wecoach.gg/blog/article/how-to-play-zaahen-in-league-of-legends"
+      ],
+      "note": "Hit squishies with the outer edge of E."
+    }
+  ],
+  "Zac": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (E-Q-W-R)",
+      "sequence": [
+        "E",
+        "Q",
+        "W",
+        "R"
+      ],
+      "sources": [
+        "https://metabot.gg/en/league/champion/Zac/guide"
+      ],
+      "note": "Land the second Q arm on a squishy target."
+    }
+  ],
+  "Zeri": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide W-E-R then Q spam and autos; repeated Q has no distinct slot, so Q is listed once.",
+      "nameKo": "풀콤 (W-E-R-Q-AA)",
+      "sequence": [
+        "W",
+        "E",
+        "R",
+        "Q",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/zeri/combos"
+      ]
+    }
+  ],
+  "Ziggs": [
+    {
+      "kind": "allin",
+      "adjusted": "Guide order AA-E-Q-R-AA-W-W-AA; the second W press only detonates the same Satchel Charge (one damage instance), so W is listed once.",
+      "nameKo": "풀콤 (AA-E-Q-R-AA-W-AA)",
+      "sequence": [
+        "AA",
+        "E",
+        "Q",
+        "R",
+        "AA",
+        "W",
+        "AA"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/ziggs/combos"
+      ]
+    }
+  ],
+  "Zilean": [
+    {
+      "kind": "allin",
+      "nameKo": "풀콤 (Q-W-Q)",
+      "sequence": [
+        "Q",
+        "W",
+        "Q"
+      ],
+      "sources": [
+        "https://www.mobafire.com/league-of-legends/build/zilean-mid-and-support-guide-444411",
+        "https://www.skill-capped.com/lol/guides/builds/zilean"
+      ],
+      "note": "Second bomb on the same target detonates the first for a stun; Q-Q-W buffering is faster."
+    }
+  ],
+  "Zoe": [
+    {
+      "kind": "trade",
+      "adjusted": "Guide: Q-Q-R-AA; Q's first press only sets the star and the recast deals the damage, so Q is listed once; the AA after a spell is Zoe's passive-empowered hit, recorded as P.",
+      "nameKo": "견제 (Q-R-P)",
+      "sequence": [
+        "Q",
+        "R",
+        "P"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/zoe/combos"
+      ]
+    },
+    {
+      "kind": "allin",
+      "adjusted": "Guide: R-Flash-E-Q-Q; Q's two presses are one damage hit, so Q is listed once.",
+      "nameKo": "풀콤 (R-Flash-E-Q)",
+      "sequence": [
+        "R",
+        "Flash",
+        "E",
+        "Q"
+      ],
+      "sources": [
+        "https://mobalytics.gg/lol/champions/zoe/combos"
+      ]
+    }
+  ]
+}

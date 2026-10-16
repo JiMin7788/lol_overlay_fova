@@ -411,6 +411,8 @@ public partial class ComboSettingsView : UserControl
         PasteComboButton.ToolTip = Localization.L("combo.pasteTip");
         EmptySaved.Text = Localization.L("combo.emptySaved");
         SavedHint.Text = Localization.L("combo.savedHint");
+        PresetCaption.Text = Localization.L("combo.presets");
+        PresetHint.Text = Localization.L("combo.presetsHint");
 
         if (_selectedChampionId is null)
             PaletteHint.Text = Localization.L("combo.paletteHint");
@@ -2840,6 +2842,7 @@ public partial class ComboSettingsView : UserControl
 
         var hotkeysByCombo = BuildHotkeyReverseMap();
         int count = 0;
+        var savedNames = new HashSet<string>(StringComparer.Ordinal);
 
         if (selectedChampionId is not null
             && _composition.Config.Get("combos.saved") is IDictionary<string, object?> saved)
@@ -2852,11 +2855,69 @@ public partial class ComboSettingsView : UserControl
 
                 var hotkeys = hotkeysByCombo.TryGetValue(id, out var hk) ? hk : new List<string>();
                 SavedList.Items.Add(BuildSavedCard(combo, hotkeys));
+                savedNames.Add(combo.Name);
                 count++;
             }
         }
 
         EmptySaved.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RefreshPresetList(selectedChampionId, savedNames);
+    }
+
+    /// <summary>Built-in combos for the selected champion that are not saved yet (matched by name,
+    /// so a preset disappears once added and comes back if that combo is deleted).</summary>
+    private void RefreshPresetList(string? championId, IReadOnlySet<string> savedNames)
+    {
+        PresetList.Items.Clear();
+        if (championId is not null)
+            foreach (var preset in ComboPresets.For(championId))
+                if (!savedNames.Contains(preset.Name))
+                    PresetList.Items.Add(BuildPresetRow(championId, preset));
+        PresetPanel.Visibility = PresetList.Items.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private UIElement BuildPresetRow(string championId, ComboPresets.Preset preset)
+    {
+        var add = new Button
+        {
+            Style = (Style)Application.Current.FindResource("GhostButton"),
+            Content = Localization.L("combo.presetAdd"),
+            FontSize = 11,
+            Padding = new Thickness(10, 3, 10, 3),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        DockPanel.SetDock(add, Dock.Right);
+        add.Click += (_, _) =>
+        {
+            try
+            {
+                _composition?.ComboEditor?.AddPreset(championId, preset);
+                RefreshSavedList();
+                _composition?.RefreshComboHotkeys(); // the preset came with ALT+n; make it live now
+            }
+            catch (Exception ex) when (ex is ComboImportException or KeyNotFoundException or ArgumentException)
+            {
+                ShowMessage(ex.Message, isError: true);
+            }
+        };
+
+        var preview = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
+        foreach (var slot in preset.Sequence) preview.Children.Add(BuildPreviewIcon(slot));
+        var text = new StackPanel();
+        text.Children.Add(new TextBlock
+        {
+            Text = preset.Name,
+            FontSize = 13,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)Application.Current.FindResource("Text"),
+            TextWrapping = TextWrapping.Wrap,
+        });
+        text.Children.Add(preview);
+
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
+        row.Children.Add(add);
+        row.Children.Add(text);
+        return row;
     }
 
     /// <summary>Deletes a saved combo (task 7): removes <c>combos.saved.{id}</c> and every bound

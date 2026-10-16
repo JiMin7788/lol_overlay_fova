@@ -183,6 +183,24 @@ public partial class HomeWindow : Window
             _ = System.Threading.Tasks.Task.Run(Overlay.Client.ChampSelect.RunePageView.PrefetchIconsAsync);
         }
 
+        // First-run guide: the three things a new user needs, with the hotkeys they actually have.
+        if (_composition.Config.Get("general.firstRunGuideShown") is not true)
+        {
+            string toggle = _composition.Config.Get("overlay.toggleHotkey") as string is { Length: > 0 } t ? t : "SHIFT+TAB";
+            FirstRunGuideText.Text =
+                "① 콤보설정에서 챔피언을 고르고 [추천 콤보]를 추가하거나 직접 만드세요.\n" +
+                "② 게임 중 콤보 단축키(추천 콤보는 ALT+1부터)를 누르면 예상 데미지가 뜨고, 적 초상화를 눌러 대상을 바꿉니다.\n" +
+                $"③ 오버레이 표시 키 {toggle}는 롤 점수판 키와 겹칠 수 있어요. 설정 > 오버레이 > 단축키에서 바꿀 수 있습니다.";
+            FirstRunGuide.Visibility = Visibility.Visible;
+            void Dismiss()
+            {
+                _composition.Config.Set("general.firstRunGuideShown", true);
+                FirstRunGuide.Visibility = Visibility.Collapsed;
+            }
+            FirstRunDismiss.Click += (_, _) => Dismiss();
+            FirstRunOpenCombo.Click += (_, _) => { Dismiss(); NavCombo.IsChecked = true; };
+        }
+
         // M39 one-time telemetry disclosure: only while something would actually be sent
         // (configured + enabled) and never again once acknowledged. "보내지 않기" both opts out
         // and acknowledges — the service reads telemetry.enabled at next construction, and the
