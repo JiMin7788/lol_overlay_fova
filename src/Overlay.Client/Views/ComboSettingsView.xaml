@@ -124,6 +124,14 @@
                                 <TextBlock x:Name="PreviewBasis" Style="{StaticResource BodyText}" FontSize="11"
                                            Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
                                            Margin="0,4,0,0" />
+                                <!-- M44: a stronger casting order, when the search finds one. -->
+                                <DockPanel x:Name="PreviewOrderPanel" Margin="0,8,0,0" Visibility="Collapsed">
+                                    <Button x:Name="PreviewOrderApply" DockPanel.Dock="Right" Content="이 순서로"
+                                            Style="{StaticResource GhostButton}" Margin="8,0,0,0"
+                                            VerticalAlignment="Center" Click="PreviewOrderApply_Click" />
+                                    <TextBlock x:Name="PreviewOrderText" Style="{StaticResource BodyText}" FontSize="12"
+                                               TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </DockPanel>
                             </StackPanel>
                         </Border>
 

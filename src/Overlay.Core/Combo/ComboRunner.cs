@@ -535,7 +535,8 @@ public sealed class ComboRunner : IDisposable
                 CasterChampion: championId, ComboName: saved.Name,
                 // (§76) Why the range is as wide as it is — see ComboHudResult's own doc comment.
                 FloorFromAssumedEnemyRunes: floorFromAssumedEnemyRunes,
-                CeilingFromAmplifierRunes: ceilingFromAmplifierRunes);
+                CeilingFromAmplifierRunes: ceilingFromAmplifierRunes,
+                TargetHp: context.Defender.CurrentHP + context.Defender.Shield);
             if (publish)
             {
                 EventBus.EventBus.Publish(HudEventType, hud, source: "ComboRunner");
@@ -584,7 +585,7 @@ public sealed class ComboRunner : IDisposable
             if (hud is null) return null;
 
             return new ComboPreview(hud.Result.TotalDamage, hud.Result.RangeMin, hud.Result.RangeMax,
-                isLive, hud.TargetChampion, ReferenceLevel);
+                isLive, hud.TargetChampion, ReferenceLevel, hud.TargetHp);
         }
         catch (Exception ex)
         {
@@ -3478,7 +3479,8 @@ public enum TargetMode
 /// out-of-game reference (see <see cref="ComboRunner.ComputePreview"/>) — the editor must say so
 /// rather than let a reference read as a prediction.</summary>
 public sealed record ComboPreview(
-    double Resolved, double Min, double Max, bool IsLive, string TargetChampion, int ReferenceLevel);
+    double Resolved, double Min, double Max, bool IsLive, string TargetChampion, int ReferenceLevel,
+    double TargetHp = 0);
 
 /// <summary>(M40) One enemy's estimated full-combo damage against me (see
 /// <see cref="ComboRunner.ComputeThreat"/>): <paramref name="Damage"/> after my armor/MR, at the

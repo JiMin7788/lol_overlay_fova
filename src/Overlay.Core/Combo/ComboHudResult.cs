@@ -81,7 +81,10 @@ public sealed record ComboHudResult(
     // (§76) True when the range CEILING was multiplied up by an equipped conditional AMPLIFIER rune's
     // best case (M24 P4 — Coup de Grace / Cut Down / Last Stand / PtA / First Strike). The rune's
     // condition is not reliably observable, so the ceiling assumes it holds.
-    bool CeilingFromAmplifierRunes = false)
+    bool CeilingFromAmplifierRunes = false,
+    // (M44) The HP the combo ran against (current HP + shield): the kill line for the editor's
+    // order comparison, which must not count a killing blow's overkill as extra damage.
+    double TargetHp = 0)
 {
     /// <summary>(M28 §3.3) How many sequence tokens carry an above-floor knob — the "가정 N"
     /// assumption count shown next to the total, and (when &gt; 0) the signal that the kill verdict is

@@ -1635,6 +1635,7 @@ public partial class ComboSettingsView : UserControl
             || _sequence.Count == 0)
         {
             PreviewCard.Visibility = Visibility.Collapsed;
+            HideBetterOrder();
             return;
         }
 
@@ -1643,6 +1644,7 @@ public partial class ComboSettingsView : UserControl
         if (preview is null)
         {
             PreviewCard.Visibility = Visibility.Collapsed;
+            HideBetterOrder();
             return;
         }
 
@@ -1656,6 +1658,66 @@ public partial class ComboSettingsView : UserControl
             ? $"기준: 현재 게임 · 대상 {(preview.TargetChampion.Length > 0 ? preview.TargetChampion : "미지정")}"
             : $"기준: 레벨 {preview.ReferenceLevel} · 스킬 만렙 · 아이템/룬 없음 · 더미(방어력 0, 체력 1000)"
               + " — 게임 중에는 실제 스탯과 대상으로 다시 계산됩니다";
+        SearchBetterOrder(runner, championId);
+    }
+
+    // ── M44: a stronger casting order ───────────────────────────────────────
+
+    /// <summary>Bumped by every edit; a search that finishes under an older value is discarded.</summary>
+    private int _orderSearchVersion;
+    private List<Chip>? _betterOrder;
+
+    private void HideBetterOrder()
+    {
+        _orderSearchVersion++;
+        _betterOrder = null;
+        PreviewOrderPanel.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>(M44) Tries every game-possible reordering of the sequence (<see cref="ComboOrderSearch"/>)
+    /// on the preview's own basis, off the UI thread, and offers the best one when it deals at least 1%
+    /// and 1 more damage. A combo that already kills its target gets no hint (see Best).</summary>
+    private async void SearchBetterOrder(ComboRunner runner, string championId)
+    {
+        HideBetterOrder();
+        int version = _orderSearchVersion;
+        var chips = _sequence.ToList();
+        var orders = ComboOrderSearch.Orders(
+            chips.Select(c => c.Slot).ToList(),
+            chips.Select(c => c.Slot + "|" + JsonSerializer.Serialize(c.Node)).ToList());
+        if (orders is null || orders.Count < 2) return;
+
+        using var cts = new System.Threading.CancellationTokenSource();
+        ComboOrderSearch.Hint? hint;
+        try
+        {
+            hint = await Task.Run(() => ComboOrderSearch.Best(orders, order =>
+            {
+                if (version != System.Threading.Volatile.Read(ref _orderSearchVersion)) cts.Cancel();
+                var graph = new ComboGraph(order.Select(i => chips[i].Node).ToList(), Array.Empty<ComboEdge>());
+                return runner.ComputePreview(championId, graph) is { } p ? (p.Resolved, p.TargetHp) : null;
+            }, cts.Token));
+        }
+        catch (Exception)
+        {
+            return; // superseded by an edit, or failed: either way no hint
+        }
+
+        if (version != _orderSearchVersion || hint is null) return;
+
+        _betterOrder = hint.Order.Select(i => chips[i]).ToList();
+        string order = string.Join(" → ", _betterOrder.Select(c => c.Slot));
+        PreviewOrderText.Text = $"더 센 순서: {order}  (+{hint.Gain:N0}, +{hint.Gain / Math.Max(hint.Current, 1) * 100:N0}%"
+            + (hint.Kills ? ", 처치)" : ")");
+        PreviewOrderPanel.Visibility = Visibility.Visible;
+    }
+
+    private void PreviewOrderApply_Click(object sender, RoutedEventArgs e)
+    {
+        if (_betterOrder is not { } order || order.Count != _sequence.Count) return;
+        _sequence.Clear();
+        _sequence.AddRange(order);
+        RebuildSequence();
     }
 
     /// <summary>Builds one sequence entry: the draggable skill chip on top, and below it the manual
