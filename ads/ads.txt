@@ -1,3 +1,5 @@
 # fova-affiliate is off until the Riot app is Approved/Acknowledged (TODO s140); uncomment to restore.
 # fova-affiliate.png	https://jimin7788.github.io/lol_overlay_fova/
-fova-house.png	https://github.com/JiMin7788/lol_overlay_fova
+# fova-house is off: a "download Fova" banner inside Fova means nothing (user, 2026-10-18).
+# The slot collapses on an empty manifest; uncomment and rerun the generator to restore.
+# fova-house.png	https://github.com/JiMin7788/lol_overlay_fova
