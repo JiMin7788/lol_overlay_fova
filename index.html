@@ -67,6 +67,15 @@
   .dl .warn{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
     background:var(--surface-hi);font-size:13px}
 
+  .faq{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+  .faq details{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 20px}
+  .faq summary{cursor:pointer;padding:14px 0;font-weight:600;font-size:15px;list-style:none}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::before{content:"Q.";color:var(--gold);margin-right:8px}
+  .faq details[open] summary{border-bottom:1px solid var(--border)}
+  .faq p{padding:12px 0 16px;color:var(--dim);font-size:14px}
+  .faq a{color:var(--gold-dim)}
+
   footer{margin:56px 0 40px;padding-top:24px;border-top:1px solid var(--border);
     color:var(--dim);font-size:12.5px;text-align:center}
   footer a{color:var(--gold-dim)}
@@ -80,10 +89,10 @@
       <p class="tagline">지금 이 콤보로 <span class="hl">킬각이 나오는지</span>, 게임 화면 위에서 바로.</p>
       <p class="subline">내 실시간 스탯·룬·아이템 기준으로 콤보 데미지를 계산해 보여주는 가벼운 LoL 오버레이 — 무료</p>
       <div class="cta-row">
-        <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2-setup.exe">⬇ 설치 파일 받기 (0.3.2, 4.5MB)</a>
+        <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe">⬇ 설치 파일 받기 (최신 버전)</a>
         <a class="cta ghost" href="https://github.com/JiMin7788/lol_overlay_fova">GitHub에서 보기</a>
       </div>
-      <p class="cta-note">무설치 <a href="https://github.com/JiMin7788/lol_overlay_fova/raw/main/release/fova-0.3.2.zip">ZIP(4.0MB)</a>도 있습니다 · Windows 10/11</p>
+      <p class="cta-note">무설치 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip">포터블 zip</a>도 있습니다 · Windows 10/11 · 업데이트 자동</p>
     </header>
 
     <!-- 오버레이 UI 쇼케이스 — 각 패널은 캡션을 자체 포함 -->
@@ -122,6 +131,39 @@
          모든 버전은 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases">GitHub Releases</a>에 있습니다.</p>
       <div class="warn">Windows SmartScreen이 "인식할 수 없는 앱"이라고 표시할 수 있습니다 — 다운로드 이력이 적은
         모든 무서명 프로그램에 뜨는 일반 경고입니다. "추가 정보 → 실행"으로 진행하세요.</div>
+    </div>
+
+    <h2>자주 묻는 질문</h2>
+    <div class="faq">
+      <details open>
+        <summary>쓰면 밴 당하나요?</summary>
+        <p>Fova는 게임 메모리를 읽거나 쓰지 않고, 코드 주입·패킷 분석·매크로·자동 입력도 하지 않습니다.
+           Riot이 공식으로 제공하는 로컬 Live Client Data API와 공개 게임 데이터(Data Dragon)만 읽어 별도 창에 표시합니다.
+           Riot 개발자 정책에 맞춰 설계했고 Riot Developer Portal 등록·문의를 진행 중이지만, 서드파티 앱 허용 여부의 최종 판단은 Riot에 있습니다.
+           소스 전체가 <a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a>에 공개돼 있어 직접 확인할 수 있습니다.</p>
+      </details>
+      <details>
+        <summary>설치할 때 "Windows의 PC 보호" 경고가 떠요</summary>
+        <p>Windows SmartScreen 경고입니다. 코드 서명 인증서가 없는 새 프로그램은 다운로드 이력이 쌓이기 전까지 이 화면이 뜹니다.
+           "추가 정보 → 실행"으로 진행하세요. 파일이 걱정되면 받은 설치 파일을
+           <a href="https://www.virustotal.com/gui/home/upload">VirusTotal</a>에 직접 올려 여러 백신의 검사 결과를 확인할 수 있습니다.</p>
+      </details>
+      <details>
+        <summary>게임 프레임에 영향이 있나요?</summary>
+        <p>오버레이는 마우스가 통과하는 표시 전용 창이고, 저사양 PC를 기준으로 가볍게 설계했습니다. 게임 중에는 광고도 완전히 꺼집니다.</p>
+      </details>
+      <details>
+        <summary>오버레이를 켜고 끄려면?</summary>
+        <p>기본 단축키는 Shift+Tab이며 설정 → 오버레이에서 바꿀 수 있습니다. 위치와 크기는 설정의 배율·이동 모드로 조절합니다.</p>
+      </details>
+      <details>
+        <summary>업데이트는 어떻게 하나요?</summary>
+        <p>자동입니다. 실행할 때 새 버전을 확인해 백그라운드로 받아 두고, 앱을 종료할 때 적용합니다. 설정은 그대로 유지됩니다.</p>
+      </details>
+      <details>
+        <summary>유료인가요?</summary>
+        <p>무료입니다.</p>
+      </details>
     </div>
 
     <footer>
