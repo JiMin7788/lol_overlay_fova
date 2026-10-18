@@ -154,6 +154,8 @@ public partial class HomeWindow : Window
             }
 #endif
 
+            _homeView.ReviewHomeSlot.Content = new Overlay.Client.Views.GameReviewCard(_composition.Reviews);
+
             _homeView.ChampSelectHomeSlot.Content = new Overlay.Client.ChampSelect.ChampSelectPanel(
                 lcu, presets,
                 () => _composition.Config.Get("champSelect.autoApply") is true,
@@ -163,7 +165,10 @@ public partial class HomeWindow : Window
                 itemRecommendations: itemRecs,
                 recDir: recRoot,
                 setRecBracket: v => _composition.Config.Set("champSelect.recBracket", v),
-                recBracket: bracket);
+                recBracket: bracket,
+                // (M41) kill timing vs the lane opponent, through the same engine as the overlay.
+                killTiming: (me, enemy) => _composition.ComboRunner?.ComputeKillTiming(me, enemy)
+                    ?? (IReadOnlyList<Overlay.Core.Combo.KillTimingRow>)Array.Empty<Overlay.Core.Combo.KillTimingRow>());
 
             // (2026-08-22 user request) The dashboard no longer force-raises itself on champ-select
             // entry — it was stealing foreground focus. The overlay still appears on GAME.CONNECTED

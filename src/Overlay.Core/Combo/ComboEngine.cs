@@ -1030,24 +1030,28 @@ public sealed class ComboEngine
     /// </summary>
     private static Damage.ComboNode BuildDamageNode(ComboNode node, ExecutionContext context)
     {
-        double foldedDamage = node.Damage
+        // (2026-10-17) Item amps scale the hit's whole number, including a %-HP share.
+        double amp = node.DamageAmp * context.DamageAmp;
+        double foldedDamage = (node.Damage
             + node.RatioAD * context.Attacker.Ad
-            + node.RatioBonusAD * context.Attacker.BonusAD;
+            + node.RatioBonusAD * context.Attacker.BonusAD) * amp;
 
         return new Damage.ComboNode(
             NodeId: node.Id,
             Damage: foldedDamage,
             RatioAD: 0,
-            RatioAP: node.RatioAP,
+            RatioAP: node.RatioAP * amp,
             DamageType: MapDamageType(node.DamageType),
             // (M27) ORed with the curated per-hit flag so a non-AA ability (e.g. Garen E) can also
             // crit; every pre-existing node has CanCrit=false, so this is additive-only.
             CanCrit: node.NodeType == ComboNodeType.Aa || node.CanCrit,
             ExecuteType: MapExecuteType(node.ExecuteType),
             ExecuteThreshold: node.ExecuteThreshold ?? 0,
-            ExecutePercent: node.ExecutePercent,
+            ExecutePercent: node.ExecuteType is ComboExecuteType.CurrentHp or ComboExecuteType.MissingHp
+                ? node.ExecutePercent * amp : node.ExecutePercent,
             CritDamageScalar: node.CritDamageScalar,
-            HpBelowGateFraction: node.HpBelowGate); // (§27 (B)) carry the dynamic low-HP on-hit gate
+            HpBelowGateFraction: node.HpBelowGate, // (§27 (B)) carry the dynamic low-HP on-hit gate
+            GuaranteedCrit: node.GuaranteedCrit);
     }
 
     private static Damage.DamageType MapDamageType(ComboDamageType type) => type switch
@@ -1359,7 +1363,11 @@ public sealed record ComboNode(
     double CritDamageScalar = 1.0,
     // (§27 (B)) Dynamic low-HP on-hit gate fraction (0-1), threaded from SkillHit.HpBelowGate to the
     // M05 node's HpBelowGateFraction in BuildDamageNode. Null (default) = ungated.
-    double? HpBelowGate = null);
+    double? HpBelowGate = null,
+    // (2026-10-17) Item amps on this hit (the "모든 아이템" chip's Riftmaker/Abyssal/Shadowflame/Shojin),
+    // and Sundered Sky's guaranteed crit on the combo's first attack.
+    double DamageAmp = 1.0,
+    bool GuaranteedCrit = false);
 
 /// <summary>An implicit or (future V2) explicit sequencing edge between two node ids.
 /// MVP's <see cref="ComboEngine.BuildGraph"/> always populates this as the linear
@@ -1389,7 +1397,9 @@ public sealed record ExecutionContext(
     DefenderStat Defender,
     UserRuneConfig UserRuneConfig,
     double CasterMaxHealth = 0,
-    bool CasterIsMelee = false);
+    bool CasterIsMelee = false,
+    // (2026-10-17) Giant Slayer (Dominik's, Perplexity): a whole-combo damage amp.
+    double DamageAmp = 1.0);
 
 /// <summary>One entry of <see cref="ComboResult.NodeBreakdown"/>: <see cref="Damage"/> comes
 /// from <see cref="DamageCalcResult.Breakdown"/>, <see cref="Delay"/> passes through the

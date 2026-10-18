@@ -82,7 +82,8 @@ public readonly record struct ChampSelectSnapshot(bool InChampSelect, int Champi
 /// feeds the dashboard composition analysis (2026-07-25).</summary>
 public sealed record ChampSelectBoard(
     IReadOnlyList<int> MyTeam, IReadOnlyList<int> TheirTeam,
-    IReadOnlyList<int> MyBans, IReadOnlyList<int> TheirBans);
+    IReadOnlyList<int> MyBans, IReadOnlyList<int> TheirBans,
+    string MyPosition = "");
 
 /// <summary>Outcome of a rune-page apply (M33 D2 fencing): the page-slot-exhausted case is
 /// surfaced instead of silently overwriting a page the user built by hand.</summary>

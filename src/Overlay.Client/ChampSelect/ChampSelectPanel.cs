@@ -110,6 +110,9 @@ public sealed class ChampSelectPanel : UserControl
 
     private ChampSelectSnapshot _snapshot;
 
+    /// <summary>(M41) Kill timing vs the lane opponent; null when no calculator was supplied.</summary>
+    private readonly KillTimingCard? _killTiming;
+
     /// <summary>Armed by a NeedsOverwriteConfirmation result: the NEXT [적용] click carries the
     /// explicit current-page-overwrite consent (D2). Reset on every snapshot change.</summary>
     private bool _confirmOverwriteArmed;
@@ -118,9 +121,11 @@ public sealed class ChampSelectPanel : UserControl
         IRunePresetSource? recommendations = null,
         Func<string?>? getFlashKey = null, Action<string>? setFlashKey = null,
         FileItemRecommendationSource? itemRecommendations = null,
-        string recDir = "", Action<string>? setRecBracket = null, string recBracket = "")
+        string recDir = "", Action<string>? setRecBracket = null, string recBracket = "",
+        Func<string, string, IReadOnlyList<Overlay.Core.Combo.KillTimingRow>>? killTiming = null)
     {
         _lcu = lcu;
+        _killTiming = killTiming is null ? null : new KillTimingCard(killTiming);
         _presets = presets;
         _recommendations = recommendations;
         _itemRecs = itemRecommendations;
@@ -203,6 +208,7 @@ public sealed class ChampSelectPanel : UserControl
         var rows = new StackPanel();
         rows.Children.Add(grid);
         rows.Children.Add(_compSection);
+        if (_killTiming is not null) rows.Children.Add(_killTiming);
         var pageArea = new StackPanel { Orientation = Orientation.Horizontal };
         pageArea.Children.Add(_runeView);
         pageArea.Children.Add(BuildSpellsColumn());
@@ -587,7 +593,19 @@ public sealed class ChampSelectPanel : UserControl
     private async Task RefreshCompAsync()
     {
         var board = await _lcu.GetChampSelectBoardAsync();
-        if (board is null) { _compSection.Visibility = Visibility.Collapsed; return; }
+        if (board is null)
+        {
+            _compSection.Visibility = Visibility.Collapsed;
+            _killTiming?.Update(null, Array.Empty<string>(), "");
+            return;
+        }
+
+        // (M41) Kill timing: my champion (locked or hovered) vs the locked enemies.
+        _killTiming?.Update(
+            ChampionSummary.GetByNumericKey(_snapshot.ChampionKey)?.Id,
+            board.TheirTeam.Where(k => k > 0).Select(k => ChampionSummary.GetByNumericKey(k)?.Id)
+                .OfType<string>().ToList(),
+            board.MyPosition);
 
         var mine = TeamCompAnalyzer.Analyze(board.MyTeam);
         var theirs = TeamCompAnalyzer.Analyze(board.TheirTeam);

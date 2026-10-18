@@ -25,6 +25,9 @@
                 </DockPanel>
             </Border>
 
+            <!-- (M42) Last game's review + recent games. -->
+            <ContentControl x:Name="ReviewHomeSlot" Margin="0,0,0,12" />
+
             <!-- In-game player cards -->
             <WrapPanel x:Name="InGamePanel" Orientation="Horizontal" Visibility="Collapsed">
                 <Border Style="{StaticResource Card}" Width="220" Margin="0,0,16,16">

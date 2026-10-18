@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Overlay.Core.ChampionDb;
 using Overlay.Core.Stats;
 
 namespace Overlay.Client.Views;
@@ -382,44 +383,10 @@ public sealed class StatsView : UserControl
         return union;
     }
 
-    /// <summary>Search matches three ways, so a Korean player never has to switch IME to find a
-    /// champion: the localized display name ("가렌"), the canonical id ("Garen"), and the Korean
-    /// name typed on a QWERTY keyboard with the IME still off — "잭스" comes out as "wortm", which
-    /// this maps back by rendering the Korean name to its 2-beolsik keystrokes and matching that.</summary>
+    /// <summary>Korean name, id, 초성, mid-composition and IME-off QWERTY spellings
+    /// (<see cref="ChampionNameSearch"/>).</summary>
     private static bool Matches(TierRow row, string needle)
-    {
-        string ko = Localization.ChampionName(row.Name);
-        if (ko.Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
-        if (row.Name.Contains(needle, StringComparison.OrdinalIgnoreCase)) return true;
-        return QwertyFromHangul(ko).Contains(needle, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // 2-beolsik (두벌식) keystrokes for each jamo, in Unicode composition order. Doubled jamo use
-    // their shifted key (ㄲ→R); matching is case-insensitive so an un-shifted "r" still finds it.
-    private const string Cho = "r,R,s,e,E,f,a,q,Q,t,T,d,w,W,c,z,x,v,g";
-    private static readonly string[] Jung =
-        "k,o,i,O,j,p,u,P,h,hk,ho,hl,y,n,nj,np,nl,b,m,ml,l".Split(',');
-    private static readonly string[] Jong =
-        (",r,R,rt,s,sw,sg,e,f,fr,fa,fq,ft,fx,fv,fg,a,q,qt,t,T,d,w,c,z,x,v,g").Split(',');
-    private static readonly string[] ChoKeys = Cho.Split(',');
-
-    /// <summary>Renders a Korean string to the QWERTY keys a two-set keyboard would produce for it,
-    /// leaving non-Hangul characters as-is. Used only to make the "IME-off" search spelling
-    /// matchable; it is a fuzzy aid, not a reversible transliteration.</summary>
-    private static string QwertyFromHangul(string text)
-    {
-        var sb = new System.Text.StringBuilder(text.Length * 2);
-        foreach (char ch in text)
-        {
-            int i = ch - 0xAC00;
-            if (i is >= 0 and < 11172)
-            {
-                sb.Append(ChoKeys[i / 588]).Append(Jung[(i % 588) / 28]).Append(Jong[i % 28]);
-            }
-            else sb.Append(ch);
-        }
-        return sb.ToString();
-    }
+        => ChampionNameSearch.Matches(Localization.ChampionName(row.Name), row.Name, needle);
 
     private static TextBlock Note(string lkey)
     {

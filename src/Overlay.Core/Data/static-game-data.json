@@ -1,65 +1,311 @@
 {
-  "_comment": "Static champion/item stats for the KILLABLE damage calculator (DA-001). Config-driven per Hard Rule #4 - the calculator never hardcodes these numbers inline. Bump 'patch' whenever Riot ships balance changes that affect these constants (see data-algo SKILL 'Static data'). All per-level values are LINEAR-PER-LEVEL inputs; the calculator applies LoL's standard quadratic 'stat growth' curve (see KillableCalculator).",
+  "_comment": "Static champion/item stats for the KILLABLE damage calculator (DA-001). Config-driven per Hard Rule #4 - the calculator never hardcodes these numbers inline. Bump 'patch' whenever Riot ships balance changes that affect these constants (see data-algo SKILL 'Static data'). All per-level values are LINEAR-PER-LEVEL inputs; the calculator applies LoL's standard quadratic 'stat growth' curve (see KillableCalculator). Item lethality (2026-10-17): Data Dragon publishes none, so every item's LethalityAmount was copied from CommunityDragon items.cdtb.bin.json (patch 16.20); before that only 3 items carried it and every other lethality item counted 0 armor pen.",
   "patch": "14.12",
   "schemaVersion": 1,
-
   "champions": {
     "Annie": {
       "resource": "Mana",
-      "baseHealth": 594, "healthPerLevel": 92,
-      "baseArmor": 23, "armorPerLevel": 4.7,
-      "baseMagicResist": 30, "magicResistPerLevel": 1.3,
-      "baseAttackDamage": 50, "attackDamagePerLevel": 2.625,
+      "baseHealth": 594,
+      "healthPerLevel": 92,
+      "baseArmor": 23,
+      "armorPerLevel": 4.7,
+      "baseMagicResist": 30,
+      "magicResistPerLevel": 1.3,
+      "baseAttackDamage": 50,
+      "attackDamagePerLevel": 2.625,
       "baseMoveSpeed": 335,
       "abilities": [
-        { "name": "Q Disintegrate",      "type": "Magic",    "flat": 270, "perAp": 0.8 },
-        { "name": "W Incinerate",         "type": "Magic",    "flat": 280, "perAp": 0.85 },
-        { "name": "R Summon Tibbers",     "type": "Magic",    "flat": 400, "perAp": 0.8 }
+        {
+          "name": "Q Disintegrate",
+          "type": "Magic",
+          "flat": 270,
+          "perAp": 0.8
+        },
+        {
+          "name": "W Incinerate",
+          "type": "Magic",
+          "flat": 280,
+          "perAp": 0.85
+        },
+        {
+          "name": "R Summon Tibbers",
+          "type": "Magic",
+          "flat": 400,
+          "perAp": 0.8
+        }
       ]
     },
-
     "Zed": {
       "resource": "Energy",
-      "baseHealth": 654, "healthPerLevel": 99,
-      "baseArmor": 32, "armorPerLevel": 4.7,
-      "baseMagicResist": 32, "magicResistPerLevel": 2.05,
-      "baseAttackDamage": 63, "attackDamagePerLevel": 3.4,
+      "baseHealth": 654,
+      "healthPerLevel": 99,
+      "baseArmor": 32,
+      "armorPerLevel": 4.7,
+      "baseMagicResist": 32,
+      "magicResistPerLevel": 2.05,
+      "baseAttackDamage": 63,
+      "attackDamagePerLevel": 3.4,
       "baseMoveSpeed": 345,
       "abilities": [
-        { "name": "Q Razor Shuriken",    "type": "Physical", "flat": 200, "perBonusAd": 1.1 },
-        { "name": "E Shadow Slash",       "type": "Physical", "flat": 140, "perBonusAd": 0.65 },
-        { "name": "R Death Mark",         "type": "Physical", "flat": 0,   "perBonusAd": 0.0, "percentOfComboDamage": 0.25 }
+        {
+          "name": "Q Razor Shuriken",
+          "type": "Physical",
+          "flat": 200,
+          "perBonusAd": 1.1
+        },
+        {
+          "name": "E Shadow Slash",
+          "type": "Physical",
+          "flat": 140,
+          "perBonusAd": 0.65
+        },
+        {
+          "name": "R Death Mark",
+          "type": "Physical",
+          "flat": 0,
+          "perBonusAd": 0.0,
+          "percentOfComboDamage": 0.25
+        }
       ]
     },
-
     "_default": {
       "_comment": "Fallback used when a champion is not in this table. Conservative generic mid-game profile so the calc degrades gracefully instead of throwing. Confidence of any KILLABLE verdict on a defaulted champion should be treated as low by consumers.",
       "resource": "Mana",
-      "baseHealth": 600, "healthPerLevel": 90,
-      "baseArmor": 28, "armorPerLevel": 4.5,
-      "baseMagicResist": 30, "magicResistPerLevel": 1.5,
-      "baseAttackDamage": 58, "attackDamagePerLevel": 3.0,
+      "baseHealth": 600,
+      "healthPerLevel": 90,
+      "baseArmor": 28,
+      "armorPerLevel": 4.5,
+      "baseMagicResist": 30,
+      "magicResistPerLevel": 1.5,
+      "baseAttackDamage": 58,
+      "attackDamagePerLevel": 3.0,
       "baseMoveSpeed": 335,
       "abilities": []
     }
   },
-
   "items": {
-    "3031": { "name": "Infinity Edge",        "attackDamage": 65 },
-    "3036": { "name": "Lord Dominik's Regards","attackDamage": 35, "percentArmorPen": 0.35 },
-    "6691": { "name": "Duskblade of Draktharr","attackDamage": 60, "lethality": 18 },
-    "3142": { "name": "Youmuu's Ghostblade",  "attackDamage": 55, "lethality": 18 },
-    "3814": { "name": "Edge of Night",        "attackDamage": 50, "lethality": 15, "health": 325 },
-
-    "6655": { "name": "Luden's Companion",    "abilityPower": 95 },
-    "4645": { "name": "Shadowflame",          "abilityPower": 110, "flatMagicPen": 12 },
-    "3020": { "name": "Sorcerer's Shoes",     "flatMagicPen": 18 },
-    "3135": { "name": "Void Staff",           "abilityPower": 80, "percentMagicPen": 0.40 },
-    "4646": { "name": "Stormsurge",           "abilityPower": 95, "flatMagicPen": 15 },
-
-    "3157": { "name": "Zhonya's Hourglass",   "abilityPower": 105, "armor": 50 },
-    "3001": { "name": "Abyssal Mask",         "magicResist": 55, "health": 350 },
-    "3047": { "name": "Plated Steelcaps",     "armor": 25 },
-    "3194": { "name": "Adaptive Helm",        "magicResist": 55, "health": 350 }
+    "3031": {
+      "name": "Infinity Edge",
+      "attackDamage": 65
+    },
+    "3036": {
+      "name": "Lord Dominik's Regards",
+      "attackDamage": 35,
+      "percentArmorPen": 0.35
+    },
+    "6691": {
+      "name": "Duskblade of Draktharr",
+      "attackDamage": 60,
+      "lethality": 18
+    },
+    "3142": {
+      "name": "Youmuu's Ghostblade",
+      "attackDamage": 55,
+      "lethality": 18
+    },
+    "3814": {
+      "name": "Edge of Night",
+      "attackDamage": 50,
+      "lethality": 15,
+      "health": 325
+    },
+    "6655": {
+      "name": "Luden's Companion",
+      "abilityPower": 95
+    },
+    "4645": {
+      "name": "Shadowflame",
+      "abilityPower": 110,
+      "flatMagicPen": 12
+    },
+    "3020": {
+      "name": "Sorcerer's Shoes",
+      "flatMagicPen": 18
+    },
+    "3135": {
+      "name": "Void Staff",
+      "abilityPower": 80,
+      "percentMagicPen": 0.4
+    },
+    "4646": {
+      "name": "Stormsurge",
+      "abilityPower": 95,
+      "flatMagicPen": 15
+    },
+    "3157": {
+      "name": "Zhonya's Hourglass",
+      "abilityPower": 105,
+      "armor": 50
+    },
+    "3001": {
+      "name": "Abyssal Mask",
+      "magicResist": 55,
+      "health": 350
+    },
+    "3047": {
+      "name": "Plated Steelcaps",
+      "armor": 25
+    },
+    "3194": {
+      "name": "Adaptive Helm",
+      "magicResist": 55,
+      "health": 350
+    },
+    "2020": {
+      "name": "The Brutalizer",
+      "lethality": 5.0
+    },
+    "2520": {
+      "name": "Bastionbreaker",
+      "lethality": 22.0
+    },
+    "3131": {
+      "name": "Sword of the Divine",
+      "lethality": 18.0
+    },
+    "3134": {
+      "name": "Serrated Dirk",
+      "lethality": 10.0
+    },
+    "3179": {
+      "name": "Umbral Glaive",
+      "lethality": 18.0
+    },
+    "4003": {
+      "name": "Lifeline",
+      "lethality": 5.0
+    },
+    "4004": {
+      "name": "Spectral Cutlass",
+      "lethality": 15.0
+    },
+    "4017": {
+      "name": "Hellfire Hatchet",
+      "lethality": 12.0
+    },
+    "6676": {
+      "name": "The Collector",
+      "lethality": 10.0
+    },
+    "6693": {
+      "name": "Prowler's Claw",
+      "lethality": 22.0
+    },
+    "6694": {
+      "name": "Serylda's Grudge",
+      "lethality": 15.0
+    },
+    "6695": {
+      "name": "Serpent's Fang",
+      "lethality": 15.0
+    },
+    "6696": {
+      "name": "Axiom Arc",
+      "lethality": 18.0
+    },
+    "6697": {
+      "name": "Hubris",
+      "lethality": 18.0
+    },
+    "6698": {
+      "name": "Profane Hydra",
+      "lethality": 18.0
+    },
+    "6699": {
+      "name": "Voltaic Cyclosword",
+      "lethality": 10.0
+    },
+    "6701": {
+      "name": "Opportunity",
+      "lethality": 18.0
+    },
+    "126697": {
+      "name": "Hubris",
+      "lethality": 18.0
+    },
+    "223142": {
+      "name": "Youmuu's Ghostblade",
+      "lethality": 22.0
+    },
+    "223185": {
+      "name": "Guardian's Dirk",
+      "lethality": 11.0
+    },
+    "223814": {
+      "name": "Edge of Night",
+      "lethality": 14.0
+    },
+    "226676": {
+      "name": "The Collector",
+      "lethality": 12.0
+    },
+    "226691": {
+      "name": "Duskblade of Draktharr",
+      "lethality": 18.0
+    },
+    "226693": {
+      "name": "Prowler's Claw",
+      "lethality": 22.0
+    },
+    "226695": {
+      "name": "Serpent's Fang",
+      "lethality": 19.0
+    },
+    "226696": {
+      "name": "Axiom Arc",
+      "lethality": 18.0
+    },
+    "226697": {
+      "name": "Hubris",
+      "lethality": 18.0
+    },
+    "226698": {
+      "name": "Profane Hydra",
+      "lethality": 18.0
+    },
+    "226699": {
+      "name": "Voltaic Cyclosword",
+      "lethality": 10.0
+    },
+    "226701": {
+      "name": "Opportunity",
+      "lethality": 15.0
+    },
+    "228003": {
+      "name": "Deathblade",
+      "lethality": 20.0
+    },
+    "446691": {
+      "name": "Duskblade of Draktharr",
+      "lethality": 20.0
+    },
+    "446693": {
+      "name": "Prowler's Claw",
+      "lethality": 20.0
+    },
+    "447112": {
+      "name": "Flesheater",
+      "lethality": 18.0
+    },
+    "447115": {
+      "name": "Regicide",
+      "lethality": 15.0
+    },
+    "447116": {
+      "name": "Kinkou Jitte",
+      "lethality": 12.0
+    },
+    "667101": {
+      "name": "Gambler's Blade",
+      "lethality": 15.0
+    },
+    "667112": {
+      "name": "Flesheater",
+      "lethality": 15.0
+    },
+    "667666": {
+      "name": "The Collector",
+      "lethality": 10.0
+    }
   }
 }

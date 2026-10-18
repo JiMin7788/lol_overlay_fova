@@ -302,7 +302,11 @@ public partial class MainWindow : Window
                 snap => _composition.ComboRunner?.ComputeSkillPanel(snap),
                 // (M31 §C) last-seen enemy portraits drawn half-transparent on the minimap, queried
                 // live each frame. Cleared by the tracker when that champion is spotted again.
-                () => _composition.EnemyAfterimages?.GetActive());
+                () => _composition.EnemyAfterimages?.GetActive(),
+                // (M40) enemy kill-threat estimates (computed in the background, read each frame).
+                () => _composition.EnemyThreats,
+                // (M43) next-item ranking while dead (computed in the background, read each frame).
+                () => _composition.NextItems);
 
             // M02/M04/M13 combo-hotkey toggle-off wiring: give ComboRunner the coordinator so it
             // can tell whether its own combo card is still on screen (OverlayCoordinator.IsActive)

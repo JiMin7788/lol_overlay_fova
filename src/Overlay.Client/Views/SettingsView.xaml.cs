@@ -200,6 +200,8 @@ public partial class SettingsView : UserControl
             RecallTimerToggle.IsChecked = GetBool(cfg, "overlay.items.recallTimer.enabled", false);
             NotificationToggle.IsChecked = GetBool(cfg, "overlay.items.notification.enabled", true);
             StatusCardToggle.IsChecked = GetBool(cfg, "overlay.items.statusCard.enabled", true);
+            ThreatCardToggle.IsChecked = GetBool(cfg, "overlay.items.threatCard.enabled", true);
+            NextItemCardToggle.IsChecked = GetBool(cfg, "overlay.items.nextItemCard.enabled", true);
         }
         finally
         {
@@ -497,6 +499,12 @@ public partial class SettingsView : UserControl
     private void StatusCardToggle_Changed(object sender, RoutedEventArgs e)
         => SetItemEnabled("overlay.items.statusCard.enabled", StatusCardToggle.IsChecked == true);
 
+    private void ThreatCardToggle_Changed(object sender, RoutedEventArgs e)
+        => SetItemEnabled("overlay.items.threatCard.enabled", ThreatCardToggle.IsChecked == true);
+
+    private void NextItemCardToggle_Changed(object sender, RoutedEventArgs e)
+        => SetItemEnabled("overlay.items.nextItemCard.enabled", NextItemCardToggle.IsChecked == true);
+
     // ── Overlay: toggle-hotkey capture (reuses the combo editor's chord pattern) ──
 
     private void HotkeyButton_Click(object sender, RoutedEventArgs e)
@@ -761,6 +769,8 @@ public partial class SettingsView : UserControl
         RecallTimerCaption.Text = SL("귀환 타이머", "Recall Timer");
         NotificationCaption.Text = SL("알림", "Notification");
         StatusCardCaption.Text = SL("내 정보 카드", "My Status Card");
+        ThreatCardCaption.Text = SL("상대 킬각 위험선", "Enemy Kill Threat");
+        NextItemCardCaption.Text = SL("다음 아이템 추천 (사망 중)", "Next Item (while dead)");
 
         SyncSelectionToCurrentLanguage();
     }

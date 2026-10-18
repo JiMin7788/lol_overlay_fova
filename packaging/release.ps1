@@ -17,8 +17,8 @@
     user settings (AppPaths) and the ad/flag caches.
 
     Requires: vpk (dotnet tool install -g vpk --version 1.2.158, same as the Velopack package in
-    Overlay.Client.csproj). -Publish also requires $env:GITHUB_TOKEN with contents:write on
-    JiMin7788/lol_overlay_fova.
+    Overlay.Client.csproj). -Publish also requires a token with contents:write on
+    JiMin7788/lol_overlay_fova: $env:GITHUB_TOKEN, else the one git stores for github.com.
 
 .EXAMPLE
     pwsh packaging/release.ps1 -Version 0.3.4                 # local packages only
@@ -42,6 +42,11 @@ function Step([string] $m) { Write-Host "`n=== $m ===" -ForegroundColor Cyan }
 
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {
     throw "vpk not found - dotnet tool install -g vpk --version 1.2.158"
+}
+if ($Publish -and -not $env:GITHUB_TOKEN) {
+    # Fall back to the token git already uses for github.com.
+    $cred = "protocol=https`nhost=github.com`n`n" | git credential fill 2>$null
+    $env:GITHUB_TOKEN = ($cred | Where-Object { $_ -like 'password=*' } | Select-Object -First 1) -replace '^password=', ''
 }
 if ($Publish -and -not $env:GITHUB_TOKEN) { throw "-Publish needs `$env:GITHUB_TOKEN" }
 

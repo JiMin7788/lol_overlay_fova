@@ -42,6 +42,11 @@ public sealed class GameSnapshot
     public int MaxEventId;
     public int EventCount;
 
+    /// <summary>(M42) A GameEnd event is in the event list; <see cref="GameResult"/> is its
+    /// "Result" ("Win"/"Lose"), empty when absent.</summary>
+    public bool GameEnded;
+    public string GameResult = string.Empty;
+
     /// <summary>Generous cap on tracked ChampionKill events per match (M01 gap #5:
     /// killerName sourcing). The Live Client <c>events</c> payload resends the full,
     /// ever-growing history every tick; beyond this cap additional kills are skipped
@@ -141,6 +146,8 @@ public sealed class GameSnapshot
         PlayerCount = 0;
         MaxEventId = -1;
         EventCount = 0;
+        GameEnded = false;
+        GameResult = string.Empty;
         // KillEvents entries are NOT reset here: their KillerName/VictimName strings
         // are kept across ticks (same slot == same historical kill every tick, see
         // KillEvents doc) so the parser can byte-compare instead of reallocating for
@@ -170,6 +177,8 @@ public sealed class GameSnapshot
         dest.Stats = Stats;
         dest.MaxEventId = MaxEventId;
         dest.EventCount = EventCount;
+        dest.GameEnded = GameEnded;
+        dest.GameResult = GameResult;
         dest.PlayerCount = PlayerCount;
         for (int i = 0; i < PlayerCount; i++)
             Players[i].CopyTo(dest.Players[i]);
@@ -286,6 +295,9 @@ public sealed class ScoreboardEntry
     /// what a given raw name means (M31's <c>EnemyJunglerIdentifier</c> is the first consumer).</summary>
     public string Spell1RawName = string.Empty;
     public string Spell2RawName = string.Empty;
+    /// <summary>allPlayers[].runes.keystone.id — the one rune the scoreboard shows for every player
+    /// (M40 enemy threat). 0 when absent.</summary>
+    public int KeystoneId;
     public int Level;
     public bool IsDead;
     public double RespawnTimer;
@@ -311,6 +323,7 @@ public sealed class ScoreboardEntry
         Position = string.Empty;
         Spell1RawName = string.Empty;
         Spell2RawName = string.Empty;
+        KeystoneId = 0;
         ResetForParse();
     }
 
@@ -339,6 +352,7 @@ public sealed class ScoreboardEntry
         dest.Position = Position;
         dest.Spell1RawName = Spell1RawName;
         dest.Spell2RawName = Spell2RawName;
+        dest.KeystoneId = KeystoneId;
         dest.Level = Level;
         dest.IsDead = IsDead;
         dest.RespawnTimer = RespawnTimer;

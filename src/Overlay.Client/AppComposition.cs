@@ -108,6 +108,15 @@ public sealed class AppComposition : IDisposable
     /// same-lane-enemy return prediction (same pattern as <see cref="LatestSnapshot"/>).</summary>
     public LaneReturnPredictor? LaneReturnPredictor => _laneReturn;
 
+    /// <summary>(M40) Latest enemy kill-threat estimates; null when the feature is off.</summary>
+    public IReadOnlyList<EnemyThreat>? EnemyThreats => _threat?.Latest;
+
+    /// <summary>(M43) Candidate items ranked by the damage they add, while I am dead; else null.</summary>
+    public IReadOnlyList<NextItemRow>? NextItems => _nextItems;
+
+    /// <summary>(M42) Saved post-game reviews.</summary>
+    public Overlay.Core.Review.KillReviewStore Reviews => _reviewStore;
+
     // M30 — gated on overlay.items.enemyJunglerSpotted.enabled. Real API-field diffs
     // (CS/item change on the enemy JUNGLE-position row), no coordinate estimate — default OFF (1.0 gated tier),
     // gated the same way as InhibitorTimer/NexusTurretTimer below.
@@ -117,6 +126,18 @@ public sealed class AppComposition : IDisposable
     // item-list diffs (an enemy's API data only refreshes while visible), no coordinate estimate —
     // default OFF (1.0 gated tier), like _enemyJunglerSpotted above.
     private EnemyItemAlertDetector? _enemyItemAlert;
+    // (M40) Enemy kill-threat estimates, refreshed by a 1s background timer, read by the HUD.
+    private EnemyThreatMonitor? _threat;
+    private System.Threading.Timer? _threatTimer;
+    // (M42) Post-game review: sampled by the same 1s timer, saved to UserDataDir/history.
+    private readonly Overlay.Core.Review.KillReviewRecorder _review = new();
+    private readonly Overlay.Core.Review.KillReviewStore _reviewStore =
+        new(Path.Combine(AppPaths.UserDataDir, "history"));
+    private string? _reviewComboSub;
+    // (M43) Next-item ranking, computed once per death on the 1s timer and shown while dead.
+    private volatile IReadOnlyList<NextItemRow>? _nextItems;
+    private bool _wasDead;
+    private Overlay.Core.StaticGameData? _staticData;
 
     // M19 §3.2 — gated on overlay.items.inhibitorTimers.enabled
     private InhibitorTimer? _inhibitorTimer;
@@ -582,6 +603,35 @@ public sealed class AppComposition : IDisposable
         _comboRunner = new ComboRunner(comboEngine, _config, () => _latestSnapshot,
             runeEngine: _runeEngine);
         _comboRunner.Start();
+
+        // (M40) Enemy kill threat: recomputed off the UI thread only when an enemy's level/items/
+        // keystone/spells or my max HP/armor/MR change (EnemyThreatMonitor); skipped while the card
+        // is toggled off. Remote flag "enemyThreat" stops it (ApplyRemoteFlags).
+        if (!_flags.IsForcedOff("enemyThreat"))
+        {
+            var runner = _comboRunner;
+            _threat = new EnemyThreatMonitor(() => _latestSnapshot, runner.ComputeThreat);
+        }
+        // One 1s timer: threat estimates (when on), then the post-game review sample, which reads
+        // them. The review runs even with the threat line off (it then has no danger windows).
+        _threatTimer = new System.Threading.Timer(_ =>
+        {
+            try
+            {
+                if (GetBool("overlay.items.threatCard.enabled", true)) _threat?.Tick();
+                if (_review.Sample(_latestSnapshot, _threat?.Latest ?? Array.Empty<EnemyThreat>()) is { } finished)
+                    _reviewStore.Save(finished);
+                UpdateNextItems(runner: _comboRunner);
+            }
+            catch (Exception ex) { Log("threat/review tick failed: " + ex.Message); }
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
+        // A combo hotkey result is a "combo check" for the review: target + share of its max HP.
+        _reviewComboSub = Overlay.Core.EventBus.EventBus.Subscribe("UI.COMBO_RESULT", evt =>
+        {
+            if (evt.Payload is ComboHudResult hud && hud.TargetMaxHp > 0 && !hud.DefenderIsFallback)
+                _review.OnComboCheck(ChampionSummary.ResolveKoreanName(hud.TargetChampion) ?? hud.TargetChampion,
+                    hud.Result.TotalDamage / hud.TargetMaxHp * 100);
+        });
     }
 
     /// <summary>Wire M13 global hotkeys. Must run on the UI thread (<c>MainWindow.OnLoaded</c>)
@@ -836,6 +886,34 @@ public sealed class AppComposition : IDisposable
         catch (Exception ex) { Log($"Minimap debug dump failed: {ex.Message}"); }
     }
 
+    /// <summary>(M43) On the transition to dead, ranks the candidate items once (death is when I
+    /// shop); clears the list on respawn. Skipped while the card is off or the remote flag
+    /// <c>nextItem</c> forces it off.</summary>
+    private void UpdateNextItems(ComboRunner? runner)
+    {
+        var snap = _latestSnapshot;
+        Overlay.Core.ScoreboardEntry? me = null;
+        if (snap is { HasData: true })
+            for (int i = 0; i < snap.PlayerCount; i++)
+                if (snap.Players[i].SummonerName == snap.ActivePlayerSummonerName
+                    || (snap.Players[i].RiotId.Length > 0 && snap.Players[i].RiotId == snap.ActivePlayerRiotId))
+                    me = snap.Players[i];
+        bool dead = me?.IsDead == true;
+        if (!dead) { _nextItems = null; _wasDead = false; return; }
+        if (_wasDead) return; // already ranked for this death
+        _wasDead = true;
+        if (runner is null || !GetBool("overlay.items.nextItemCard.enabled", true) || _flags.IsForcedOff("nextItem")) return;
+
+        _staticData ??= TryLoadStaticData();
+        var owned = me!.ItemIds.Take(me.ItemCount).ToArray();
+        _nextItems = runner.RankNextItems(snap!, Overlay.Core.Items.NextItemCandidates.For(owned, _staticData));
+    }
+
+    private static Overlay.Core.StaticGameData? TryLoadStaticData()
+    {
+        try { return Overlay.Core.StaticGameDataLoader.Load(); } catch { return null; }
+    }
+
     /// <summary>Flips a boolean config flag (its enable toggle); the overlay reacts on its next frame.</summary>
     /// <summary>Stops any gated subsystem the remote flags now force off. Needed because the first
     /// launch after an update has no cached flags, so the subsystems start before the fetch lands.
@@ -846,6 +924,7 @@ public sealed class AppComposition : IDisposable
         if (_flags.IsForcedOff("laneReturn")) Interlocked.Exchange(ref _laneReturn, null)?.Dispose();
         if (_flags.IsForcedOff("enemyJunglerSpotted")) Interlocked.Exchange(ref _enemyJunglerSpotted, null)?.Dispose();
         if (_flags.IsForcedOff("enemyItemAlert")) Interlocked.Exchange(ref _enemyItemAlert, null)?.Dispose();
+        if (_flags.IsForcedOff("enemyThreat")) _threat = null; // the timer keeps sampling the review
     }
 
     private void ToggleConfigFlag(string key, bool fallback)
@@ -1089,6 +1168,8 @@ public sealed class AppComposition : IDisposable
         _laneReturn?.Dispose();
         _enemyJunglerSpotted?.Dispose();
         _enemyItemAlert?.Dispose();
+        _threatTimer?.Dispose();
+        if (_reviewComboSub is not null) Overlay.Core.EventBus.EventBus.Unsubscribe(_reviewComboSub);
         _inhibitorTimer?.Dispose();
         _nexusTurretTimer?.Dispose();
         _globalGold?.Dispose();

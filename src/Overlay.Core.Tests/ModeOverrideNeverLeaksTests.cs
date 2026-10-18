@@ -53,6 +53,23 @@ public class ModeOverrideNeverLeaksTests
         return found;
     }
 
+    /// <summary>Every spell's Summoner's Rift (DataValues) rank-1 value per DataValue name.</summary>
+    private static Dictionary<string, List<double>> RiftValues(string json)
+    {
+        var map = new Dictionary<string, List<double>>(StringComparer.Ordinal);
+        using var doc = JsonDocument.Parse(json);
+        foreach (var spell in doc.RootElement.EnumerateObject())
+        {
+            if (spell.Value.ValueKind != JsonValueKind.Object || !spell.Value.TryGetProperty("mSpell", out var mSpell)) continue;
+            foreach (var (name, value) in Values(mSpell, "DataValues"))
+            {
+                if (!map.TryGetValue(name, out var list)) map[name] = list = new List<double>();
+                list.Add(value);
+            }
+        }
+        return map;
+    }
+
     private static Dictionary<string, double> Values(JsonElement parent, string prop)
     {
         var map = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -92,8 +109,14 @@ public class ModeOverrideNeverLeaksTests
         foreach (var group in Conflicts().GroupBy(c => c.File))
         {
             string champId = group.Key.Substring(0, group.Key.Length - ".bin.json".Length);
-            var spells = ChampionBinParser.ParseChampion(
-                champId, File.ReadAllText(Path.Combine(BinDir, group.Key)));
+            string json = File.ReadAllText(Path.Combine(BinDir, group.Key));
+            var spells = ChampionBinParser.ParseChampion(champId, json);
+            // Slots are not tagged with their spell, so a value is a leak only when it is the override
+            // AND no spell in this BIN has it as its Rift value: Alistar's W legitimately has
+            // APRatio 1, which is also E's Arena override. (Until the parser learned case-insensitive
+            // spell lookup, the lowercase file-name id here never resolved Q/W/E/R at all, so only
+            // extra spells were ever compared.)
+            var riftValues = RiftValues(json);
 
             foreach (var c in group)
             {
@@ -102,7 +125,8 @@ public class ModeOverrideNeverLeaksTests
                     if (!slot.DataValues.TryGetValue(c.Name, out double[]? values)) continue;
                     if (values.Length < 2) continue;
                     checkedPairs++;
-                    if (Math.Abs(values[1] - c.Override) < 1e-9 && Math.Abs(values[1] - c.Base) > 1e-9)
+                    if (Math.Abs(values[1] - c.Override) < 1e-9 && Math.Abs(values[1] - c.Base) > 1e-9
+                        && !(riftValues.TryGetValue(c.Name, out var legit) && legit.Any(v => Math.Abs(v - values[1]) < 1e-9)))
                         wrong.Add($"{group.Key} {c.Spell} {c.Name}: got {values[1]} (the mode override) "
                                   + $"instead of {c.Base}");
                 }

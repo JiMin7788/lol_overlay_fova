@@ -304,9 +304,19 @@ public sealed class LcuConnector : IDisposable
             return list;
         }
 
+        // (M41) My assigned lane ("top"/"jungle"/"middle"/"bottom"/"utility"; "" in blind queues).
+        string myPosition = "";
+        if (session.TryGetProperty("localPlayerCellId", out var cellEl) && cellEl.ValueKind == JsonValueKind.Number
+            && session.TryGetProperty("myTeam", out var mine) && mine.ValueKind == JsonValueKind.Array)
+            foreach (var m in mine.EnumerateArray())
+                if (m.TryGetProperty("cellId", out var c) && c.ValueKind == JsonValueKind.Number
+                    && c.GetInt64() == cellEl.GetInt64()
+                    && m.TryGetProperty("assignedPosition", out var pos) && pos.ValueKind == JsonValueKind.String)
+                    myPosition = pos.GetString() ?? "";
+
         return new ChampSelectBoard(
             TeamPicks(session, "myTeam"), TeamPicks(session, "theirTeam"),
-            BanList(session, "myTeamBans"), BanList(session, "theirTeamBans"));
+            BanList(session, "myTeamBans"), BanList(session, "theirTeamBans"), myPosition);
     }
 
     /// <summary>Extracts the OWN player's pick state from a champ-select session document

@@ -38,6 +38,9 @@ public sealed class ConfigSchema
     [JsonPropertyName("combos")]
     public CombosConfig Combos { get; set; } = new();
 
+    [JsonPropertyName("combo")]
+    public ComboConfig Combo { get; set; } = new();
+
     [JsonPropertyName("targeting")]
     public TargetingConfig Targeting { get; set; } = new();
 
@@ -79,6 +82,15 @@ public sealed class ConfigSchema
 /// <summary>Opt-in diagnostics hooks. <see cref="FrameDropMeter"/> arms the M16 frame-drop
 /// benchmark on the overlay window (writes <c>logs/framedrop.log</c>) — measurement sessions
 /// only, never on by default.</summary>
+/// <summary>Combo-calculation options (M24 P5).</summary>
+public sealed class ComboConfig
+{
+    /// <summary>Comma-separated defensive rune ids the user assumes the enemy runs (ComboRunner).
+    /// Null = none assumed.</summary>
+    [JsonPropertyName("assumedEnemyDefensiveRunes")]
+    public string? AssumedEnemyDefensiveRunes { get; set; }
+}
+
 public sealed class DiagnosticsConfig
 {
     [JsonPropertyName("frameDropMeter")]
@@ -107,6 +119,17 @@ public sealed class ChampSelectConfig
     /// (default) = no recommendation source; the panel shows local presets only.</summary>
     [JsonPropertyName("recDir")]
     public string RecDir { get; set; } = "";
+
+    /// <summary>"D" or "F": the key preset applies put Flash on (SpellOrder). Null = not chosen
+    /// yet, which shows the first-run question. Without this property the value was written but
+    /// dropped on the next load (the loader keeps only schema properties), so the question came
+    /// back every launch.</summary>
+    [JsonPropertyName("flashKey")]
+    public string? FlashKey { get; set; }
+
+    /// <summary>Selected recommendation tier (RecBrackets slug). Null = RecBrackets.Default.</summary>
+    [JsonPropertyName("recBracket")]
+    public string? RecBracket { get; set; }
 }
 
 /// <summary>M39 telemetry config. Additive section — old configs missing "telemetry" deserialize
@@ -302,6 +325,14 @@ public sealed class OverlayConfig
     /// the calibration UI never appears in-game (the saved <see cref="MinimapCalibration"/> still applies).</summary>
     [JsonPropertyName("minimapCalibrate")]
     public bool MinimapCalibrate { get; set; }
+
+    /// <summary>Chord that shows the combo overlay. Null = the client default (Alt+1).</summary>
+    [JsonPropertyName("comboOverlayHotkey")]
+    public string? ComboOverlayHotkey { get; set; }
+
+    /// <summary>Chord that shows the skill overlay. Null = the client default (Alt+2).</summary>
+    [JsonPropertyName("skillOverlayHotkey")]
+    public string? SkillOverlayHotkey { get; set; }
 }
 
 /// <summary>One-time user-aligned minimap rect, stored as fractions of the overlay window so it survives
@@ -395,6 +426,15 @@ public sealed class OverlayItemsConfig
     /// Default enabled (opt-out).</summary>
     [JsonPropertyName("statusCard")]
     public ItemToggleConfig StatusCard { get; set; } = new() { Enabled = true };
+
+    /// <summary>(M40) Enemy kill-threat danger line. Default ON (user decision 2026-10-16); remote
+    /// flag <c>enemyThreat</c> can force it off.</summary>
+    [JsonPropertyName("threatCard")]
+    public ItemToggleConfig ThreatCard { get; set; } = new() { Enabled = true };
+
+    /// <summary>(M43) Next-item damage card, shown while I am dead. Remote flag <c>nextItem</c>.</summary>
+    [JsonPropertyName("nextItemCard")]
+    public ItemToggleConfig NextItemCard { get; set; } = new() { Enabled = true };
 }
 
 public sealed class ItemToggleConfig

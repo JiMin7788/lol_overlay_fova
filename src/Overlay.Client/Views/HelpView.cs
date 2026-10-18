@@ -65,6 +65,16 @@ public sealed class HelpView : UserControl
         _list.Children.Add(subtitle);
 
         foreach (var key in Sections) _list.Children.Add(SectionCard(key));
+
+        // The app shows its version nowhere else; a bug report needs it.
+        var version = new TextBlock
+        {
+            Text = "Fova " + BugReport.Version,
+            FontSize = 12,
+            Margin = new Thickness(2, 4, 0, 0),
+        };
+        version.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        _list.Children.Add(version);
     }
 
     private static UIElement SectionCard(string key)

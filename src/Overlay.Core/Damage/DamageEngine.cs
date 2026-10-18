@@ -296,6 +296,7 @@ public sealed class DamageEngine
     /// </summary>
     private static double CritFactor(ComboNode node, AttackerStat attacker, CritTrack critTrack)
     {
+        if (node.GuaranteedCrit) return 1.0 + node.CritDamageScalar * (ResolveCritMultiplier(attacker) - 1.0);
         if (!node.CanCrit || attacker.CriticalChance <= 0) return 1.0;
         double s = node.CritDamageScalar;
         return critTrack switch
@@ -863,7 +864,9 @@ public sealed record ComboNode(
     // i.e. a low-HP-only on-hit that turns on partway through a combo as the (per-track hypothetical)
     // HP depletes below the threshold. Evaluated per-track so min/max diverge correctly. Null (default)
     // = ungated, byte-identical to every pre-existing node.
-    double? HpBelowGateFraction = null);
+    double? HpBelowGateFraction = null,
+    // (2026-10-17, Sundered Sky) Crits on every track, whatever the attacker's crit chance.
+    bool GuaranteedCrit = false);
 
 /// <summary>
 /// Attacker's live stats. The four penetration fields are caller-supplied truth (the

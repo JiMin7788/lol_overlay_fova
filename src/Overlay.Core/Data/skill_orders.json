@@ -1,0 +1,1276 @@
+{
+  "_note": "Most common skill max order per champion (M40 enemy threat: SkillOrders / SyntheticAttacker.AssumedRanks). order = basic abilities in the order they are maxed. Found by web search 2026-10-17: op.gg patch 16.20 Ranked Solo/Duo Emerald+ most-played order for the default role where available, else lolalytics/u.gg/mobalytics; max order read from the level sequence (first ability to reach 5 points). Notes mark split builds, small samples and older-patch sources.",
+  "Aatrox": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/aatrox/build/top"
+    ]
+  },
+  "Ahri": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/ahri/build/mid"
+    ]
+  },
+  "Akali": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/akali/build/mid"
+    ]
+  },
+  "Akshan": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/akshan/build/mid"
+    ]
+  },
+  "Alistar": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/alistar/build/support"
+    ]
+  },
+  "Ambessa": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/ambessa/build/top"
+    ]
+  },
+  "Amumu": {
+    "order": "EQW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/amumu/build/jungle"
+    ],
+    "note": "Starts W at level 1; E maxed first."
+  },
+  "Anivia": {
+    "order": "EQW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/anivia/build/mid"
+    ]
+  },
+  "Annie": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/annie/build/mid"
+    ]
+  },
+  "Aphelios": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/aphelios/build/adc"
+    ],
+    "note": "Aphelios has no normal Q/W/E ranks; level-ups buy stat points in Q/W/E slots (Q ~6 pts first, then E, W 1 pt). Pick rate of top order only ~19%."
+  },
+  "Ashe": {
+    "order": "WQE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/ashe/build/adc"
+    ]
+  },
+  "AurelionSol": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/aurelionsol/build/mid"
+    ],
+    "note": "Starts E at level 1."
+  },
+  "Aurora": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/aurora/build/mid"
+    ]
+  },
+  "Azir": {
+    "order": "WQE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/azir/build/mid"
+    ],
+    "note": "W maxed first (op.gg 72% pick)."
+  },
+  "Bard": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/bard/build/support"
+    ]
+  },
+  "Belveth": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/belveth/build/jungle"
+    ]
+  },
+  "Blitzcrank": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/blitzcrank/build/support"
+    ]
+  },
+  "Brand": {
+    "order": "WQE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/brand/build/support"
+    ]
+  },
+  "Braum": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/braum/build/support"
+    ]
+  },
+  "Briar": {
+    "order": "WQE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/briar/build/jungle"
+    ]
+  },
+  "Caitlyn": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/caitlyn/build/adc"
+    ]
+  },
+  "Camille": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/camille/build/top"
+    ]
+  },
+  "Cassiopeia": {
+    "order": "EQW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/cassiopeia/build/mid"
+    ]
+  },
+  "Chogath": {
+    "order": "EQW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/chogath/build/top"
+    ],
+    "note": "E maxed first in current play."
+  },
+  "Corki": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/corki/build/mid"
+    ],
+    "note": "Small sample (477 games for top order)."
+  },
+  "Darius": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/darius/build/top"
+    ]
+  },
+  "Diana": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/diana/build/jungle"
+    ]
+  },
+  "DrMundo": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/drmundo/build/top"
+    ]
+  },
+  "Draven": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/draven/build/adc"
+    ]
+  },
+  "Ekko": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/ekko/build/jungle"
+    ],
+    "note": "Mid also QEW."
+  },
+  "Elise": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/elise/build/jungle"
+    ],
+    "note": "R available at level 1 (form swap); Q/W/E maxed as listed."
+  },
+  "Evelynn": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/evelynn/build/jungle"
+    ]
+  },
+  "Ezreal": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/ezreal/build/adc"
+    ]
+  },
+  "Fiddlesticks": {
+    "order": "WQE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/fiddlesticks/build/jungle"
+    ]
+  },
+  "Fiora": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/fiora/build/top"
+    ]
+  },
+  "Fizz": {
+    "order": "EWQ",
+    "role": "mid",
+    "sources": [
+      "https://lolalytics.com/lol/fizz/build/",
+      "https://u.gg/lol/champions/fizz/build/mid"
+    ]
+  },
+  "Galio": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://u.gg/lol/champions/ap/galio/build/mid",
+      "https://lolalytics.com/lol/galio/build/"
+    ]
+  },
+  "Gangplank": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/gangplank/build/"
+    ]
+  },
+  "Garen": {
+    "order": "EQW",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/garen/build/"
+    ]
+  },
+  "Gnar": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://u.gg/lol/champions/gnar/build/top",
+      "https://mobalytics.gg/lol/champions/gnar/build/top"
+    ],
+    "note": "Mini/Mega forms share ranks"
+  },
+  "Gragas": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/gragas/build/?lane=top",
+      "https://mobalytics.gg/lol/champions/gragas/build/jungle"
+    ],
+    "note": "Top and jungle both QEW"
+  },
+  "Graves": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/graves/build/"
+    ]
+  },
+  "Gwen": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://mobalytics.gg/lol/champions/gwen/build/top"
+    ]
+  },
+  "Hecarim": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://u.gg/lol/champions/hecarim/build/jungle"
+    ]
+  },
+  "Heimerdinger": {
+    "order": "WQE",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/heimerdinger/build/",
+      "https://mobalytics.gg/lol/champions/heimerdinger/build/mid"
+    ],
+    "note": "Lolalytics top 16.20 shows W>Q>E; Mobalytics mid lists Q>W>E. Role split top/mid/support"
+  },
+  "Hwei": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://lolalytics.com/lol/hwei/build/"
+    ],
+    "note": "Hwei's subspells share Q/W/E ranks"
+  },
+  "Illaoi": {
+    "order": "EQW",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/illaoi/build/"
+    ],
+    "note": "Lolalytics 16.20 level order maxes E first; older guides list Q>E>W"
+  },
+  "Irelia": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://metabot.gg/en/league/champion/Irelia/tips?build=4",
+      "https://lolalytics.com/lol/irelia/build/"
+    ]
+  },
+  "Ivern": {
+    "order": "EQW",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/ivern/build/",
+      "https://mobalytics.gg/lol/champions/ivern/build/jungle"
+    ]
+  },
+  "Janna": {
+    "order": "EWQ",
+    "role": "support",
+    "sources": [
+      "https://lolalytics.com/lol/janna/build/",
+      "https://u.gg/lol/champions/janna/build/support"
+    ],
+    "note": "Lolalytics 16.20 E>W>Q; older u.gg (15.9) showed W>E>Q"
+  },
+  "JarvanIV": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/jarvaniv/build/"
+    ]
+  },
+  "Jax": {
+    "order": "WEQ",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/jax/build/",
+      "https://mobalytics.gg/lol/champions/jax/build/top"
+    ]
+  },
+  "Jayce": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://lolalytics.com/lol/jayce/build/"
+    ],
+    "note": "Has R at level 1 and 6 ranks per basic ability (both forms); order is for the shared Q/W/E points"
+  },
+  "Jhin": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://lolalytics.com/lol/jhin/build/"
+    ]
+  },
+  "Jinx": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://lolalytics.com/lol/jinx/build/"
+    ]
+  },
+  "Kaisa": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://lolalytics.com/lol/kaisa/build/"
+    ],
+    "note": "AP/on-hit variants may max W second"
+  },
+  "Kalista": {
+    "order": "EQW",
+    "role": "adc",
+    "sources": [
+      "https://lolalytics.com/lol/kalista/build/"
+    ]
+  },
+  "Karma": {
+    "order": "EWQ",
+    "role": "support",
+    "sources": [
+      "https://lolalytics.com/lol/karma/build/",
+      "https://u.gg/lol/champions/karma/build/support"
+    ],
+    "note": "R available at level 1 and ranks at 1/6/11/16. Lolalytics 16.20 support E>W>Q; older u.gg (15.9) Q>E>W; mid Karma maxes Q"
+  },
+  "Karthus": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/karthus/build/"
+    ]
+  },
+  "Kassadin": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://lolalytics.com/lol/kassadin/build/",
+      "https://u.gg/lol/champions/kassadin/build/mid"
+    ],
+    "note": "Mobalytics lists E>W>Q; lolalytics 16.20 and u.gg 15.8 show Q>E>W"
+  },
+  "Katarina": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://mobalytics.gg/lol/champions/katarina/build/mid"
+    ]
+  },
+  "Kayle": {
+    "order": "EQW",
+    "role": "top",
+    "sources": [
+      "https://u.gg/lol/champions/kayle/build/top",
+      "https://mobalytics.gg/lol/champions/kayle/build/top"
+    ]
+  },
+  "Kayn": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/kayn/build/"
+    ]
+  },
+  "Kennen": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://u.gg/lol/champions/kennen/build/top",
+      "https://mobalytics.gg/lol/champions/kennen/build/top"
+    ]
+  },
+  "Khazix": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://lolalytics.com/lol/khazix/build/"
+    ],
+    "note": "Older meta was Q>W>E"
+  },
+  "Kindred": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://u.gg/lol/champions/kindred/build/jungle",
+      "https://mobalytics.gg/lol/champions/kindred/build/jungle"
+    ]
+  },
+  "Kled": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://u.gg/lol/champions/kled/build/top",
+      "https://mobalytics.gg/lol/champions/kled/build"
+    ]
+  },
+  "KogMaw": {
+    "order": "WQE",
+    "role": "adc",
+    "sources": [
+      "https://lolalytics.com/lol/kogmaw/build/"
+    ],
+    "note": "Most common skill order maxes W then Q; lolalytics level-10 priority widget (small sample) showed E>Q>W"
+  },
+  "Ksante": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://u.gg/lol/champions/ksante/build/top",
+      "https://mobalytics.gg/lol/champions/KSante/build"
+    ]
+  },
+  "Leblanc": {
+    "order": "WQE",
+    "role": "mid",
+    "sources": [
+      "https://lolalytics.com/lol/leblanc/build/",
+      "https://u.gg/lol/champions/leblanc/build/mid"
+    ]
+  },
+  "LeeSin": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/leesin/build"
+    ]
+  },
+  "Leona": {
+    "order": "WEQ",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/leona/build"
+    ]
+  },
+  "Lillia": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/lillia/build"
+    ]
+  },
+  "Lissandra": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/lissandra/build"
+    ]
+  },
+  "Locke": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/locke/build"
+    ],
+    "note": "2026 champion; op.gg 16.20 mid, 87% pick rate"
+  },
+  "Lucian": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/lucian/build"
+    ]
+  },
+  "Lulu": {
+    "order": "EWQ",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/lulu/build"
+    ]
+  },
+  "Lux": {
+    "order": "EQW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/lux/build"
+    ],
+    "note": "op.gg default role is support; mid Lux also commonly E>Q>W"
+  },
+  "Malphite": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/malphite/build"
+    ]
+  },
+  "Malzahar": {
+    "order": "EQW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/malzahar/build"
+    ]
+  },
+  "Maokai": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/maokai/build"
+    ],
+    "note": "op.gg default role support (1.9k games)"
+  },
+  "MasterYi": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/masteryi/build"
+    ]
+  },
+  "Mel": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/mel/build"
+    ]
+  },
+  "Milio": {
+    "order": "EWQ",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/milio/build"
+    ]
+  },
+  "MissFortune": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/missfortune/build"
+    ]
+  },
+  "MonkeyKing": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/monkeyking/build"
+    ]
+  },
+  "Mordekaiser": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/mordekaiser/build"
+    ]
+  },
+  "Morgana": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/morgana/build"
+    ]
+  },
+  "Naafiri": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/naafiri/build"
+    ]
+  },
+  "Nami": {
+    "order": "WEQ",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/nami/build"
+    ]
+  },
+  "Nasus": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/nasus/build"
+    ],
+    "note": "top sequence only 27.7% pick rate; order is fragmented"
+  },
+  "Nautilus": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/nautilus/build"
+    ]
+  },
+  "Neeko": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/neeko/build"
+    ],
+    "note": "op.gg default role support"
+  },
+  "Nidalee": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/nidalee/build"
+    ],
+    "note": "human-form Q/W/E ranks; ranks also scale cougar form"
+  },
+  "Nilah": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/nilah/build"
+    ]
+  },
+  "Nocturne": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/nocturne/build"
+    ]
+  },
+  "Nunu": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/nunu/build"
+    ]
+  },
+  "Olaf": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/olaf/build"
+    ]
+  },
+  "Orianna": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/orianna/build"
+    ]
+  },
+  "Ornn": {
+    "order": "WQE",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/ornn/build"
+    ]
+  },
+  "Pantheon": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/pantheon/build"
+    ]
+  },
+  "Poppy": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/poppy/build"
+    ],
+    "note": "op.gg default role support"
+  },
+  "Pyke": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/pyke/build"
+    ]
+  },
+  "Qiyana": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/qiyana/build"
+    ],
+    "note": "op.gg default role jungle in 16.20"
+  },
+  "Quinn": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/quinn/build"
+    ],
+    "note": "op.gg default role jungle; low sample (3.3k games, 39% pick rate)"
+  },
+  "Rakan": {
+    "order": "WEQ",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/rakan/build"
+    ]
+  },
+  "Rammus": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/rammus/build"
+    ]
+  },
+  "RekSai": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/reksai/build"
+    ]
+  },
+  "Rell": {
+    "order": "WEQ",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/rell/build"
+    ]
+  },
+  "Renata": {
+    "order": "EWQ",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/renata/build"
+    ],
+    "note": "E maxed first (lvl 9), then W, Q last"
+  },
+  "Renekton": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/renekton/build"
+    ]
+  },
+  "Rengar": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/rengar/build"
+    ]
+  },
+  "Riven": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/riven/build"
+    ]
+  },
+  "Rumble": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/rumble/build"
+    ]
+  },
+  "Ryze": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://www.op.gg/champions/ryze/build"
+    ]
+  },
+  "Samira": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://www.op.gg/champions/samira/build"
+    ]
+  },
+  "Sejuani": {
+    "order": "WQE",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/sejuani/build"
+    ]
+  },
+  "Senna": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/senna/build"
+    ]
+  },
+  "Seraphine": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/seraphine/build"
+    ]
+  },
+  "Sett": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/sett/build"
+    ]
+  },
+  "Shaco": {
+    "order": "EQW",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/shaco/build"
+    ],
+    "note": "AD jungle Shaco; AP support Shaco maxes W/E instead"
+  },
+  "Shen": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/shen/build"
+    ]
+  },
+  "Shyvana": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/shyvana/build"
+    ],
+    "note": "post-rework kit"
+  },
+  "Singed": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/singed/build"
+    ]
+  },
+  "Sion": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/sion/build"
+    ]
+  },
+  "Sivir": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://www.op.gg/champions/sivir/build"
+    ],
+    "note": "skill-order pick rate only 25.1%"
+  },
+  "Skarner": {
+    "order": "QWE",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/skarner/build"
+    ]
+  },
+  "Smolder": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://www.op.gg/champions/smolder/build"
+    ]
+  },
+  "Sona": {
+    "order": "WQE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/sona/build"
+    ],
+    "note": "low skill-order pick rate (37.8%); W maxed by lvl 9"
+  },
+  "Soraka": {
+    "order": "WQE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/soraka/build"
+    ]
+  },
+  "Swain": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/swain/build"
+    ]
+  },
+  "Sylas": {
+    "order": "WEQ",
+    "role": "mid",
+    "sources": [
+      "https://www.op.gg/champions/sylas/build"
+    ],
+    "note": "W>E>Q is most common on op.gg (58.7%)"
+  },
+  "Syndra": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://www.op.gg/champions/syndra/build"
+    ]
+  },
+  "TahmKench": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/tahmkench/build"
+    ]
+  },
+  "Taliyah": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://www.op.gg/champions/taliyah/build"
+    ]
+  },
+  "Talon": {
+    "order": "WQE",
+    "role": "jungle",
+    "sources": [
+      "https://www.op.gg/champions/talon/build"
+    ],
+    "note": "op.gg lists jungle as main role"
+  },
+  "Taric": {
+    "order": "EQW",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/taric/build"
+    ],
+    "note": "small sample (784 games), 33.6% pick rate"
+  },
+  "Teemo": {
+    "order": "EQW",
+    "role": "top",
+    "sources": [
+      "https://www.op.gg/champions/teemo/build"
+    ]
+  },
+  "Thresh": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://www.op.gg/champions/thresh/build"
+    ],
+    "note": "Q and E both at 5 by lvl 13 on page; Q first by standard sequence (lvl 9)"
+  },
+  "Tristana": {
+    "order": "EQW",
+    "role": "adc",
+    "sources": [
+      "https://www.op.gg/champions/tristana/build"
+    ],
+    "note": "skill-order pick rate only 28.7%"
+  },
+  "Trundle": {
+    "order": "QWE",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/trundle/build"
+    ]
+  },
+  "Tryndamere": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/tryndamere/build"
+    ]
+  },
+  "TwistedFate": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/twistedfate/build"
+    ]
+  },
+  "Twitch": {
+    "order": "EQW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/twitch/build"
+    ]
+  },
+  "Udyr": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/udyr/build"
+    ],
+    "note": "op.gg most common (56.9%) is Q-max Udyr: Q rank 6 by lvl 11, then E, then W; R (stance) kept at 1 point. AP/R-max Udyr is a minority build."
+  },
+  "Urgot": {
+    "order": "WEQ",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/urgot/build"
+    ]
+  },
+  "Varus": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/varus/build"
+    ]
+  },
+  "Vayne": {
+    "order": "QWE",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/vayne/build"
+    ]
+  },
+  "Veigar": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/veigar/build"
+    ]
+  },
+  "Velkoz": {
+    "order": "QWE",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/velkoz/build"
+    ],
+    "note": "Most-played role on op.gg is support; mid also common."
+  },
+  "Vex": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/vex/build"
+    ]
+  },
+  "Vi": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/vi/build"
+    ]
+  },
+  "Viego": {
+    "order": "QEW",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/viego/build"
+    ]
+  },
+  "Viktor": {
+    "order": "EQW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/viktor/build",
+      "https://lolalytics.com/lol/viktor/build/"
+    ],
+    "note": "op.gg sample small (248 games); confirmed by lolalytics skill priority E>Q>W (156k games)."
+  },
+  "Vladimir": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/vladimir/build"
+    ]
+  },
+  "Volibear": {
+    "order": "WQE",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/volibear/build"
+    ]
+  },
+  "Warwick": {
+    "order": "WQE",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/warwick/build"
+    ]
+  },
+  "Xayah": {
+    "order": "EWQ",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/xayah/build"
+    ]
+  },
+  "Xerath": {
+    "order": "QWE",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/xerath/build"
+    ]
+  },
+  "XinZhao": {
+    "order": "WEQ",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/xinzhao/build"
+    ]
+  },
+  "Yasuo": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/yasuo/build"
+    ]
+  },
+  "Yone": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/yone/build"
+    ]
+  },
+  "Yorick": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/yorick/build"
+    ]
+  },
+  "Yunara": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/yunara/build"
+    ]
+  },
+  "Yuumi": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/yuumi/build"
+    ],
+    "note": "Top skill order pick rate only 24.6%; Q>E>W still the max order."
+  },
+  "Zaahen": {
+    "order": "QEW",
+    "role": "top",
+    "sources": [
+      "https://op.gg/lol/champions/zaahen/build"
+    ]
+  },
+  "Zac": {
+    "order": "EWQ",
+    "role": "jungle",
+    "sources": [
+      "https://op.gg/lol/champions/zac/build"
+    ]
+  },
+  "Zed": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/zed/build"
+    ]
+  },
+  "Zeri": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/zeri/build"
+    ]
+  },
+  "Ziggs": {
+    "order": "QEW",
+    "role": "adc",
+    "sources": [
+      "https://op.gg/lol/champions/ziggs/build"
+    ],
+    "note": "op.gg lists bottom as main role; mid also played."
+  },
+  "Zilean": {
+    "order": "QEW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/zilean/build"
+    ]
+  },
+  "Zoe": {
+    "order": "QEW",
+    "role": "mid",
+    "sources": [
+      "https://op.gg/lol/champions/zoe/build"
+    ]
+  },
+  "Zyra": {
+    "order": "EQW",
+    "role": "support",
+    "sources": [
+      "https://op.gg/lol/champions/zyra/build"
+    ]
+  }
+}

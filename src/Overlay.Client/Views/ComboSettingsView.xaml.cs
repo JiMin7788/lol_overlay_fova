@@ -309,9 +309,7 @@ public partial class ComboSettingsView : UserControl
         foreach (var id in _allChampionIds)
         {
             var name = Localization.ChampionName(id);
-            if (needle.Length > 0
-                && name.IndexOf(needle, StringComparison.OrdinalIgnoreCase) < 0
-                && id.IndexOf(needle, StringComparison.OrdinalIgnoreCase) < 0)
+            if (!Overlay.Core.ChampionDb.ChampionNameSearch.Matches(name, id, needle))
                 continue;
 
             ChampionPanel.Children.Add(BuildChampionTile(id, name));
@@ -617,6 +615,14 @@ public partial class ComboSettingsView : UserControl
                 Cooldown: 0, Mana: 0, Damage: 0, DamageType: ComboDamageType.True,
                 RatioAD: 0, RatioBonusAD: 0, RatioAP: 0, CastTime: 0, Delay: 0, TravelTime: 0),
             "Flash"));
+        // (2026-10-17) 모든 아이템: where it sits in the sequence, every owned item whose firing the
+        // combo cannot settle (actives, energized attacks, Malignance) fires once — ComboRunner.
+        _palette.Add(new Chip(
+            new ComboNode(
+                Id: ComboEditor.ItemsNodeId, NodeType: ComboNodeType.Summoner, Name: ComboEditor.ItemsNodeId,
+                Cooldown: 0, Mana: 0, Damage: 0, DamageType: ComboDamageType.True,
+                RatioAD: 0, RatioBonusAD: 0, RatioAP: 0, CastTime: 0, Delay: 0, TravelTime: 0),
+            ComboEditor.ItemsNodeId));
         RebuildPalette();     // letter badges first (immediate)
         RefreshSavedList();   // task 3: filter saved combos to this champion
 
@@ -655,7 +661,7 @@ public partial class ComboSettingsView : UserControl
         foreach (var chip in _palette.ToList())
         {
             var slot = chip.Slot;
-            if (slot is "AA" or "Ignite" or "Flash" || _icons.ContainsKey(slot)) continue;
+            if (slot is "AA" or "Ignite" or "Flash" or ComboEditor.ItemsNodeId || _icons.ContainsKey(slot)) continue;
             var iconPath = SkillDamageDb.GetSlotIcon(championId, slot);
             if (string.IsNullOrEmpty(iconPath)) continue;
             var icon = await DDragonIconProvider.LoadGameAssetIconAsync(iconPath);
@@ -1185,7 +1191,8 @@ public partial class ComboSettingsView : UserControl
 
     private UIElement BuildChipContent(Chip data, Brush accent)
     {
-        string key = data.Slot == "AA" ? "A" : data.Slot == "Ignite" ? "점" : data.Slot == "Flash" ? "멸" : data.Slot;
+        string key = data.Slot == "AA" ? "A" : data.Slot == "Ignite" ? "점" : data.Slot == "Flash" ? "멸"
+            : data.Slot == ComboEditor.ItemsNodeId ? "템" : data.Slot;
         var grid = new Grid { Width = ChipSize, Height = ChipSize };
 
         if (data.Slot == "AA")
@@ -1201,6 +1208,24 @@ public partial class ComboSettingsView : UserControl
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false,
             });
+        }
+        else if (data.Slot == ComboEditor.ItemsNodeId)
+        {
+            // (2026-10-17) 모든 아이템 chip: a shopping-bag glyph (Segoe MDL2 "ShoppingCart") — no
+            // single item icon stands for "every uncertain item you own".
+            grid.Children.Add(new TextBlock
+            {
+                Text = "",
+                FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 22,
+                Foreground = accent,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                IsHitTestVisible = false,
+            });
+            ToolTipService.SetToolTip(grid, "모든 아이템 — 이 위치에서 가진 아이템의 사용 효과·충전 공격(총검, 로켓 벨트, "
+                + "히드라·발걸음 분쇄기, 폭풍갈퀴, 고속 연사포, 스태틱, 벼락폭풍검, 악의, 강철심장, 망자의 갑옷, 선체파괴자, 그림자 검)이 "
+                + "한 번씩 발동하고, 여기부터 피해 증폭(균열 생성기, 리안드리, 심연의 가면, 그림자불꽃, 쇼진)이 최대치로 적용");
         }
         else if (data.Slot == "Ignite")
         {
@@ -3095,7 +3120,8 @@ public partial class ComboSettingsView : UserControl
             else if (slot == "Flash") _ = LoadFlashIconAsync();
             box.Child = new TextBlock
             {
-                Text = slot == "Ignite" ? "점" : slot == "Flash" ? "멸" : slot.Length > 0 ? slot[..1] : "?",
+                Text = slot == "Ignite" ? "점" : slot == "Flash" ? "멸" : slot == ComboEditor.ItemsNodeId ? "템"
+                    : slot.Length > 0 ? slot[..1] : "?",
                 FontSize = 10,
                 FontWeight = FontWeights.Bold,
                 Foreground = accent,

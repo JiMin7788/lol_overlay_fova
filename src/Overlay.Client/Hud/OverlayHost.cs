@@ -60,6 +60,8 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// Query-shaped like <see cref=_inhibitorQuery/> rather than bus-pushed, so render state
     /// is read on the render thread. Null = feature off.</summary>
     private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? _afterimageQuery;
+    private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? _threatQuery;
+    private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? _nextItemQuery;
 
     /// <summary>M02 loop 38 continuation 12: reports whether the configured click-to-target
     /// modifier (default Ctrl) is currently held. Injected by <c>MainWindow</c> (which owns the
@@ -171,7 +173,9 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                         Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.NexusTurret.NexusTurretStatus>?>? nexusTurretQuery,
                         Func<Overlay.Core.Vision.GameCfgHudSettings?>? gameCfgQuery,
                         Func<GameSnapshot, Overlay.Core.Combo.SkillPanelResult?>? skillPanelQuery,
-                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery)
+                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery,
+                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? threatQuery,
+                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery)
     {
         _window = window;
         // E1: the shared ConfigManager is injected by AppComposition (one instance for the
@@ -186,6 +190,8 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         _gameCfgQuery = gameCfgQuery;         // (M31 §2 layer 0) game.cfg minimap calibration, null = geometric prior only
         _skillPanelQuery = skillPanelQuery;   // (user request) always-on per-skill damage panel, null = off
         _afterimageQuery = afterimageQuery;   // (M31 §C) last-seen enemy portraits on the minimap, null = off
+        _threatQuery = threatQuery;           // (M40) enemy kill-threat estimates, null = off
+        _nextItemQuery = nextItemQuery;       // (M43) next-item ranking while dead, null = off
 
         _surface = new RenderSurface();
         // Add behind the existing data widgets so the widget shell stays on top.
@@ -227,9 +233,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                                     Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.NexusTurret.NexusTurretStatus>?>? nexusTurretQuery = null,
                                     Func<Overlay.Core.Vision.GameCfgHudSettings?>? gameCfgQuery = null,
                                     Func<GameSnapshot, Overlay.Core.Combo.SkillPanelResult?>? skillPanelQuery = null,
-                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery = null)
+                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery = null,
+                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? threatQuery = null,
+                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery = null)
     {
-        var self = new OverlayHost(window, host, config, snapshot, isTargetClickModifierHeld, isMovable, laneReturnQuery, inhibitorQuery, nexusTurretQuery, gameCfgQuery, skillPanelQuery, afterimageQuery);
+        var self = new OverlayHost(window, host, config, snapshot, isTargetClickModifierHeld, isMovable, laneReturnQuery, inhibitorQuery, nexusTurretQuery, gameCfgQuery, skillPanelQuery, afterimageQuery, threatQuery, nextItemQuery);
         self.SyncSurfaceToWindow();
         self._coordinator.Start();
         self._timer.Start();
@@ -654,6 +662,26 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 if (item.Payload.Type == HudType.ComboResult && item.Payload.Content is ComboHudResult ch)
                 { comboHud = ch; break; }
             BuildComboStack(w, h, scale, comboHud);
+
+            // (M40) Enemy kill threat: my HP bar with each enemy's full-combo line. Draggable.
+            if (IsEnabled("threatCard") && _threatQuery?.Invoke() is { Count: > 0 } threats)
+            {
+                var threatSnap = _snapshot();
+                if (threatSnap is { HasData: true })
+                {
+                    _cardBuffer.Clear();
+                    BuildThreatCard(_cardBuffer, threatSnap, threats, w, h, scale);
+                    Enqueue(_cardBuffer, ComboStackZOrder);
+                }
+            }
+
+            // (M43) Next item: while I am dead (shopping), the candidates ranked by added combo damage.
+            if (IsEnabled("nextItemCard") && _nextItemQuery?.Invoke() is { Count: > 0 } nextItems)
+            {
+                _cardBuffer.Clear();
+                BuildNextItemCard(_cardBuffer, nextItems, w, h, scale);
+                Enqueue(_cardBuffer, ComboStackZOrder);
+            }
 
             // (2026-07-26) 적 제어 와드 현황 — carried control wards per enemy, from the public
             // scoreboard items. Draggable left-edge panel, gated like every other HUD element.
@@ -1137,6 +1165,137 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             y += rowH;
         }
     }
+
+    /// <summary>(M40) 상대 킬각 위험선 — a gauge of my HP (current HP filled) with one tick per enemy
+    /// at its estimated full-combo damage and that champion's portrait under its tick. A tick turns
+    /// red while my current HP is at or below it (that enemy's full combo kills me now), and the
+    /// gauge fill turns red when any living enemy's does. Dead enemies: gray tick, gray portrait.
+    /// Portraits whose ticks are too close to sit side by side drop to a second (third…) row, with a
+    /// thin stem back up to the tick. All estimates assume every enemy ability is ready
+    /// (<see cref="ComboRunner.ComputeThreat"/>), which the caption says. Draggable as "threatCard";
+    /// default anchor bottom-center, above the game's own HP bar.</summary>
+    private void BuildThreatCard(List<DrawCommand> into, GameSnapshot snap,
+        IReadOnlyList<Overlay.Core.Combo.EnemyThreat> threats, double w, double h, double scale)
+    {
+        double maxHp = snap.Stats.MaxHealth, curHp = snap.Stats.CurrentHealth;
+        if (maxHp <= 0) return;
+
+        var dead = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in ComboRunner.EnemyRoster(snap))
+            if (e.IsDead) dead.Add(e.ChampionName);
+
+        double barW = 320 * scale, barH = 12 * scale;
+        double padH = 14 * scale, padV = 8 * scale;
+        double icon = 24 * scale, iconGap = 2 * scale, capF = 9 * scale;
+
+        // Tick x (bar-relative) per enemy, then portrait rows: left to right, each portrait takes the
+        // first row where it does not overlap the previous portrait in that row.
+        var placed = new List<(Overlay.Core.Combo.EnemyThreat T, double X, int Row)>();
+        var rowRight = new List<double>();
+        foreach (var t in threats.OrderBy(t => t.Estimate.Damage))
+        {
+            double x = barW * Math.Clamp(t.Estimate.Damage / maxHp, 0, 1);
+            int row = 0;
+            while (row < rowRight.Count && x - icon / 2 < rowRight[row] + iconGap) row++;
+            if (row == rowRight.Count) rowRight.Add(double.NegativeInfinity);
+            rowRight[row] = x + icon / 2;
+            placed.Add((t, x, row));
+        }
+        int rows = Math.Max(1, rowRight.Count);
+
+        double panelW = barW + padH * 2;
+        double portraitsH = rows * (icon + iconGap);
+        double panelH = padV + barH + 4 * scale + portraitsH + capF * 1.5 + padV;
+
+        var (dx, dy) = GetOffset("threatCard");
+        double x0 = w / 2 - panelW / 2 + dx, y0 = h * 0.72 + dy;
+        _elementRects["threatCard"] = new Rect(x0, y0, panelW, panelH);
+
+        into.Add(Rect(x0 + 3, y0 + 3, panelW, panelH, CardShadow));
+        into.Add(Rect(x0, y0, panelW, panelH, PanelBorder));
+        into.Add(Rect(x0 + 1, y0 + 1, panelW - 2, panelH - 2, RowBg));
+
+        bool Lethal(Overlay.Core.Combo.EnemyThreat t) => !dead.Contains(t.ScoreboardName) && curHp <= t.Estimate.Damage;
+        bool anyLethal = threats.Any(Lethal);
+
+        // Gauge: background + my current HP.
+        double bx = x0 + padH, by = y0 + padV;
+        into.Add(Rect(bx, by, barW, barH, 0xCC14181F));
+        into.Add(Rect(bx, by, barW * Math.Clamp(curHp / maxHp, 0, 1), barH, anyLethal ? ThreatRed : ThreatHpGreen));
+
+        // Ticks, then portraits under them.
+        double py0 = by + barH + 4 * scale;
+        foreach (var (t, x, row) in placed)
+        {
+            bool isDead = dead.Contains(t.ScoreboardName);
+            uint color = isDead ? NameDim : Lethal(t) ? ThreatRed : ThreatTick;
+            double tw = 2 * scale;
+            double py = py0 + row * (icon + iconGap);
+            // Tick across the gauge, extended down as a stem to its portrait.
+            into.Add(Rect(bx + x - tw / 2, by - 3 * scale, tw, py - by + 3 * scale, color));
+
+            double ix = bx + x - icon / 2;
+            into.Add(Ellipse(ix - 1 * scale, py - 1 * scale, icon + 2 * scale, icon + 2 * scale, color));
+            string? pref = _championIcons.GetPortraitReference(t.ScoreboardName);
+            if (pref is not null)
+                into.Add(Icon(pref, ix, py, icon, icon, 2 | (isDead ? 1 : 0)));
+            else
+                into.Add(Ellipse(ix, py, icon, icon, NeutralChipBg));
+        }
+
+        into.Add(Text(Localization.L("threat.caption"), bx, py0 + portraitsH + 1 * scale, NameDim, capF));
+    }
+
+    /// <summary>(M43) 다음 아이템 — the top candidates by damage my combo gains on the current
+    /// target: item icon, name, +% and +damage per 1,000 gold, and a 원콤 badge when the item
+    /// takes the combo past the target's max HP. Draggable as "nextItemCard"; default left of
+    /// center, where the shop does not cover it.</summary>
+    private void BuildNextItemCard(List<DrawCommand> into, IReadOnlyList<Overlay.Core.Combo.NextItemRow> rows,
+        double w, double h, double scale)
+    {
+        const int Shown = 5;
+        var top = rows.Take(Shown).ToList();
+        double icon = 26 * scale, rowH = icon + 6 * scale, padH = 10 * scale, padV = 8 * scale;
+        double titleF = 12 * scale, f = 12 * scale, capF = 9 * scale;
+        double panelW = 300 * scale;
+        double panelH = padV * 2 + titleF * 1.6 + top.Count * rowH + capF * 1.6;
+
+        var (dx, dy) = GetOffset("nextItemCard");
+        double x0 = w * 0.06 + dx, y0 = h * 0.40 + dy;
+        _elementRects["nextItemCard"] = new Rect(x0, y0, panelW, panelH);
+
+        into.Add(Rect(x0 + 3, y0 + 3, panelW, panelH, CardShadow));
+        into.Add(Rect(x0, y0, panelW, panelH, PanelBorder));
+        into.Add(Rect(x0 + 1, y0 + 1, panelW - 2, panelH - 2, RowBg));
+
+        string target = Localization.ChampionName(
+            Overlay.Core.ChampionDb.ChampionSummary.ResolveKoreanName(top[0].TargetChampion) ?? top[0].TargetChampion);
+        into.Add(Text($"다음 아이템 · {target} 상대 콤보 데미지", x0 + padH, y0 + padV, TextPrimary, titleF));
+
+        double y = y0 + padV + titleF * 1.6;
+        foreach (var r in top)
+        {
+            string? iref = DDragonIconProvider.ItemIconPathOrNull(r.ItemId);
+            if (iref is not null) into.Add(Icon(iref, x0 + padH, y, icon, icon));
+            else into.Add(Rect(x0 + padH, y, icon, icon, KeyChipBg));
+
+            var item = Overlay.Core.ChampionDb.ItemRepository.Get(r.ItemId);
+            string name = item?.NameKo ?? item?.Name ?? r.ItemId;
+            double tx = x0 + padH + icon + 8 * scale;
+            into.Add(Text(name, tx, y + 1 * scale, TextPrimary, f));
+            string gain = $"+{r.GainPercent:0}%  ·  +{r.GainPer1000Gold:0} / 1000골드";
+            into.Add(Text(gain, tx, y + f * 1.25, r.GainPercent > 0 ? ThreatHpGreen : NameDim, capF + 1 * scale));
+            if (r.MakesOneShot)
+                into.Add(Text("원콤", x0 + panelW - padH - 26 * scale, y + 4 * scale, ThreatRed, f));
+            y += rowH;
+        }
+
+        into.Add(Text("치명타·공속·스킬가속·지속 효과는 계산 안 됨", x0 + padH, y + 1 * scale, NameDim, capF));
+    }
+
+    private const uint ThreatRed = 0xFFE5484D;
+    private const uint ThreatHpGreen = 0xFF3FA66B;
+    private const uint ThreatTick = 0xFFF2C14E;
 
     private void BuildPortraitRow(List<DrawCommand> into, IReadOnlyList<EnemyRosterEntry> roster,
                                   string? selected, double centerX, ref double y, double scale)

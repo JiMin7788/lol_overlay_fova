@@ -90,12 +90,53 @@ public static class ItemEffectDb
 
     private static bool TryParseEffect(string itemId, JsonElement obj, out ItemEffect? effect)
     {
+        if (!TryParseCore(itemId, obj, out effect)) return false;
+        // (2026-10-17) Optional on any entry: a damage amp the item chip turns on (Liandry's Suffering
+        // rides on its burn entry) and a ranged share of the BIN number (Hullbreaker 0.7).
+        try
+        {
+            effect = effect! with
+            {
+                AmpScope = obj.TryGetProperty("ampScope", out var sc) && sc.ValueKind == JsonValueKind.String
+                    ? sc.Deserialize<ItemAmpScope>(JsonOptions) : null,
+                AmpPercent = Number(obj, "ampPercent"),
+                RangedAmpPercent = Number(obj, "rangedAmpPercent"),
+                RangedMultiplier = Number(obj, "rangedMultiplier") is > 0 and var rm ? rm : 1,
+            };
+            return true;
+        }
+        catch (JsonException) { effect = null; return false; }
+    }
+
+    private static double? Number(JsonElement obj, string name)
+        => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : null;
+
+    private static bool TryParseCore(string itemId, JsonElement obj, out ItemEffect? effect)
+    {
         effect = null;
         try
         {
             var trigger = obj.GetProperty("trigger").Deserialize<ItemTrigger>(JsonOptions);
             var type = obj.GetProperty("damageType").Deserialize<HitDamageType>(JsonOptions);
             var name = obj.TryGetProperty("name", out var n) ? (n.GetString() ?? itemId) : itemId;
+
+            // ── (2026-10-17) no-calc items: a chip-only amp, Giant Slayer, a first-attack crit ──
+            if (trigger is ItemTrigger.ItemsNodeAmp or ItemTrigger.GiantSlayer or ItemTrigger.FirstAttackCrit)
+            {
+                var bare = new SkillData { Key = itemId, Name = name };
+                effect = new ItemEffect(itemId, trigger, type, bare, Calc: string.Empty,
+                    GiantSlayerBasis: obj.TryGetProperty("giantSlayerBasis", out var gb) && gb.ValueKind == JsonValueKind.String
+                        ? gb.Deserialize<ItemGiantSlayerBasis>(JsonOptions) : null,
+                    GiantSlayerCapHp: Number(obj, "giantSlayerCapHp"),
+                    CritDamageScalar: Number(obj, "critDamageScalar"));
+                return trigger switch
+                {
+                    ItemTrigger.ItemsNodeAmp => Number(obj, "ampPercent") is > 0 && obj.TryGetProperty("ampScope", out _),
+                    ItemTrigger.GiantSlayer => Number(obj, "ampPercent") is > 0 && effect.GiantSlayerBasis is not null
+                        && effect.GiantSlayerCapHp is > 0,
+                    _ => effect.CritDamageScalar is > 0,
+                };
+            }
 
             // ── stack-then-consume items (Kraken Slayer) ────────────────────────────────────
             // A flat melee/ranged base damage that linearly interpolates level 1→18 (same shape
@@ -129,7 +170,11 @@ public static class ItemEffectDb
                     StacksRequired: stacksRequired,
                     MeleeDamageAtLevel1: meleeLvl1, MeleeDamageAtLevel18: meleeLvl18,
                     RangedDamageAtLevel1: rangedLvl1, RangedDamageAtLevel18: rangedLvl18,
-                    MissingHpBonusScalar: missingHpBonusScalar);
+                    MissingHpBonusScalar: missingHpBonusScalar,
+                    // Optional: the level from which the damage grows (Kraken: flat to 8, +5/level
+                    // from 9). Absent = linear from level 1.
+                    LevelBreakpoint: obj.TryGetProperty("levelBreakpoint", out var bp) && bp.ValueKind == JsonValueKind.Number
+                        ? bp.GetInt32() : null);
                 return true;
             }
 
@@ -177,7 +222,8 @@ public static class ItemEffectDb
 
                 var emptySkill = new SkillData { Key = itemId, Name = name };
                 effect = new ItemEffect(itemId, trigger, type, emptySkill, Calc: string.Empty,
-                    HpPercentBasis: basis, MeleeHpPercent: meleePct, RangedHpPercent: rangedPct);
+                    HpPercentBasis: basis, MeleeHpPercent: meleePct, RangedHpPercent: rangedPct,
+                    Multiplier: Multiplier(obj), ThresholdTargetMaxHpPercent: Threshold(obj));
                 return true;
             }
 
@@ -197,7 +243,8 @@ public static class ItemEffectDb
                 SpellCalculations = bin.SpellCalculations,
                 EffectAmounts = bin.EffectAmounts,
             };
-            effect = new ItemEffect(itemId, trigger, type, skill, calc);
+            effect = new ItemEffect(itemId, trigger, type, skill, calc,
+                Multiplier: Multiplier(obj), ThresholdTargetMaxHpPercent: Threshold(obj));
             return true;
         }
         catch (Exception ex) when (ex is KeyNotFoundException or JsonException or InvalidOperationException)
@@ -205,6 +252,17 @@ public static class ItemEffectDb
             return false;
         }
     }
+
+    /// <summary>Optional "multiplier" on the resolved number (Blackfire's per-second burn x its 3s
+    /// duration, Luden's single-target total = 2x one echo). Default 1.</summary>
+    private static double Multiplier(JsonElement obj)
+        => obj.TryGetProperty("multiplier", out var m) && m.ValueKind == JsonValueKind.Number && m.GetDouble() > 0
+            ? m.GetDouble() : 1;
+
+    /// <summary>Optional "thresholdTargetMaxHpPercent" (Stormsurge: 0.25).</summary>
+    private static double? Threshold(JsonElement obj)
+        => obj.TryGetProperty("thresholdTargetMaxHpPercent", out var t) && t.ValueKind == JsonValueKind.Number
+            ? t.GetDouble() : null;
 
     /// <summary>Test-only reset so the lazy cache doesn't leak between cases.</summary>
     internal static void ResetForTests()
@@ -225,7 +283,28 @@ public static class ItemEffectDb
 /// <see cref="Combo.ComboEngine"/>'s <c>ApplyAttachedItemEffects</c> instead of the build-list
 /// pipeline above (Deathfire Grasp's "The Silence" active — see
 /// <see cref="ItemEffect.TargetMaxHpPercent"/>/<see cref="ItemEffect.AmplifyDamagePercent"/>).</summary>
-public enum ItemTrigger { OnHit, Spellblade, StackThenConsume, ManualActiveBurst }
+/// <summary>(2026-10-17) Conditional procs whose condition the combo itself settles:
+/// <see cref="OnSecondHit"/> = the second separate damaging attack/ability (Eclipse);
+/// <see cref="OnFirstAbility"/> = the first damaging ability (Luden's Echo, Liandry's burn, Blackfire
+/// burn); <see cref="AfterDamageThreshold"/> = once the combo has dealt a share of the target's max HP
+/// (Stormsurge). Each fires at most once per combo.</summary>
+/// <para><see cref="ItemsNode"/> (2026-10-17, user decision): effects whose firing the combo cannot
+/// settle — actives (Gunblade, Rocketbelt, Hydra/Stridebreaker), energized attacks (Stormrazor, Rapid
+/// Firecannon, Statikk Shiv, Voltaic Cyclosword), Malignance's ground — fire only where the user puts
+/// the "모든 아이템" chip (<see cref="Combo.ComboEditor.ItemsNodeId"/>): every such item owned, once.
+/// <see cref="ItemsNodeAmp"/> = a damage amp (Riftmaker, Abyssal Mask, Shadowflame, Shojin) the same chip
+/// turns on for every node from it onward. <see cref="GiantSlayer"/> = Dominik's/Perplexity's amp, settled
+/// by the two health pools and applied to the whole combo. <see cref="FirstAttackCrit"/> = Sundered Sky:
+/// the combo's first attack crits.</para>
+public enum ItemTrigger { OnHit, Spellblade, StackThenConsume, ManualActiveBurst, OnSecondHit, OnFirstAbility, AfterDamageThreshold, ItemsNode, ItemsNodeAmp, GiantSlayer, FirstAttackCrit }
+
+/// <summary>(2026-10-17) Which hits an item amp scales: every hit, magic hits, magic and true hits, or
+/// ability/passive hits (Shojin).</summary>
+public enum ItemAmpScope { All, Magic, MagicAndTrue, Ability }
+
+/// <summary>(2026-10-17) Giant Slayer's measure: the target's bonus health (Dominik's) or how much more
+/// max health the target has than me (Perplexity).</summary>
+public enum ItemGiantSlayerBasis { TargetBonusHp, HpDifference }
 
 /// <summary>Which HP value a melee/ranged %-HP item proc (see <see cref="ItemEffect.MeleeHpPercent"/>/
 /// <see cref="ItemEffect.RangedHpPercent"/>) is a fraction of. <see cref="None"/> = not a %-HP item
@@ -235,7 +314,7 @@ public enum ItemTrigger { OnHit, Spellblade, StackThenConsume, ManualActiveBurst
 /// skill %HP hits like Vayne W/Brand P/Skarner P already use — see ComboRunner.TryBuildHitShape).
 /// <see cref="CasterMax"/> = Titanic Hydra's Cleave — a fraction of the CASTER's own max HP (constant
 /// across the combo, so it resolves to a flat number once, like a spellblade proc).</summary>
-public enum ItemHpPercentBasis { None, TargetCurrent, CasterMax }
+public enum ItemHpPercentBasis { None, TargetCurrent, CasterMax, TargetMax }
 
 /// <summary>One covered item proc: its trigger, curated single-hit damage <see cref="DamageType"/>
 /// (not carried by the BIN calc), and the evaluable <see cref="SkillData"/> + <see cref="Calc"/>
@@ -271,4 +350,9 @@ public sealed record ItemEffect(
     double? RangedDamageAtLevel1 = null, double? RangedDamageAtLevel18 = null,
     double? MissingHpBonusScalar = null,
     double? TargetMaxHpPercent = null,
-    double? AmplifyDamagePercent = null, double? AmplifyDurationSeconds = null);
+    double? AmplifyDamagePercent = null, double? AmplifyDurationSeconds = null,
+    int? LevelBreakpoint = null,
+    double Multiplier = 1, double? ThresholdTargetMaxHpPercent = null,
+    ItemAmpScope? AmpScope = null, double? AmpPercent = null, double? RangedAmpPercent = null,
+    ItemGiantSlayerBasis? GiantSlayerBasis = null, double? GiantSlayerCapHp = null,
+    double? CritDamageScalar = null, double RangedMultiplier = 1);

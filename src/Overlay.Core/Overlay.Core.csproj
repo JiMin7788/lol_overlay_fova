@@ -98,6 +98,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>data\combo_presets.json</Link>
     </None>
+    <!-- (M40) Most common skill max order per champion, from aggregate stats sites (sources listed). -->
+    <None Include="Data\skill_orders.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>data\skill_orders.json</Link>
+    </None>
     <None Include="Data\jungle_camps.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>data\jungle_camps.json</Link>

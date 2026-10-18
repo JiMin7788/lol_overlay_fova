@@ -315,16 +315,7 @@ public sealed class ComboEditor
     /// on this champion's palette.</summary>
     public (ComboDraft Combo, string? Hotkey) AddPreset(string championId, ComboPresets.Preset preset)
     {
-        var palette = LoadPalette(championId).AvailableNodes.ToDictionary(n => n.Id, StringComparer.Ordinal);
-        var nodes = new List<ComboNode>();
-        for (int i = 0; i < preset.Sequence.Count; i++)
-        {
-            var slot = preset.Sequence[i];
-            var template = palette.TryGetValue(slot, out var n) ? n
-                : slot is "Ignite" or "Flash" ? SummonerNode(slot)
-                : throw new ComboImportException($"Preset '{preset.Name}' uses '{slot}', which {championId} does not have");
-            nodes.Add(template with { Id = $"{slot}_{i}" });
-        }
+        var nodes = PresetNodes(championId, preset);
 
         var draft = CreateCombo(championId, preset.Name);
         foreach (var node in nodes) AddNode(draft.Id, node);
@@ -333,6 +324,28 @@ public sealed class ComboEditor
         var hotkey = FirstFreeNumberHotkey(championId);
         if (hotkey is not null) BindHotkey(draft.Id, hotkey);
         return (GetCombo(draft.Id), hotkey);
+    }
+
+    /// <summary>The nodes <see cref="AddPreset"/> saves, without saving anything — also the enemy's
+    /// assumed combo in M40. <paramref name="skip"/> drops slots (an enemy without Flash/Ignite).
+    /// Throws <see cref="ComboImportException"/> when a slot is not on this champion's palette, unless
+    /// <paramref name="skipUnknown"/> — an estimate would rather lose one slot than the whole combo.</summary>
+    public static List<ComboNode> PresetNodes(string championId, ComboPresets.Preset preset,
+        Func<string, bool>? skip = null, bool skipUnknown = false)
+    {
+        var palette = LoadPalette(championId).AvailableNodes.ToDictionary(n => n.Id, StringComparer.Ordinal);
+        var nodes = new List<ComboNode>();
+        for (int i = 0; i < preset.Sequence.Count; i++)
+        {
+            var slot = preset.Sequence[i];
+            if (skip?.Invoke(slot) == true) continue;
+            if (skipUnknown && !palette.ContainsKey(slot) && slot is not ("Ignite" or "Flash")) continue;
+            var template = palette.TryGetValue(slot, out var n) ? n
+                : slot is "Ignite" or "Flash" ? SummonerNode(slot)
+                : throw new ComboImportException($"Preset '{preset.Name}' uses '{slot}', which {championId} does not have");
+            nodes.Add(template with { Id = $"{slot}_{i}" });
+        }
+        return nodes;
     }
 
     /// <summary>ALT+1…ALT+9, the first one no combo of <paramref name="championId"/> is bound to.</summary>
@@ -350,6 +363,10 @@ public sealed class ComboEditor
             if (!used.Contains($"ALT+{n}")) return $"ALT+{n}";
         return null;
     }
+
+    /// <summary>(2026-10-17) The "모든 아이템" chip: a summoner-type node at which every owned item
+    /// whose effect the combo cannot settle (<see cref="Items.ItemTrigger.ItemsNode"/>) fires once.</summary>
+    public const string ItemsNodeId = "Items";
 
     /// <summary>The summoner-spell nodes the editor's palette offers (Ignite: level-scaled true
     /// damage resolved at trigger time; Flash: 0 damage, marks a dash for dash-triggered runes).</summary>

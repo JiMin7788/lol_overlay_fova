@@ -331,4 +331,53 @@ public class ConfigManagerTests : IDisposable
         Assert.Equal("en-US", config.Get("general.language"));
         Assert.Equal(4d, Convert.ToDouble(config.Get("overlay.hudDisplayDuration")));
     }
+
+    [Fact]
+    public void FlashKey_PersistsAcrossReload()
+    {
+        using (var config = new ConfigManager(_path))
+            config.Set("champSelect.flashKey", "F");
+
+        using var reloaded = new ConfigManager(_path);
+        Assert.Equal("F", reloaded.Get("champSelect.flashKey"));
+    }
+
+    /// <summary>The loader keeps only schema properties, so a key the client writes without a schema
+    /// home is saved once and silently dropped on the next launch (the Flash key, the overlay
+    /// hotkeys and the rec tier all were). Every literal key passed to Config.Set in the client
+    /// must exist in the default schema.</summary>
+    [Fact]
+    public void EveryKeyTheClientSets_HasASchemaHome()
+    {
+        var dir = AppContext.BaseDirectory;
+        string? client = null;
+        for (var i = 0; i < 10 && client is null; i++)
+        {
+            var candidate = Path.Combine(dir, "src", "Overlay.Client");
+            if (Directory.Exists(candidate)) client = candidate;
+            dir = Path.GetFullPath(Path.Combine(dir, ".."));
+        }
+        Assert.NotNull(client);
+
+        var defaults = System.Text.Json.JsonSerializer.SerializeToNode(ConfigSchema.CreateDefault())!.AsObject();
+        var keyPattern = new System.Text.RegularExpressions.Regex(@"Config\.Set\(""([A-Za-z0-9_.]+)""");
+        var missing = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(client!, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)) continue;
+            foreach (System.Text.RegularExpressions.Match m in keyPattern.Matches(File.ReadAllText(file)))
+            {
+                // A key ending in "." is a prefix completed at runtime (a dictionary entry).
+                var key = m.Groups[1].Value;
+                if (key.EndsWith('.')) key = key.TrimEnd('.');
+                JsonNode? node = defaults;
+                foreach (var part in key.Split('.'))
+                {
+                    if (node is not JsonObject obj || !obj.ContainsKey(part)) { missing.Add(key); break; }
+                    node = obj[part];
+                }
+            }
+        }
+        Assert.Empty(missing.Distinct());
+    }
 }

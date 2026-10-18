@@ -263,8 +263,12 @@ public sealed class ComboRunner : IDisposable
     /// <param name="savedOverride">(loop 487) Skip the config lookup and use this combo directly —
     /// the editor previews a sequence that has not been saved and may never be.</param>
     /// <returns>The card payload, or null when nothing could be computed.</returns>
+    /// <param name="defenderOverride">(M40) Compute against exactly this defender — me, from my live
+    /// stats — with a <see cref="SyntheticAttacker"/> snapshot. Also turns off everything that belongs
+    /// to MY combos only: the hypothetical item build, live stack counts and target pins.</param>
     private ComboHudResult? ComputeAndPublish(string comboId, bool recordDamage, bool publish = true,
-        GameSnapshot? snapshotOverride = null, SavedCombo? savedOverride = null)
+        GameSnapshot? snapshotOverride = null, SavedCombo? savedOverride = null,
+        DefenderStat? defenderOverride = null)
     {
         lock (_computeGate)
         {
@@ -322,6 +326,9 @@ public sealed class ComboRunner : IDisposable
             //    The target-selection preference is read live from config so a UI change applies
             //    without restarting the runner (see ReadTargeting).
             var (targetMode, manualTarget) = ReadTargeting();
+            bool synthetic = defenderOverride is not null;
+            if (synthetic) (targetMode, manualTarget) = (TargetMode.Auto, string.Empty);
+            var stackProvider = synthetic ? null : LiveStackProvider;
 
             // 2b. Resolve the combo champion + arm this trigger's rune state: the persisted
             //     selection (M04 rune panel) becomes the real UserRuneConfig, and each selected
@@ -331,9 +338,14 @@ public sealed class ComboRunner : IDisposable
             var runeConfig = LoadRuneSelectionAndArmManualFlags(championId, snap);
 
             var context = BuildContext(snap, saved, targetMode, manualTarget, runeConfig, _config, comboId,
-                _targetHealthTracker,
+                synthetic ? null : _targetHealthTracker,
                 out string targetChampion, out bool defenderIsFallback, out bool usingSnapshotTarget,
-                out int targetLevel, out bool designatedCleared);
+                out int targetLevel, out bool designatedCleared, synthetic);
+            if (defenderOverride is { } me)
+            {
+                context = context with { Defender = me };
+                defenderIsFallback = false;
+            }
 
             // Diagnostic: a silent FallbackDefender (Armor=0/Mr=0 — see FallbackDefender) makes
             // every hit LOOK like unmitigated true damage with no error anywhere, which is exactly
@@ -379,12 +391,13 @@ public sealed class ComboRunner : IDisposable
             // (loop 179) armor-pen / lethality diagnostic (computed pre-Begin in BuildContext).
             if (_lethalityDiag is { Length: > 0 } lethalityDiag) CalcTrace.Row(lethalityDiag);
             var originalGraph = graph; // pre-expansion nodes ("Q_0") carrying the user's knob values
-            graph = ApplyBinDamage(originalGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider);
+            graph = ApplyBinDamage(originalGraph, saved.ChampionId, snap, context.Defender.MaxHP, stackProvider);
 
             // 4. Run + publish. UI.COMBO_RESULT is a mapped HUD type in M02's TypeMap. The card
             //    needs the target + command string too, so publish the ComboHudResult wrapper.
             var result = _engine.Execute(graph, context);
-            if (CalcTrace.End() is { } traceBlock) WriteCalcTrace(traceBlock);
+            result = ApplyThresholdProcs(graph, result, snap, saved.ChampionId, context);
+            if (CalcTrace.End() is { } traceBlock && !synthetic) WriteCalcTrace(traceBlock); // (M40) threat estimates stay out of the trace
 
             // 4b. (M24 P2/P3) Widen the uncertainty range for the knobbed axes (적중시간 duration +
             // 거리/충전 distance). The resolved result already carries RangeMin/Max == crit range (P1).
@@ -414,7 +427,7 @@ public sealed class ComboRunner : IDisposable
             {
                 var floorResolved = minGraph is null
                     ? graph
-                    : ApplyBinDamage(minGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider);
+                    : ApplyBinDamage(minGraph, saved.ChampionId, snap, context.Defender.MaxHP, stackProvider);
                 if (minGraph is not null)
                     rangeMin = Math.Min(rangeMin, _engine.Execute(floorResolved, context).RangeMin);
                 if (enemyDefRunes.Count > 0)
@@ -427,9 +440,20 @@ public sealed class ComboRunner : IDisposable
                     }
                 }
             }
-            if (BuildExposureGraph(originalGraph, saved.ChampionId, maximize: true) is { } maxGraph)
+            var maxBase = BuildExposureGraph(originalGraph, saved.ChampionId, maximize: true);
+            var maxResolved = maxBase is null
+                ? graph
+                : ApplyBinDamage(maxBase, saved.ChampionId, snap, context.Defender.MaxHP, stackProvider);
+            if (maxBase is not null)
                 rangeMax = Math.Max(rangeMax,
-                    _engine.Execute(ApplyBinDamage(maxGraph, saved.ChampionId, snap, context.Defender.MaxHP, LiveStackProvider), context).RangeMax);
+                    ApplyThresholdProcs(maxResolved, _engine.Execute(maxResolved, context), snap, saved.ChampionId, context).RangeMax);
+            // Stack-then-consume (Kraken): the stacks carried into the combo are unknown, so the ceiling
+            // also assumes they were full. Only re-executed when that adds a proc (more nodes).
+            var preStacked = ApplyBinDamage(maxBase ?? originalGraph, saved.ChampionId, snap, context.Defender.MaxHP,
+                stackProvider, preStacked: true);
+            if (preStacked.Nodes.Count != maxResolved.Nodes.Count)
+                rangeMax = Math.Max(rangeMax,
+                    ApplyThresholdProcs(preStacked, _engine.Execute(preStacked, context), snap, saved.ChampionId, context).RangeMax);
 
             // 4c. (M24 P4) Equipped CONDITIONAL amplifier runes (Coup de Grace / Cut Down / Last Stand /
             // PtA / First Strike) lift only the range CEILING: their ×(1+amp) applies only when the rune's
@@ -573,6 +597,195 @@ public sealed class ComboRunner : IDisposable
     /// lines a preview produces are identifiable as previews.</summary>
     private const string PreviewComboId = "__preview";
 
+    /// <summary>(M40) Same, for enemy-threat estimates.</summary>
+    private const string ThreatComboId = "__threat";
+
+    /// <summary>(M40) <paramref name="enemy"/>'s full combo (its <c>allin</c> preset) against me, from
+    /// the scoreboard (level, items, keystone, summoner spells) and my live stats. Ability ranks are
+    /// not exposed, so they are assumed from the enemy's level and its champion's most common max
+    /// order (<see cref="SkillOrders"/>, user decision 2026-10-17); a champion without one falls back
+    /// to trying all three max-first orders and keeping the highest. Before level 6 the ultimate is
+    /// left out of the combo. Cooldowns and mana are assumed ready. Null when the enemy has no
+    /// preset, is unknown, or nothing could be computed. Never publishes.</summary>
+    public ThreatEstimate? ComputeThreat(GameSnapshot live, ScoreboardEntry enemy)
+        => ComputeAttack(enemy, MeFrom(live), OrdersFor(enemy.ChampionName));
+
+    private static IReadOnlyList<string> OrdersFor(string championName)
+    {
+        string id = ChampionSummary.ResolveKoreanName(championName) ?? championName;
+        return SkillOrders.For(id) is { } order ? new[] { order } : MaxOrders;
+    }
+
+    private static DefenderStat MeFrom(GameSnapshot live)
+        => new(CurrentHP: live.Stats.CurrentHealth, MaxHP: live.Stats.MaxHealth,
+            Armor: live.Stats.Armor, Mr: live.Stats.MagicResist, Shield: 0);
+
+    /// <summary>(M41) Kill timing for a lane pair, before the game: at each level 1-18, each side's
+    /// full combo (same estimate as <see cref="ComputeThreat"/>: preset, common max order, no R
+    /// before 6) against the other side's base stats at that level — no items, no runes, Flash but
+    /// no Ignite for both (summoner spells are not settled in champ select). Rows where either side
+    /// could not be computed are left out. Never throws.</summary>
+    public IReadOnlyList<KillTimingRow> ComputeKillTiming(string myChampionId, string enemyChampionId)
+    {
+        var rows = new List<KillTimingRow>(18);
+        try
+        {
+            for (int level = 1; level <= 18; level++)
+            {
+                if (!TryResolveBase(myChampionId, level, out double myHp, out double myArmor, out double myMr)
+                    || !TryResolveBase(enemyChampionId, level, out double enemyHp, out double enemyArmor, out double enemyMr))
+                    continue;
+                var mine = ComputeAttack(Lane(myChampionId, level), new DefenderStat(enemyHp, enemyHp, enemyArmor, enemyMr, 0),
+                    OrdersFor(myChampionId));
+                var theirs = ComputeAttack(Lane(enemyChampionId, level), new DefenderStat(myHp, myHp, myArmor, myMr, 0),
+                    OrdersFor(enemyChampionId));
+                if (mine is null || theirs is null) continue;
+                rows.Add(new KillTimingRow(level, mine.Damage, enemyHp, theirs.Damage, myHp));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"kill timing failed for {myChampionId} vs {enemyChampionId}: {ex.Message}");
+        }
+        return rows;
+    }
+
+    /// <summary>(M43) What each candidate item would add to my combo against the current target:
+    /// the live snapshot, then the same snapshot with the item bought — added to my scoreboard row
+    /// (so lethality, % armor pen and item procs come through the normal paths) and its AD/AP/HP/
+    /// armor/MR and magic pen added to my live stats. The combo is my first saved combo for this
+    /// champion, else its all-in preset. Rows come back best gain first; empty when there is no
+    /// game, target or combo. Not modelled (stated in the UI): crit, attack speed, haste, passives
+    /// without a curated proc. Never throws.</summary>
+    public IReadOnlyList<NextItemRow> RankNextItems(GameSnapshot live, IReadOnlyList<string> candidateIds)
+    {
+        var rows = new List<NextItemRow>();
+        try
+        {
+            if (live is not { HasData: true } || ResolveActive(live) is not { } me) return rows;
+            string championId = ChampionSummary.ResolveKoreanName(me.ChampionName) ?? me.ChampionName;
+            if (MyComboFor(championId) is not { } saved) return rows;
+
+            var baseline = ComputeAndPublish(NextItemComboId, recordDamage: false, publish: false,
+                snapshotOverride: live, savedOverride: saved);
+            if (baseline is null || baseline.DefenderIsFallback || baseline.Result.TotalDamage <= 0) return rows;
+            double before = baseline.Result.TotalDamage, targetHp = baseline.TargetMaxHp;
+
+            var data = StaticData;
+            foreach (var id in candidateIds)
+            {
+                if (ItemRepository.Get(id) is not { } item || !int.TryParse(id, out int itemId)) continue;
+                var bought = new GameSnapshot();
+                live.CopyTo(bought);
+                var row = ResolveActive(bought)!;
+                if (row.ItemCount >= row.ItemIds.Length) continue;
+                row.ItemIds[row.ItemCount++] = itemId;
+                bought.Stats.AttackDamage += item.Stats.Ad;
+                bought.Stats.AbilityPower += item.Stats.Ap;
+                bought.Stats.MaxHealth += item.Stats.Hp;
+                bought.Stats.CurrentHealth += item.Stats.Hp;
+                bought.Stats.Armor += item.Stats.Armor;
+                bought.Stats.MagicResist += item.Stats.Mr;
+                if (data?.GetItem(itemId) is { } extra)
+                {
+                    bought.Stats.MagicPenetrationFlat += extra.FlatMagicPen;
+                    bought.Stats.MagicPenetrationPercent =
+                        1 - (1 - bought.Stats.MagicPenetrationPercent) * (1 - extra.PercentMagicPen);
+                }
+
+                var hud = ComputeAndPublish(NextItemComboId, recordDamage: false, publish: false,
+                    snapshotOverride: bought, savedOverride: saved);
+                if (hud is null) continue;
+                double after = hud.Result.TotalDamage;
+                rows.Add(new NextItemRow(id, item.GoldTotal, before, after, targetHp, baseline.TargetChampion));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"next-item ranking failed: {ex.Message}");
+        }
+        return rows.OrderByDescending(r => r.After - r.Before).ToList();
+    }
+
+    private const string NextItemComboId = "__nextitem";
+
+    /// <summary>My first saved combo for <paramref name="championId"/> (by config key order), else
+    /// its all-in preset as an unsaved combo; null when neither exists.</summary>
+    private SavedCombo? MyComboFor(string championId)
+    {
+        if (_config.Get("combos.saved") is IDictionary<string, object?> all)
+            foreach (var (_, value) in all.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                if (value is not string raw) continue;
+                try
+                {
+                    if (JsonSerializer.Deserialize<SavedCombo>(raw, SavedComboOptions) is { } s
+                        && string.Equals(s.ChampionId, championId, StringComparison.OrdinalIgnoreCase))
+                        return s;
+                }
+                catch (JsonException) { /* a corrupt entry is skipped */ }
+            }
+        var preset = ComboPresets.For(championId).FirstOrDefault(p => p.Kind == "allin")
+                     ?? ComboPresets.For(championId).FirstOrDefault();
+        if (preset is null) return null;
+        var nodes = ComboEditor.PresetNodes(championId, preset, skipUnknown: true);
+        return nodes.Count == 0 ? null
+            : new SavedCombo(NextItemComboId, championId, preset.Name, _engine.Serialize(_engine.BuildGraph(nodes)));
+    }
+
+    private static ScoreboardEntry Lane(string championId, int level)
+        => new() { ChampionName = championId, Level = level, Spell1RawName = "SummonerFlash" };
+
+    private static readonly string[] MaxOrders = { "QWE", "WQE", "EQW" };
+
+    /// <summary>Same, over the given max-first orders only (a test pins one order).</summary>
+    internal ThreatEstimate? ComputeThreat(GameSnapshot live, ScoreboardEntry enemy, IReadOnlyList<string> maxOrders)
+        => ComputeAttack(enemy, MeFrom(live), maxOrders);
+
+    /// <summary><paramref name="enemy"/>'s full combo against <paramref name="me"/>; the core of
+    /// <see cref="ComputeThreat"/> and <see cref="ComputeKillTiming"/>.</summary>
+    private ThreatEstimate? ComputeAttack(ScoreboardEntry enemy, DefenderStat me, IReadOnlyList<string> maxOrders)
+    {
+        try
+        {
+            string enemyId = ChampionSummary.ResolveKoreanName(enemy.ChampionName) ?? enemy.ChampionName;
+            // The all-in preset; a champion with only a trade preset (Dr. Mundo, Teemo, ...) uses that,
+            // and one with none gets every ability plus an auto.
+            var presets = ComboPresets.For(enemyId);
+            var preset = presets.FirstOrDefault(p => p.Kind == "allin") ?? presets.FirstOrDefault()
+                ?? new ComboPresets.Preset("allin", "R-Q-W-E-AA", new[] { "R", "Q", "W", "E", "AA" });
+
+            bool hasFlash = HasSpell(enemy, "Flash"), hasIgnite = HasSpell(enemy, "Dot");
+            bool hasUltimate = enemy.Level >= 6;
+            var nodes = ComboEditor.PresetNodes(enemyId, preset,
+                skip: slot => (slot == "Flash" && !hasFlash) || (slot == "Ignite" && !hasIgnite)
+                    || (!hasUltimate && slot.StartsWith('R')),
+                skipUnknown: true);
+            if (nodes.Count == 0) return null;
+            var saved = new SavedCombo(ThreatComboId, enemyId, preset.Name, _engine.Serialize(_engine.BuildGraph(nodes)));
+
+            double best = -1;
+            foreach (var order in maxOrders)
+            {
+                var synth = SyntheticAttacker.Build(enemy, SyntheticAttacker.AssumedRanks(enemy.Level, order));
+                if (synth is null) return null;
+                var hud = ComputeAndPublish(ThreatComboId, recordDamage: false, publish: false,
+                    snapshotOverride: synth, savedOverride: saved, defenderOverride: me);
+                if (hud is not null) best = Math.Max(best, hud.Result.TotalDamage);
+            }
+            return best < 0 ? null : new ThreatEstimate(enemyId, enemy.Level, best, preset.Name);
+        }
+        catch (Exception ex)
+        {
+            Log($"threat estimate failed for {enemy.ChampionName}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static bool HasSpell(ScoreboardEntry p, string name)
+        => p.Spell1RawName.Contains(name, StringComparison.OrdinalIgnoreCase)
+        || p.Spell2RawName.Contains(name, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>The level the out-of-game reference is stated at. 18 because it is the one level at
     /// which "every ability at max rank" — which is what the rank fallback already does with no
     /// ability data — is not also a lie about the character sheet.</summary>
@@ -675,8 +888,11 @@ public sealed class ComboRunner : IDisposable
     /// <param name="defenderMaxHp">The resolved target's max HP, needed to turn a %-max-HP curated
     /// hit into its flat number at build time (MaxHP is constant across a combo). %current/%missing
     /// hits do not use it — they become M05 execute nodes re-evaluated against live HP.</param>
+    /// <param name="preStacked">(2026-10-17) Stacks a stack-then-consume item (Kraken) already had
+    /// before the combo. Unknowable, so the resolved number assumes 0 and the range ceiling re-runs
+    /// with the maximum (stacksRequired): 2 autos → 0-1 procs, 7 autos → 2-3.</param>
     private static ComboGraph ApplyBinDamage(ComboGraph graph, string comboChampionId, GameSnapshot snap, double defenderMaxHp,
-        Func<string, string, int?>? liveStackProvider = null)
+        Func<string, string, int?>? liveStackProvider = null, bool preStacked = false)
     {
         var champion = ChampionRepository.Get(comboChampionId);
         if (champion is null) return graph; // not in the cached 5 -> template damage (0)
@@ -724,6 +940,19 @@ public sealed class ComboRunner : IDisposable
         // also maps BASE AD, which spellblade — mStatFormula==1 — scales on; skill resolver has no
         // base-AD case). A non-cached combo champion returned above, so base AD is available here.
         var (onHitItems, spellbladeShot, stackThenConsume) = ResolveBuildProcs(snap, champion, level);
+        // (2026-10-17) Conditional procs the combo settles itself: the first damaging ability
+        // (Luden's, Liandry's, Blackfire) and the second separate damaging hit (Eclipse), once each.
+        var conditional = ResolveConditionalProcs(snap, champion, level, defenderMaxHp);
+        bool firstAbilityDone = false;
+        int damagingHits = 0;
+        int itemsChipAt = -1; // (2026-10-17) where the first "모든 아이템" chip sits: item amps start there
+        // (2026-10-17) The user pinned the stack-then-consume item (Kraken) to an auto with the item
+        // FX: that auto IS a proc, autos before the first pin never proc, and the count restarts after
+        // each pinned proc. Without a pin the count runs from 0 (resolved) or full stacks (ceiling).
+        bool stackPinned = stackThenConsume is { } pinStc && graph.Nodes.Any(n =>
+            n.NodeType == ComboNodeType.Aa && n.AttachedItemId == pinStc.Proc.ItemId);
+        bool pinSeen = false;
+        int sincePin = 0;
         // ── SPELLBLADE APPROXIMATION RULE (assistive estimate, P4) ───────────────────────────
         // Spellblade (Sheen/Trinity/Lich Bane) is a single SHARED unique passive: at most one proc
         // every ~1.5s. A landed combo lasts ~1-2s, so AT MOST ONE spellblade proc realistically
@@ -797,7 +1026,14 @@ public sealed class ComboRunner : IDisposable
                 // P calc (e.g. 1.3×AD + 0.3×AP) already carries its own AD scaling, so the ratios
                 // stay zero. One swap is spent per armed auto; a later auto with no fresh cast is a
                 // normal physical attack. On-hit riders below still fire (it is still a basic attack).
-                if (empoweredArmed && empoweredAutoHit is { } emp
+                //
+                // The same passive attached to this auto in the editor (FX sub-icon) means the user
+                // says THIS auto is the empowered one: it swaps too, armed or not, and is taken out
+                // of the attached bonuses so it is never added on top of the auto (AD + passive) nor
+                // counted twice after a spell.
+                var aaBonuses = UserBonuses(node);
+                bool userSwap = aaBonuses.RemoveAll(b => b.Hit.ReplacesBasicAttack) > 0;
+                if ((empoweredArmed || userSwap) && empoweredAutoHit is { } emp
                     && SkillDamage.ComputeCalcDamage(champion, "P", emp.Calc, stats, level) is double empDmg)
                 {
                     empoweredArmed = false;
@@ -865,19 +1101,40 @@ public sealed class ComboRunner : IDisposable
                 {
                     AppendItemHit(rewritten, node, shot);
                     spellbladeApplied = true;
+                    // (2026-10-17) Dusk and Dawn: the empowered attack applies its on-hit effects an
+                    // additional time — the same on-hit group (passives and items) once more.
+                    if (shot.ItemId == DuskAndDawnItemId)
+                    {
+                        var again = node with { Id = node.Id + "#dusk" };
+                        if (applicableOnHit.Count > 0)
+                            AppendBonusHits(rewritten, again, champion, applicableOnHit, stats, level, defenderMaxHp, "onHit", liveStacks);
+                        foreach (var item in onHitItems)
+                            AppendItemHit(rewritten, again, item);
+                    }
                 }
                 // Stack-then-consume (A6 EveryNth, Kraken Slayer): every (stacksRequired+1)th AA in
                 // the combo's own sequence consumes the stacks — see the approximation rule above
                 // this loop.
                 aaOrdinal++;
-                if (stackThenConsume is { } stc
-                    && ConditionMet(new Condition(ConditionType.EveryNth, stc.StacksRequired + 1),
-                        abilityCastSeen: false, alreadyApplied: false, aaOrdinal))
+                if (stackThenConsume is { } stc)
                 {
-                    AppendItemHit(rewritten, node, stc.Proc);
+                    bool proc;
+                    if (stackPinned)
+                    {
+                        if (node.AttachedItemId == stc.Proc.ItemId) { proc = true; pinSeen = true; sincePin = 0; }
+                        else if (pinSeen) proc = ++sincePin % (stc.StacksRequired + 1) == 0;
+                        else proc = false;
+                    }
+                    else
+                        proc = ConditionMet(new Condition(ConditionType.EveryNth, stc.StacksRequired + 1),
+                            abilityCastSeen: false, alreadyApplied: false, aaOrdinal + (preStacked ? stc.StacksRequired : 0));
+                    if (proc) AppendItemHit(rewritten, node, stc.Proc);
                 }
-                // User-attached bonus effects on this AA node (manual sub-icons, T3.3/T8).
-                AppendBonusHits(rewritten, node, champion, UserBonuses(node), stats, level, defenderMaxHp, liveStacks: liveStacks);
+                // User-attached bonus effects on this AA node (manual sub-icons, T3.3/T8), minus a
+                // basic-attack replacement already applied above.
+                AppendBonusHits(rewritten, node, champion, aaBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks);
+                if (++damagingHits == 2)
+                    foreach (var p in conditional.SecondHit) AppendItemHit(rewritten, node, p);
                 continue; // (changed already true)
             }
 
@@ -887,6 +1144,19 @@ public sealed class ComboRunner : IDisposable
             // no mitigation. The saved combo can't store the number (it depends on the player's LIVE
             // champion level), so it is resolved here at trigger time from snap.Level. A summoner name
             // not covered by the map falls through inert (kept as its 0-damage template node).
+            // (2026-10-17) The "모든 아이템" chip: every owned item-node effect fires here, once.
+            if (node.NodeType == ComboNodeType.Summoner && SlotOf(node.Id) == ComboEditor.ItemsNodeId)
+            {
+                if (itemsChipAt < 0) itemsChipAt = rewritten.Count;
+                rewritten.Add(node);
+                foreach (var p in ResolveItemsNodeProcs(snap, champion, level))
+                {
+                    AppendItemHit(rewritten, node, p);
+                    changed = true;
+                }
+                continue;
+            }
+
             if (node.NodeType == ComboNodeType.Summoner)
             {
                 if (SummonerEffectDb.DamageAtLevel(node.Name, level) is double summonerDmg)
@@ -982,6 +1252,7 @@ public sealed class ComboRunner : IDisposable
                 }
             }
 
+            int sizeBeforeCast = rewritten.Count;
             var hits = SkillDamageDb.GetHits(champion.Id, slot);
             int castCount = SkillDamageDb.GetCastCount(champion.Id, slot);
             var expanded = hits is not null
@@ -1059,12 +1330,119 @@ public sealed class ComboRunner : IDisposable
             if (userBonuses.Count > 0)
                 changed |= AppendBonusHits(rewritten, node, champion, userBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks, bonusChargeFraction: nodeChargeFraction);
 
+            // (2026-10-17) A cast that dealt damage (a real ability, not the passive) counts as a
+            // damaging hit and, the first time, fires the first-ability item procs.
+            bool castDamaged = !slot.Equals("P", StringComparison.OrdinalIgnoreCase)
+                && rewritten.Skip(sizeBeforeCast).Any(n => n.Damage > 0 || n.ExecuteType != ComboExecuteType.None);
+            if (castDamaged)
+            {
+                if (!firstAbilityDone)
+                {
+                    firstAbilityDone = true;
+                    foreach (var p in conditional.FirstAbility) AppendItemHit(rewritten, node, p);
+                }
+                if (++damagingHits == 2)
+                    foreach (var p in conditional.SecondHit) AppendItemHit(rewritten, node, p);
+                changed |= conditional.FirstAbility.Count > 0 || conditional.SecondHit.Count > 0;
+            }
+
             // (M22 Phase 4) Flip the All-Out stance AFTER resolving this node, so the R cast itself
             // resolves normally and only the nodes that FOLLOW it (until the next R) are All-Out.
             if (slot.Equals("R", StringComparison.OrdinalIgnoreCase)) allOut = !allOut;
         }
 
+        changed |= ApplyItemAmps(rewritten, itemsChipAt, snap, champion);
+        changed |= ApplyFirstAttackCrit(rewritten, snap);
         return changed ? graph with { Nodes = rewritten } : graph;
+    }
+
+    /// <summary>(2026-10-17) Lethality summed over my owned items (live scoreboard), 0 without static data.</summary>
+    private static double ItemLethality(GameSnapshot snap)
+    {
+        if (StaticData is not { } data || ResolveActive(snap) is not { } active) return 0;
+        double total = 0;
+        for (int i = 0; i < active.ItemCount && i < active.ItemIds.Length; i++)
+            total += data.GetItem(active.ItemIds[i])?.Lethality ?? 0;
+        return total;
+    }
+
+    /// <summary>Dusk and Dawn's spellblade applies on-hit effects a second time.</summary>
+    private const string DuskAndDawnItemId = "2510";
+
+    /// <summary>(2026-10-17) The owned items' damage amps (Riftmaker, Liandry's Suffering, Abyssal Mask,
+    /// Shadowflame, Shojin) on every node from the "모든 아이템" chip onward, each at full strength: the
+    /// chip is the user saying the fight has gone on long enough. No chip, no amp.</summary>
+    private static bool ApplyItemAmps(List<ComboNode> nodes, int from, GameSnapshot snap, ChampionData champion)
+    {
+        if (from < 0 || ResolveActive(snap) is not { } active) return false;
+        bool melee = IsMelee(champion);
+        var amps = new List<(ItemAmpScope Scope, double Percent)>();
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+            if (ItemEffectDb.Get(active.ItemIds[j].ToString()) is { AmpScope: { } scope, AmpPercent: > 0 } e)
+                amps.Add((scope, melee ? e.AmpPercent!.Value : e.RangedAmpPercent ?? e.AmpPercent!.Value));
+        if (amps.Count == 0) return false;
+
+        for (int i = from; i < nodes.Count; i++)
+        {
+            var n = nodes[i];
+            double m = 1;
+            foreach (var (scope, pct) in amps)
+            {
+                bool applies = scope switch
+                {
+                    ItemAmpScope.Magic => n.DamageType == ComboDamageType.Magic,
+                    ItemAmpScope.MagicAndTrue => n.DamageType is ComboDamageType.Magic or ComboDamageType.True,
+                    ItemAmpScope.Ability => n.NodeType is ComboNodeType.Skill or ComboNodeType.Passive
+                        && !n.Id.Contains("#item", StringComparison.Ordinal),
+                    _ => true,
+                };
+                if (applies) m *= 1 + pct;
+            }
+            if (m != 1) nodes[i] = n with { DamageAmp = n.DamageAmp * m };
+        }
+        return true;
+    }
+
+    /// <summary>(2026-10-17) Sundered Sky: the combo's first attack crits, for the item's share of the
+    /// crit bonus (0.8: 160% at the default 175%).</summary>
+    private static bool ApplyFirstAttackCrit(List<ComboNode> nodes, GameSnapshot snap)
+    {
+        if (ResolveActive(snap) is not { } active) return false;
+        double? scalar = null;
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+            if (ItemEffectDb.Get(active.ItemIds[j].ToString()) is { Trigger: ItemTrigger.FirstAttackCrit, CritDamageScalar: > 0 } e)
+                scalar = e.CritDamageScalar;
+        if (scalar is null) return false;
+        int i = nodes.FindIndex(n => n.NodeType == ComboNodeType.Aa && !n.Id.Contains('#'));
+        if (i < 0) return false;
+        nodes[i] = nodes[i] with { GuaranteedCrit = true, CritDamageScalar = scalar.Value };
+        return true;
+    }
+
+    /// <summary>(2026-10-17) Giant Slayer (Dominik's, Perplexity), a whole-combo amp: the target's bonus
+    /// health (its visible items' health) or its max-health lead over me, against the item's cap. 1 when
+    /// no such item is owned or the target's build can't be read.</summary>
+    private static double GiantSlayerAmp(GameSnapshot snap, ScoreboardEntry? target, DefenderStat defender, bool targetReadable)
+    {
+        if (ResolveActive(snap) is not { } active) return 1;
+        double best = 0;
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        {
+            if (ItemEffectDb.Get(active.ItemIds[j].ToString()) is not { Trigger: ItemTrigger.GiantSlayer, AmpPercent: > 0,
+                    GiantSlayerCapHp: > 0 } e) continue;
+            double measure;
+            if (e.GiantSlayerBasis == ItemGiantSlayerBasis.HpDifference)
+                measure = defender.MaxHP - snap.Stats.MaxHealth;
+            else if (targetReadable && target is not null)
+            {
+                measure = 0;
+                for (int k = 0; k < target.ItemCount && k < target.ItemIds.Length; k++)
+                    measure += ItemRepository.Get(target.ItemIds[k].ToString())?.Stats.Hp ?? 0;
+            }
+            else continue;
+            best = Math.Max(best, e.AmpPercent!.Value * Math.Clamp(measure / e.GiantSlayerCapHp!.Value, 0, 1));
+        }
+        return 1 + best;
     }
 
     /// <summary>(§40 loop 548) The ONE charge fraction the bonus hits riding <paramref name="slot"/>
@@ -1710,11 +2088,15 @@ public sealed class ComboRunner : IDisposable
         var active = ResolveActive(snap);
         if (active is null) return (onHit, null, null);
 
-        var resolver = BuildItemStatResolver(snap.Stats, champion, level);
+        var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
         for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
         {
             var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
-            if (effect is null) continue;
+            // Only the build-wide triggers resolve here; the conditional ones (first ability, second
+            // hit, damage threshold) are ResolveConditionalProcs', and an active burst is attached by
+            // hand. Anything else used to fall through to the spellblade slot below.
+            if (effect is not { Trigger: ItemTrigger.OnHit or ItemTrigger.Spellblade or ItemTrigger.StackThenConsume })
+                continue;
 
             if (effect.Trigger == ItemTrigger.StackThenConsume)
             {
@@ -1727,7 +2109,7 @@ public sealed class ComboRunner : IDisposable
             {
                 ItemHpPercentBasis.TargetCurrent => BuildTargetHpItemProc(effect, champion),
                 ItemHpPercentBasis.CasterMax => BuildCasterHpItemProc(effect, champion, snap.Stats),
-                _ => ComputeItemProc(effect, resolver, snap.Stats) is double raw
+                _ => ComputeItemProc(effect, resolver, snap.Stats, level) is double raw
                     ? new ItemProc(effect.ItemId, raw, effect.DamageType)
                     : null,
             };
@@ -1739,6 +2121,82 @@ public sealed class ComboRunner : IDisposable
                 spellblade = p;
         }
         return (onHit, spellblade, stackThenConsume);
+    }
+
+    /// <summary>(2026-10-17) The active player's built items whose proc condition the combo settles
+    /// itself (see <see cref="ItemTrigger.OnFirstAbility"/>/<see cref="ItemTrigger.OnSecondHit"/>/
+    /// <see cref="ItemTrigger.AfterDamageThreshold"/>), resolved to flat numbers: a BIN calc x its
+    /// multiplier, or a melee/ranged share of the target's max HP. Threshold procs carry their share
+    /// in <see cref="ConditionalProcs.Threshold"/> and are applied after execution (they depend on the
+    /// mitigated total).</summary>
+    private static ConditionalProcs ResolveConditionalProcs(GameSnapshot snap, ChampionData champion, int level, double defenderMaxHp)
+    {
+        var result = new ConditionalProcs(new List<ItemProc>(), new List<ItemProc>(), new List<(ItemProc, double)>());
+        var active = ResolveActive(snap);
+        if (active is null) return result;
+        var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        {
+            var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
+            if (effect is not { Trigger: ItemTrigger.OnFirstAbility or ItemTrigger.OnSecondHit or ItemTrigger.AfterDamageThreshold })
+                continue;
+            double? raw = effect.HpPercentBasis == ItemHpPercentBasis.TargetMax
+                ? (IsMelee(champion) ? effect.MeleeHpPercent : effect.RangedHpPercent) * defenderMaxHp
+                : ComputeItemProc(effect, resolver, snap.Stats, level);
+            if (raw is not > 0) continue;
+            var proc = new ItemProc(effect.ItemId, raw.Value * effect.Multiplier, effect.DamageType);
+            switch (effect.Trigger)
+            {
+                case ItemTrigger.OnFirstAbility: result.FirstAbility.Add(proc); break;
+                case ItemTrigger.OnSecondHit: result.SecondHit.Add(proc); break;
+                default:
+                    if (effect.ThresholdTargetMaxHpPercent is > 0 and var share)
+                        result.Threshold.Add((proc, share));
+                    break;
+            }
+        }
+        return result;
+    }
+
+    /// <summary>(2026-10-17) The owned items that fire at the "모든 아이템" chip, resolved: a BIN calc x
+    /// its multiplier, or a melee/ranged share of the target's current HP (Voltaic Cyclosword).</summary>
+    private static List<ItemProc> ResolveItemsNodeProcs(GameSnapshot snap, ChampionData champion, int level)
+    {
+        var procs = new List<ItemProc>();
+        var active = ResolveActive(snap);
+        if (active is null) return procs;
+        var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        {
+            var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
+            if (effect is not { Trigger: ItemTrigger.ItemsNode }) continue;
+            if (effect.HpPercentBasis == ItemHpPercentBasis.TargetCurrent)
+            {
+                if (BuildTargetHpItemProc(effect, champion) is { } hp) procs.Add(hp);
+            }
+            else if (ComputeItemProc(effect, resolver, snap.Stats, level) is double raw && raw > 0)
+                procs.Add(new ItemProc(effect.ItemId,
+                    raw * effect.Multiplier * (IsMelee(champion) ? 1 : effect.RangedMultiplier), effect.DamageType));
+        }
+        return procs;
+    }
+
+    private sealed record ConditionalProcs(List<ItemProc> FirstAbility, List<ItemProc> SecondHit,
+        List<(ItemProc Proc, double TargetMaxHpShare)> Threshold);
+
+    /// <summary>(2026-10-17) Stormsurge-style procs: when the executed combo dealt at least the share
+    /// of the target's max HP, append the proc after the last node and execute again. Returns the
+    /// input result when no such item is built or the threshold is not met.</summary>
+    private ComboResult ApplyThresholdProcs(ComboGraph resolved, ComboResult result, GameSnapshot snap,
+        string championId, ExecutionContext context)
+    {
+        if (ChampionRepository.Get(championId) is not { } champion || resolved.Nodes.Count == 0) return result;
+        var procs = ResolveConditionalProcs(snap, champion, Math.Max(1, snap.Level), context.Defender.MaxHP).Threshold;
+        var add = procs.Where(t => result.TotalDamage >= t.TargetMaxHpShare * context.Defender.MaxHP).ToList();
+        if (add.Count == 0) return result;
+        var nodes = resolved.Nodes.ToList();
+        foreach (var (proc, _) in add) AppendItemHit(nodes, resolved.Nodes[^1], proc);
+        return _engine.Execute(resolved with { Nodes = nodes }, context);
     }
 
     /// <summary>(GOLDEN #3 round 3, docs/reports/golden/GOLDEN_03_GAREN.md §5) The active player's
@@ -1792,7 +2250,9 @@ public sealed class ComboRunner : IDisposable
         double? lvl18 = melee ? effect.MeleeDamageAtLevel18 : effect.RangedDamageAtLevel18;
         if (lvl1 is not > 0 || lvl18 is not > 0) return null;
 
-        double damage = InterpolateByLevel(lvl1.Value, lvl18.Value, level);
+        double damage = effect.LevelBreakpoint is int bp and > 1 and <= 18
+            ? (level < bp ? lvl1.Value : lvl1.Value + (lvl18.Value - lvl1.Value) * (Math.Min(level, 18) - bp + 1) / (18 - bp + 1))
+            : InterpolateByLevel(lvl1.Value, lvl18.Value, level);
         if (effect.MissingHpBonusScalar is > 0)
             return new ItemProc(effect.ItemId, damage, effect.DamageType,
                 ComboExecuteType.BaseWithMissingHpBonus, effect.MissingHpBonusScalar.Value);
@@ -1856,9 +2316,11 @@ public sealed class ComboRunner : IDisposable
 
     /// <summary>Evaluates an item proc's raw single-target number from its BIN calc against the live
     /// stats, or null when it references data that can't be resolved (dropped, never crash).</summary>
-    private static double? ComputeItemProc(ItemEffect eff, Func<int, int?, double> resolver, ActivePlayerStats stats)
+    // (2026-10-17) championLevel: item calcs scale by level too (Gunblade 175 -> 253); it was never
+    // passed, so a ByCharLevel part always read level 1.
+    private static double? ComputeItemProc(ItemEffect eff, Func<int, int?, double> resolver, ActivePlayerStats stats, int level)
     {
-        try { return FormulaInterpreter.Evaluate(eff.Skill, eff.Calc, rank: 1, resolver, stats.ResourceMax); }
+        try { return FormulaInterpreter.Evaluate(eff.Skill, eff.Calc, rank: 1, resolver, stats.ResourceMax, championLevel: Math.Clamp(level, 1, 18)); }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or NotSupportedException)
         {
             return null;
@@ -1876,7 +2338,8 @@ public sealed class ComboRunner : IDisposable
     /// per-level AD at <paramref name="level"/>; bonus AD = total − base. Any other id is unmapped
     /// and throws <see cref="KeyNotFoundException"/> (see <see cref="SkillDamage.BuildStatResolver"/>
     /// remarks) so an unresolvable item calc is dropped rather than silently computed with 0.</summary>
-    private static Func<int, int?, double> BuildItemStatResolver(ActivePlayerStats stats, ChampionData champion, int level)
+    private static Func<int, int?, double> BuildItemStatResolver(ActivePlayerStats stats, ChampionData champion, int level,
+        double lethality = 0)
     {
         double baseAd = champion.BaseStats.Ad + champion.StatsPerLevel.Ad * (Math.Max(1, level) - 1);
         double bonusAd = Math.Max(0.0, stats.AttackDamage - baseAd);
@@ -1890,6 +2353,11 @@ public sealed class ComboRunner : IDisposable
                : statFormula == 2 ? bonusAd
                : stats.AttackDamage,
             6 => stats.MagicResist,
+            // (2026-10-17) Crit chance as the 0-1 fraction the API reports: Essence Reaver's
+            // spellblade adds CritChanceMultiplier (50) x crit chance (12.5 at 25%).
+            8 => stats.CritChance,
+            // (2026-10-17) Lethality, from the owned items (Umbral Glaive's Nightstalker: 50 + 150%).
+            29 => lethality,
             12 => statFormula == 2 ? bonusHp : stats.MaxHealth,
             _ => throw new KeyNotFoundException($"Unmapped BIN mStat id '{statId}' — no live stat available"),
         };
@@ -2174,11 +2642,13 @@ public sealed class ComboRunner : IDisposable
         GameSnapshot snap, SavedCombo saved, TargetMode mode, string manualTarget,
         UserRuneConfig runeConfig, ConfigManager config, string comboId, TargetHealthTracker? targetHealthTracker,
         out string targetChampion, out bool defenderIsFallback, out bool usingSnapshotTarget,
-        out int targetLevel, out bool designatedCleared)
+        out int targetLevel, out bool designatedCleared, bool synthetic = false)
     {
         string championId = ResolveChampionId(snap, saved);
+        // (M40) The hypothetical item build is MY plan for MY champion — never part of an enemy's stats.
+        var buildConfig = synthetic ? null : config;
 
-        var attacker = BuildAttacker(snap, championId, config);
+        var attacker = BuildAttacker(snap, championId, buildConfig);
         var active = ResolveActive(snap);
         // Resolve the target ONCE (override → same-position → first-living) so the defender the
         // damage is computed against and the champion name shown on the card are the SAME target.
@@ -2196,12 +2666,12 @@ public sealed class ComboRunner : IDisposable
         // level and add it on top of any API-reported flat pen.
         attacker = attacker with
         {
-            ArmorPenFlat = attacker.ArmorPenFlat + LethalityFlatPen(active, config, championId, targetLevel),
+            ArmorPenFlat = attacker.ArmorPenFlat + LethalityFlatPen(active, buildConfig, championId, targetLevel),
             // (loop 178) % armor pen (Last Whisper line): the Live Client API's armorPenetrationPercent
             // MAY already carry it (unlike lethality it's a direct multiplier), so we take the MAX of the
             // API value and the item-computed % — never adding on top (that would double-count when the
             // API already reports it), but still covering the case where the API omits item % pen.
-            ArmorPenPercent = Math.Max(attacker.ArmorPenPercent, ItemPercentArmorPen(active, config, championId)),
+            ArmorPenPercent = Math.Max(attacker.ArmorPenPercent, ItemPercentArmorPen(active, buildConfig, championId)),
         };
         usingSnapshotTarget = false;
         designatedCleared = false; // (loop 119) the "적 사망 초기화" state is removed — see last-seen cache below
@@ -2240,7 +2710,7 @@ public sealed class ComboRunner : IDisposable
 
         // Defender-side "virtual model" (loop 38 continuation 19): explicit per-combo opt-in only —
         // see the class doc-comment item above and TargetSnapshotStore's own Policy P2 note.
-        if (!string.IsNullOrEmpty(comboId)
+        if (!synthetic && !string.IsNullOrEmpty(comboId)
             && TargetSnapshotStore.GetUseSnapshot(config, comboId)
             && TargetSnapshotStore.Load(config, comboId) is { } snapshot)
         {
@@ -2269,7 +2739,8 @@ public sealed class ComboRunner : IDisposable
         bool casterIsMelee = casterChampion is not null && IsMelee(casterChampion);
 
         return new ExecutionContext(championId, attacker, defender, runeConfig,
-            CasterMaxHealth: casterMaxHealth, CasterIsMelee: casterIsMelee);
+            CasterMaxHealth: casterMaxHealth, CasterIsMelee: casterIsMelee,
+            DamageAmp: GiantSlayerAmp(snap, target, defender, !defenderIsFallback && !usingSnapshotTarget));
     }
 
     /// <summary>The combo's champion id: the ACTIVE player's live champion when resolvable
@@ -3008,3 +3479,33 @@ public enum TargetMode
 /// rather than let a reference read as a prediction.</summary>
 public sealed record ComboPreview(
     double Resolved, double Min, double Max, bool IsLive, string TargetChampion, int ReferenceLevel);
+
+/// <summary>(M40) One enemy's estimated full-combo damage against me (see
+/// <see cref="ComboRunner.ComputeThreat"/>): <paramref name="Damage"/> after my armor/MR, at the
+/// enemy's <paramref name="Level"/>, using the preset named <paramref name="ComboName"/>.</summary>
+public sealed record ThreatEstimate(string ChampionId, int Level, double Damage, string ComboName);
+
+/// <summary>(M41) One level of a lane pair's kill timing (see <see cref="ComboRunner.ComputeKillTiming"/>):
+/// my full combo's damage against the enemy's max HP, and theirs against mine, both at
+/// <paramref name="Level"/> with no items. A side "kills from full" when its percent reaches 100.</summary>
+public sealed record KillTimingRow(int Level, double MyDamage, double EnemyMaxHp, double EnemyDamage, double MyMaxHp)
+{
+    /// <summary>The enemy HP percent below which my full combo kills (capped at 100).</summary>
+    public double MyKillPercent => EnemyMaxHp > 0 ? Math.Min(100, MyDamage / EnemyMaxHp * 100) : 0;
+
+    /// <summary>My HP percent below which the enemy's full combo kills me (capped at 100).</summary>
+    public double EnemyKillPercent => MyMaxHp > 0 ? Math.Min(100, EnemyDamage / MyMaxHp * 100) : 0;
+}
+
+/// <summary>(M43) One candidate item: my combo's damage on <paramref name="TargetChampion"/> before
+/// and after buying it.</summary>
+public sealed record NextItemRow(string ItemId, int Gold, double Before, double After, double TargetMaxHp, string TargetChampion)
+{
+    public double GainPercent => Before > 0 ? (After - Before) / Before * 100 : 0;
+
+    /// <summary>Damage added per 1,000 gold.</summary>
+    public double GainPer1000Gold => Gold > 0 ? (After - Before) / Gold * 1000 : 0;
+
+    /// <summary>The item takes the combo past the target's max HP: a one-shot from full it was not.</summary>
+    public bool MakesOneShot => TargetMaxHp > 0 && After >= TargetMaxHp && Before < TargetMaxHp;
+}

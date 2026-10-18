@@ -1,5 +1,5 @@
 {
-  "_note": "Item proc-damage map (T3.2). BIN-sourced raw DataValues + one mSpellCalculations GameCalculation per item; numbers resolved live by FormulaInterpreter (never pre-computed). Regenerate via `dotnet run --project tools/ChampionDataGen -- itemeffects`. EXCEPTION 1: item 3091 (Wit's End) was hand-authored from a LIVE wiki.leagueoflegends.com fetch this session, not the BIN generator -- raw.communitydragon.org (the BIN source) was unreachable from this sandbox. Its DataValues/mSpellCalculations below are a manually-built shape reproducing the wiki's flat on-hit number through the same FormulaInterpreter path; unlike the BIN-sourced items, this entry will NOT be caught by a future itemeffects regen and needs a manual wiki re-check whenever its patch notes change -- see its own _note for the exact quoted passive text and patch. EXCEPTION 2: items 3153 (Blade of the Ruined King) and 3748 (Titanic Hydra) were added in a later session, hand-authored from live wiki.leagueoflegends.com fetches (same reason -- raw.communitydragon.org unreachable). Unlike every other item here their proc value is a flat melee/ranged fraction of a HP value (NOT stat-scaled), so they carry no spell/calc at all and bypass FormulaInterpreter entirely -- see hpPercentBasis/meleeHpPercent/rangedHpPercent and ComboRunner.ResolveBuildProcs/BuildTargetHpItemProc/BuildCasterHpItemProc. Melee/ranged is classified from the active player's champion.BaseStats.AttackRange via a 300-unit threshold calibrated against the cached champion.json summary (see ComboRunner.MeleeRangeThreshold doc comment). Both entries will NOT be caught by a future itemeffects regen and need a manual wiki re-check whenever their patch notes change -- see each item's own _note. EXCEPTION 3: item 3095 (Kraken Slayer) was added in a later session, hand-authored from a live wiki.leagueoflegends.com fetch (same reason -- raw.communitydragon.org unreachable). It introduces a new trigger, \"stackThenConsume\" (see ItemTrigger.StackThenConsume / ComboRunner.BuildStackThenConsumeItemProc): a flat melee/ranged base number that linearly interpolates level 1-18 (meleeDamageAtLevel1/18, rangedDamageAtLevel1/18 -- same BaseAtLevel1/BaseAtLevel18 shape as RuneEffectDb.Evaluate), applied not to every AA but to every (stacksRequired+1)th AA in the combo's own sequence, PLUS a real \"missingHpBonusScalar\" (0.75) scaling term wired into Damage.ExecuteType.BaseWithMissingHpBonus -- see its own _note for the full citation, the combo-internal stack-counting rationale, and the missing-HP formula. EXCEPTION 4: item 3128 (Deathfire Grasp) was added in a later session (loop 48), hand-authored from this project's own bundled item.json (network fetch not needed -- the description text was already present locally). It introduces a new trigger, \"manualActiveBurst\" (see ItemTrigger.ManualActiveBurst): the ONLY item in this file that is not auto-applied across the whole build -- it fires exclusively on the single combo node the user drag-attaches it to (ComboNode.AttachedItemId), via Combo.ComboEngine.ApplyAttachedItemEffects rather than ComboRunner.ResolveBuildProcs. targetMaxHpPercent is a flat magic burst on that node; amplifyDamagePercent/amplifyDurationSeconds describe a genuine damage-amplification WINDOW applied to the combo's other nodes -- see its own _note for the full citation and mechanics.",
+  "_note": "Item proc-damage map (T3.2). BIN-sourced raw DataValues + one mSpellCalculations GameCalculation per item; numbers resolved live by FormulaInterpreter (never pre-computed). Regenerate via `dotnet run --project tools/ChampionDataGen -- itemeffects`. EXCEPTION 1: item 3091 (Wit's End) was hand-authored from a LIVE wiki.leagueoflegends.com fetch this session, not the BIN generator -- raw.communitydragon.org (the BIN source) was unreachable from this sandbox. Its DataValues/mSpellCalculations below are a manually-built shape reproducing the wiki's flat on-hit number through the same FormulaInterpreter path; unlike the BIN-sourced items, this entry will NOT be caught by a future itemeffects regen and needs a manual wiki re-check whenever its patch notes change -- see its own _note for the exact quoted passive text and patch. EXCEPTION 2: items 3153 (Blade of the Ruined King) and 3748 (Titanic Hydra) were added in a later session, hand-authored from live wiki.leagueoflegends.com fetches (same reason -- raw.communitydragon.org unreachable). Unlike every other item here their proc value is a flat melee/ranged fraction of a HP value (NOT stat-scaled), so they carry no spell/calc at all and bypass FormulaInterpreter entirely -- see hpPercentBasis/meleeHpPercent/rangedHpPercent and ComboRunner.ResolveBuildProcs/BuildTargetHpItemProc/BuildCasterHpItemProc. Melee/ranged is classified from the active player's champion.BaseStats.AttackRange via a 300-unit threshold calibrated against the cached champion.json summary (see ComboRunner.MeleeRangeThreshold doc comment). Both entries will NOT be caught by a future itemeffects regen and need a manual wiki re-check whenever their patch notes change -- see each item's own _note. EXCEPTION 3: item 3095 (Kraken Slayer) was added in a later session, hand-authored from a live wiki.leagueoflegends.com fetch (same reason -- raw.communitydragon.org unreachable). It introduces a new trigger, \"stackThenConsume\" (see ItemTrigger.StackThenConsume / ComboRunner.BuildStackThenConsumeItemProc): a flat melee/ranged base number that linearly interpolates level 1-18 (meleeDamageAtLevel1/18, rangedDamageAtLevel1/18 -- same BaseAtLevel1/BaseAtLevel18 shape as RuneEffectDb.Evaluate), applied not to every AA but to every (stacksRequired+1)th AA in the combo's own sequence, PLUS a real \"missingHpBonusScalar\" (0.75) scaling term wired into Damage.ExecuteType.BaseWithMissingHpBonus -- see its own _note for the full citation, the combo-internal stack-counting rationale, and the missing-HP formula. EXCEPTION 4: item 3128 (Deathfire Grasp) was added in a later session (loop 48), hand-authored from this project's own bundled item.json (network fetch not needed -- the description text was already present locally). It introduces a new trigger, \"manualActiveBurst\" (see ItemTrigger.ManualActiveBurst): the ONLY item in this file that is not auto-applied across the whole build -- it fires exclusively on the single combo node the user drag-attaches it to (ComboNode.AttachedItemId), via Combo.ComboEngine.ApplyAttachedItemEffects rather than ComboRunner.ResolveBuildProcs. targetMaxHpPercent is a flat magic burst on that node; amplifyDamagePercent/amplifyDurationSeconds describe a genuine damage-amplification WINDOW applied to the combo's other nodes -- see its own _note for the full citation and mechanics. 2026-10-17: Deathfire Grasp (3128) is no longer sold on Summoner's Rift, so its entry never applies in a live game; it stays as the fixture of the ManualActiveBurst mechanism (ComboEngineTests).",
   "items": {
     "3115": {
       "name": "Nashor's Tooth",
@@ -23,7 +23,7 @@
         ],
         "mSpellCalculations": {
           "TotalOnHitDamage": {
-            "{72c5c2a8}": 1,
+            "DamageType": 1,
             "mFormulaParts": [
               {
                 "mDataValue": "NashorsBaseValue",
@@ -67,13 +67,13 @@
           {
             "name": "BuffDuration",
             "values": [
-              3
+              4
             ]
           }
         ],
         "mSpellCalculations": {
           "TotalOnHitDamage": {
-            "{72c5c2a8}": 1,
+            "DamageType": 1,
             "mFormulaParts": [
               {
                 "mDataValue": "OnHitDamage",
@@ -282,8 +282,8 @@
       "meleeHpPercent": 0.01,
       "rangedHpPercent": 0.005
     },
-    "3095": {
-      "_note": "HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Kraken_Slayer infobox, fetched live this session: Unique - Bring It Down: 'Basic attacks on-hit grant a stack for 3 seconds, up to 2 stacks. At 2 stacks, the next basic attack consumes all stacks to deal (Melee 150-200 / Ranged 120-160) (based on level) bonus physical damage on-hit, increased by 0%-75% (based on target's missing health), for up to (Melee 262.5-350 / Ranged 210-280) (based on level) bonus physical damage.' The wiki's Patch History shows the base-damage range 150-200/120-160 was set in V14.19 ('Bring It Down base damage changed to (Melee 150-200 / Ranged 120-160) (based on level) from (Melee 140-310 / Ranged 112-248) (based on level)') and the missing-health scaling 0%-75% was set in V25.14 ('Bring It Down bonus damage increased to 0%-75% (based on target's missing health) from 0%-50%'), with no later patch (through V25.16, the latest listed) touching either value, so both are confirmed current as of this session (2026-07-10). The max-damage endpoints (262.5-350/210-280) are exactly base x 1.75 (200x1.75=350, 160x1.75=280 etc.), confirming the formula shape is base x (1 + 0.75 x missingHpFraction), i.e. base + base x 0.75 x missingHpFraction -- a base-plus-scaling-term shape, NOT the project's existing pure fraction x HP-quantity execute shape. COMBO-INTERNAL STACK COUNTING: unlike AurelionSol/Kindred's buff-stack passives (out of scope -- those need real live game-state data the Live Client API doesn't expose), Kraken Slayer's stacking depends only on the SEQUENCE of AA nodes within the combo ComboRunner is already building, so it is computed entirely at combo-assembly time (see ComboRunner.ApplyBinDamage's aaOrdinal counter / ItemTrigger.StackThenConsume): the bonus triggers on every (stacksRequired+1)=3rd AA in the combo's own node order (3rd, 6th, 9th...). This ASSUMES every AA in the combo lands within the real 3-second stack window, which is a reasonable approximation for a short burst combo but would overcount stacks in an unrealistically long/slow one -- documented alongside the existing spellblade 'at most one proc per combo' approximation in ComboRunner.cs. MISSING-HEALTH SCALING NOW MODELED (previously deliberately omitted -- see M05_DAMAGE_ENGINE.md changelog): a new Damage.ExecuteType.BaseWithMissingHpBonus case (base x (1 + scalar x missingHpFraction), the exact confirmed shape) was added rather than forcing this into the pure fraction x HP-quantity mechanism Blade of the Ruined King uses. \"missingHpBonusScalar\": 0.75 below is that confirmed scalar; ComboRunner.BuildStackThenConsumeItemProc wires it in, using the LIVE target's current/max HP (same dynamic mechanism as Blade of the Ruined King's CurrentHp). STARTING-HP CAVEAT NARROWED, NOT CLOSED (see M05_DAMAGE_ENGINE.md changelog and Combo/TargetHealthTracker.cs): the target's HP at the START of a combo used to always be MaxHP (the Live Client API exposes no enemy current-HP at all); when a TargetHealthTracker is wired in (AppComposition), the starting CurrentHP is instead MaxHP minus an honest LOWER-BOUND estimate (100% HP anchored at the target's last known respawn, minus OUR OWN calculated combo damage dealt to them since) -- this can only ever UNDERSTATE real missing health (potion/elixir/buff healing and non-combo damage sources remain invisible to us), never overstate it, so this proc's missing-HP scaling is now sometimes MORE accurate than before but still never provably exact. Re-check this note against the wiki on any future patch that mentions Kraken Slayer/Bring It Down.",
+    "6672": {
+      "_note": "Kraken Slayer is item 6672 since patch 16.x (id 3095 is now Stormrazor; this entry sat under 3095 and gave Stormrazor Kraken's proc while real Kraken got nothing - fixed 2026-10-17). Values checked against CommunityDragon items.cdtb.bin.json Items/6672 the same day: DamageAmount = 150 at level 1, ByCharLevelBreakpoints +5 per level at and after level 9 (so 150 through level 8, 155 at 9, 200 at 18); RangedDamageMultiplier 0.8 (120/160); MaxAmpNumber 1.75 = up to +75% by missing health; AttackCount 3. levelBreakpoint=9 makes the curve flat until 8 and linear 9->18. Earlier note: HAND-AUTHORED (not BIN-sourced -- raw.communitydragon.org unreachable this session). Quote from https://wiki.leagueoflegends.com/en-us/Kraken_Slayer infobox, fetched live this session: Unique - Bring It Down: 'Basic attacks on-hit grant a stack for 3 seconds, up to 2 stacks. At 2 stacks, the next basic attack consumes all stacks to deal (Melee 150-200 / Ranged 120-160) (based on level) bonus physical damage on-hit, increased by 0%-75% (based on target's missing health), for up to (Melee 262.5-350 / Ranged 210-280) (based on level) bonus physical damage.' The wiki's Patch History shows the base-damage range 150-200/120-160 was set in V14.19 ('Bring It Down base damage changed to (Melee 150-200 / Ranged 120-160) (based on level) from (Melee 140-310 / Ranged 112-248) (based on level)') and the missing-health scaling 0%-75% was set in V25.14 ('Bring It Down bonus damage increased to 0%-75% (based on target's missing health) from 0%-50%'), with no later patch (through V25.16, the latest listed) touching either value, so both are confirmed current as of this session (2026-07-10). The max-damage endpoints (262.5-350/210-280) are exactly base x 1.75 (200x1.75=350, 160x1.75=280 etc.), confirming the formula shape is base x (1 + 0.75 x missingHpFraction), i.e. base + base x 0.75 x missingHpFraction -- a base-plus-scaling-term shape, NOT the project's existing pure fraction x HP-quantity execute shape. COMBO-INTERNAL STACK COUNTING: unlike AurelionSol/Kindred's buff-stack passives (out of scope -- those need real live game-state data the Live Client API doesn't expose), Kraken Slayer's stacking depends only on the SEQUENCE of AA nodes within the combo ComboRunner is already building, so it is computed entirely at combo-assembly time (see ComboRunner.ApplyBinDamage's aaOrdinal counter / ItemTrigger.StackThenConsume): the bonus triggers on every (stacksRequired+1)=3rd AA in the combo's own node order (3rd, 6th, 9th...). This ASSUMES every AA in the combo lands within the real 3-second stack window, which is a reasonable approximation for a short burst combo but would overcount stacks in an unrealistically long/slow one -- documented alongside the existing spellblade 'at most one proc per combo' approximation in ComboRunner.cs. MISSING-HEALTH SCALING NOW MODELED (previously deliberately omitted -- see M05_DAMAGE_ENGINE.md changelog): a new Damage.ExecuteType.BaseWithMissingHpBonus case (",
       "name": "Kraken Slayer",
       "trigger": "stackThenConsume",
       "damageType": "Physical",
@@ -292,7 +292,8 @@
       "meleeDamageAtLevel18": 200,
       "rangedDamageAtLevel1": 120,
       "rangedDamageAtLevel18": 160,
-      "missingHpBonusScalar": 0.75
+      "missingHpBonusScalar": 0.75,
+      "levelBreakpoint": 9
     },
     "3128": {
       "_note": "HAND-AUTHORED from this project's own bundled ddragon/16.13.1/item.json (id 3128, colloq ';dfg', name 'Deathfire Grasp') this session (2026-07-10), user-reported as not applying. Quoted description: 'Active - The Silence: Deal magic damage equal to 15% of the Target's Max Health, and then amplify damage they take by 15% for 4 seconds (90s cooldown).' Introduces a new trigger, \"manualActiveBurst\" (see ItemTrigger.ManualActiveBurst / Combo.ComboEngine.ApplyAttachedItemEffects): unlike every other item in this file, this one is NOT auto-applied across the whole build (it is not an on-hit/spellblade/stack-then-consume proc) -- it only fires on the single combo node the user drag-attaches it to (ComboNode.AttachedItemId), which was previously a UX/organization-only sub-icon with zero engine effect (see M04_COMBO_EDITOR.md loop-38 LEAD DECISION). targetMaxHpPercent (0.15) becomes a new trailing flat magic-damage node keyed to that node (never folded into the attached node's own damage number, since its type -- Magic -- may differ from whatever type that node's own skill/AA damage already is). amplifyDamagePercent (0.15) / amplifyDurationSeconds (4) describe the target-side 'increased damage taken' debuff: every OTHER node in the same combo whose own elapsed-time-in-combo timestamp falls within 4 seconds after the attached node has its damage multiplied by 1.15 -- this generically boosts ANY subsequent damage in that window (abilities, on-hit procs, already-curated burn/DoT sources like Brand's passive or Cassiopeia's Q), matching the item's real debuff (it amplifies damage taken from any source, not just this item's own burst). The 90s cooldown is not modeled (single-application-per-combo, consistent with this project's existing spellblade/manual-rune 'at most once per combo' convention). Re-check this note against the bundled item.json (or a live wiki fetch) whenever the game version this project targets changes.",
@@ -302,6 +303,1498 @@
       "targetMaxHpPercent": 0.15,
       "amplifyDamagePercent": 0.15,
       "amplifyDurationSeconds": 4
+    },
+    "6662": {
+      "name": "Iceborn Gauntlet",
+      "trigger": "spellblade",
+      "damageType": "Physical",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SlowAmount",
+            "values": [
+              0.25
+            ]
+          },
+          {
+            "name": "SlowFieldDuration",
+            "values": [
+              2
+            ]
+          },
+          {
+            "name": "AoERadius",
+            "values": [
+              300
+            ]
+          },
+          {
+            "name": "MonsterMod",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "AuraDuration",
+            "values": [
+              3
+            ]
+          },
+          {
+            "name": "RangedSlowAmount",
+            "values": [
+              0.125
+            ]
+          },
+          {
+            "name": "SpellbladeMultiplier",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SpellbladeMultiplier",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3508": {
+      "name": "Essence Reaver",
+      "trigger": "spellblade",
+      "damageType": "Physical",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "FlatManaRefund",
+            "values": [
+              15
+            ]
+          },
+          {
+            "name": "ManaRefundRatio",
+            "values": [
+              0.15000000596046448
+            ]
+          },
+          {
+            "name": "BaseADRatio",
+            "values": [
+              1.25
+            ]
+          },
+          {
+            "name": "CritChanceMultiplier",
+            "values": [
+              50
+            ]
+          },
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mExpandedTooltipCalculationDisplay": 0,
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "BaseADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 8,
+                "mDataValue": "CritChanceMultiplier",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "2510": {
+      "name": "Dusk and Dawn",
+      "trigger": "spellblade",
+      "damageType": "Magic",
+      "calc": "SpellbladeDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mCoefficient": 0.75,
+                "__type": "StatByCoefficientCalculationPart"
+              },
+              {
+                "mCoefficient": 0.10000000149011612,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3302": {
+      "name": "Terminus",
+      "trigger": "onHit",
+      "damageType": "Magic",
+      "calc": "TotalOnHitDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BuffDuration",
+            "values": [
+              5
+            ]
+          },
+          {
+            "name": "DebuffDuration",
+            "values": [
+              5
+            ]
+          },
+          {
+            "name": "PenMax",
+            "values": [
+              0.30000001192092896
+            ]
+          },
+          {
+            "name": "PenPerHit",
+            "values": [
+              0.10000000149011612
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "TotalOnHitDamage": {
+            "mFormulaParts": [
+              {
+                "mNumber": 30.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mStat": 2,
+                "mStatFormula": 2,
+                "mCoefficient": 0.10000000149011612,
+                "__type": "StatByCoefficientCalculationPart"
+              },
+              {
+                "mCoefficient": 0.10000000149011612,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "6655": {
+      "name": "Luden's Echo",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Cooldown",
+            "values": [
+              12
+            ]
+          },
+          {
+            "name": "BaseDamage",
+            "values": [
+              75
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.05000000074505806
+            ]
+          },
+          {
+            "name": "MaxCharges",
+            "values": [
+              6
+            ]
+          },
+          {
+            "name": "RepeatDamageReduction",
+            "values": [
+              0.20000000298023224
+            ]
+          },
+          {
+            "name": "MissileRange",
+            "values": [
+              650
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      },
+      "multiplier": 2
+    },
+    "2503": {
+      "name": "Blackfire Torch",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BurnFlatDamagePerSecond",
+            "values": [
+              20
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.019999999552965164
+            ]
+          },
+          {
+            "name": "BurnDuration",
+            "values": [
+              3
+            ]
+          },
+          {
+            "name": "MonsterDamageBonus",
+            "values": [
+              20
+            ]
+          },
+          {
+            "name": "TickFrequency",
+            "values": [
+              0.5
+            ]
+          },
+          {
+            "name": "APPerStack",
+            "values": [
+              0.03999999910593033
+            ]
+          },
+          {
+            "name": "MinionDPS",
+            "values": [
+              20
+            ]
+          },
+          {
+            "name": "MinionAP",
+            "values": [
+              0.019999999552965164
+            ]
+          },
+          {
+            "name": "MonsterDPS",
+            "values": [
+              40
+            ]
+          },
+          {
+            "name": "MonsterAP",
+            "values": [
+              0.019999999552965164
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BurnFlatDamagePerSecond",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      },
+      "multiplier": 3
+    },
+    "4646": {
+      "name": "Stormsurge",
+      "trigger": "afterDamageThreshold",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "WindowDuration",
+            "values": [
+              2.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              30
+            ]
+          },
+          {
+            "name": "DelayDuration",
+            "values": [
+              2
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.10000000149011612
+            ]
+          },
+          {
+            "name": "DamageThreshold",
+            "values": [
+              0.25
+            ]
+          },
+          {
+            "name": "ProcMoveSpeedDuration",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "RangedProcDamageMod",
+            "values": [
+              1
+            ]
+          },
+          {
+            "name": "BaseDamage",
+            "values": [
+              125
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      },
+      "thresholdTargetMaxHpPercent": 0.25
+    },
+    "6692": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6692 DataValues: MeleePercMaxHP 0.08, RangedPercMaxHPMult 0.625 (-> 0.05), WindowDuration 2s, Cooldown 6s. Ever Rising Moon: hitting a champion with 2 separate attacks or abilities within 2s deals the max-HP share as physical damage (and a shield, not modelled). Applied once, on the combo's second separate damaging node (a burst combo lands inside 2s).",
+      "name": "Eclipse",
+      "trigger": "onSecondHit",
+      "damageType": "Physical",
+      "hpPercentBasis": "TargetMax",
+      "meleeHpPercent": 0.08,
+      "rangedHpPercent": 0.05
+    },
+    "6653": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6653 DataValues: BurnPercentHealthDamage 0.02 per second, BurnDuration 3s (refreshes, does not stack) -> 6% of the target's max HP, once per combo on the first damaging ability (assumes the target lives through the burn). Suffering (up to +6% damage over combat time) is not applied here: it depends on time in combat. Suffering (DamageIncreaseMax 0.06, +2%/s in combat up to 6%) is an amp the user's item chip applies from there onward.",
+      "name": "Liandry's Torment",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "hpPercentBasis": "TargetMax",
+      "meleeHpPercent": 0.06,
+      "rangedHpPercent": 0.06,
+      "ampScope": "all",
+      "ampPercent": 0.06
+    },
+    "3095": {
+      "name": "Stormrazor",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BuffStrength",
+            "values": [
+              0.44999998807907104
+            ]
+          },
+          {
+            "name": "BuffDuration",
+            "values": [
+              1.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mNumber": 100.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3146": {
+      "name": "Hextech Gunblade",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SlowAmount",
+            "values": [
+              0.25
+            ]
+          },
+          {
+            "name": "SlowDuration",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              60
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStartValue": 175.0,
+                "mEndValue": 253.0,
+                "__type": "ByCharLevelInterpolationCalculationPart"
+              },
+              {
+                "mCoefficient": 0.30000001192092896,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3152": {
+      "name": "Hextech Rocketbelt",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Cooldown",
+            "values": [
+              50
+            ]
+          },
+          {
+            "name": "BaseDamage",
+            "values": [
+              135
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.15000000596046448
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "6698": {
+      "name": "Profane Hydra",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "LethalityAmount",
+            "values": [
+              18
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              10
+            ]
+          },
+          {
+            "name": "CleaveRadius",
+            "values": [
+              350
+            ]
+          },
+          {
+            "name": "ActiveRadius",
+            "values": [
+              450
+            ]
+          },
+          {
+            "name": "HealthThreshold",
+            "values": [
+              0.5
+            ]
+          },
+          {
+            "name": "MaxProcPerAuto",
+            "values": [
+              10
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mCoefficient": 0.800000011920929,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3074": {
+      "name": "Ravenous Hydra",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "CleaveRadius",
+            "values": [
+              350
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              10
+            ]
+          },
+          {
+            "name": "Radius",
+            "values": [
+              450
+            ]
+          },
+          {
+            "name": "ActiveADRatio",
+            "values": [
+              0.800000011920929
+            ]
+          },
+          {
+            "name": "VampAmp",
+            "values": [
+              1
+            ]
+          },
+          {
+            "name": "MaxProcPerAuto",
+            "values": [
+              10
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mDataValue": "ActiveADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "6631": {
+      "name": "Stridebreaker",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Cooldown",
+            "values": [
+              15
+            ]
+          },
+          {
+            "name": "ADRatio",
+            "values": [
+              0.800000011920929
+            ]
+          },
+          {
+            "name": "MSSlow",
+            "values": [
+              -0.3499999940395355
+            ]
+          },
+          {
+            "name": "Duration",
+            "values": [
+              3
+            ]
+          },
+          {
+            "name": "CleaveRadius",
+            "values": [
+              450
+            ]
+          },
+          {
+            "name": "ActiveMS",
+            "values": [
+              0.3499999940395355
+            ]
+          },
+          {
+            "name": "PassiveRadius",
+            "values": [
+              350
+            ]
+          },
+          {
+            "name": "MoveSpeedDuration",
+            "values": [
+              2
+            ]
+          },
+          {
+            "name": "DecayRate",
+            "values": [
+              0.800000011920929
+            ]
+          },
+          {
+            "name": "MaxProcPerAuto",
+            "values": [
+              10
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mDataValue": "ADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3118": {
+      "name": "Malignance",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "AOESize",
+            "values": [
+              250
+            ]
+          },
+          {
+            "name": "UltimateHaste",
+            "values": [
+              20
+            ]
+          },
+          {
+            "name": "GroundDuration",
+            "values": [
+              3
+            ]
+          },
+          {
+            "name": "BaseDamage",
+            "values": [
+              60
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.05000000074505806
+            ]
+          },
+          {
+            "name": "MaxRadius",
+            "values": [
+              550
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      },
+      "multiplier": 3
+    },
+    "3094": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3094 DataValues BonusDamage 40 (no calc in the BIN): Sharpshooter's energized attack deals 40 bonus magic damage. Energize depends on movement before the combo, so it fires only at the user's item chip.",
+      "name": "Rapid Firecannon",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BonusDamage",
+            "values": [
+              40.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BonusDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3087": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3087 DataValues ChainDamage 60 (champions; 90 vs non-champions): Electrospark's energized chain lightning, primary target share only. Fires at the user's item chip.",
+      "name": "Statikk Shiv",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "ChainDamage",
+            "values": [
+              60.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "ChainDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "6699": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6699 DataValues PercentCurrentHPMelee 9, PercentCurrentHPRanged 7: Firmament's energized attack deals that share of the target's CURRENT health as bonus physical damage (an ability hit can trigger it if Energized is ready). Fires at the user's item chip.",
+      "name": "Voltaic Cyclosword",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "hpPercentBasis": "TargetCurrent",
+      "meleeHpPercent": 0.09,
+      "rangedHpPercent": 0.07
+    },
+    "3084": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3084 DamageProcCalc = BaseDamage 70 + HPRatio 6% max health: Colossal Consumption's charged attack (needs a few seconds near the target first). Max-health gain not modelled. Fires at the user's item chip.",
+      "name": "Heartsteel",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "PerTargetCooldown",
+            "values": [
+              30.0
+            ]
+          },
+          {
+            "name": "BaseDamage",
+            "values": [
+              70.0
+            ]
+          },
+          {
+            "name": "HPRatio",
+            "values": [
+              0.05999999865889549
+            ]
+          },
+          {
+            "name": "DamageToMaxHealthRatio",
+            "values": [
+              0.10000000149011612
+            ]
+          },
+          {
+            "name": "DistanceToChampion",
+            "values": [
+              700.0
+            ]
+          },
+          {
+            "name": "NumTicksToTrigger",
+            "values": [
+              6.0
+            ]
+          },
+          {
+            "name": "RangeTrackingBuffDuration",
+            "values": [
+              5.0
+            ]
+          },
+          {
+            "name": "TrackerTickRate",
+            "values": [
+              0.5
+            ]
+          },
+          {
+            "name": "MaxHPRatio",
+            "values": [
+              0.05999999865889549
+            ]
+          },
+          {
+            "name": "HealthSizeThreshold",
+            "values": [
+              1000.0
+            ]
+          },
+          {
+            "name": "SizeAmount",
+            "values": [
+              0.029999999329447746
+            ]
+          },
+          {
+            "name": "SizeCap",
+            "values": [
+              0.30000001192092896
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              30.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamageProcCalc": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mDataValue": "HPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "ProcHealthGain": {
+            "mMultiplier": {
+              "mDataValue": "DamageToMaxHealthRatio",
+              "__type": "NamedDataValueCalculationPart"
+            },
+            "mModifiedGameCalculation": "DamageProcCalc",
+            "__type": "GameCalculationModified"
+          },
+          "TotalDemolishTime": {
+            "mMultiplier": {
+              "mDataValue": "NumTicksToTrigger",
+              "__type": "NamedDataValueCalculationPart"
+            },
+            "mSimpleTooltipCalculationDisplay": 5,
+            "mExpandedTooltipCalculationDisplay": 5,
+            "mFormulaParts": [
+              {
+                "mDataValue": "TrackerTickRate",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "DamageCalc": {
+            "mFormulaParts": [
+              {
+                "mStat": 12,
+                "mDataValue": "MaxHPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mDataValue": "HPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3742": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3742 MaxDamageCalc = 100% base AD + 40 (BonusDamagePerStack 0.4 x 100 stacks): Shipwrecker at full momentum (needs moving first). Fires at the user's item chip.",
+      "name": "Dead Man's Plate",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "MaxMovementSpeed",
+            "values": [
+              20.0
+            ]
+          },
+          {
+            "name": "MaxStacks",
+            "values": [
+              100.0
+            ]
+          },
+          {
+            "name": "BonusDamagePerStack",
+            "values": [
+              0.4000000059604645
+            ]
+          },
+          {
+            "name": "MaxStacksADRatio",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "DurationToMaxStack",
+            "values": [
+              4.0
+            ]
+          },
+          {
+            "name": "SlowResistTooltip",
+            "values": [
+              0.15000000596046448
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "MaxDamageCalc": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "MaxStacksADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mPart1": {
+                  "mDataValue": "BonusDamagePerStack",
+                  "__type": "NamedDataValueCalculationPart"
+                },
+                "mPart2": {
+                  "mNumber": 100.0,
+                  "__type": "NumberCalculationPart"
+                },
+                "__type": "ProductOfSubPartsCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "MaxStacksADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mPart1": {
+                  "mDataValue": "BonusDamagePerStack",
+                  "__type": "NamedDataValueCalculationPart"
+                },
+                "mPart2": {
+                  "mNumber": 100.0,
+                  "__type": "NumberCalculationPart"
+                },
+                "__type": "ProductOfSubPartsCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3181": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3181 MaxStackDamage = 120% base AD + 5% max health, mRangedMultiplier 0.7 (the interpreter ignores mRangedMultiplier, so rangedMultiplier carries it): Skipper's fifth attack. Fires at the user's item chip.",
+      "name": "Hullbreaker",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SkipperADRatio",
+            "values": [
+              1.2000000476837158
+            ]
+          },
+          {
+            "name": "SkipperADRatioVSStructures",
+            "values": [
+              3.0
+            ]
+          },
+          {
+            "name": "MaxStackDamageHPRatio",
+            "values": [
+              0.05000000074505806
+            ]
+          },
+          {
+            "name": "MaxStackDamageVSStructuresHPRatio",
+            "values": [
+              0.10000000149011612
+            ]
+          },
+          {
+            "name": "SkipperStackDuration",
+            "values": [
+              10.0
+            ]
+          },
+          {
+            "name": "RangedSkipperADRatio",
+            "values": [
+              0.699999988079071
+            ]
+          },
+          {
+            "name": "RangedSkipperADRatioVSStructures",
+            "values": [
+              2.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "MaxStackDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SkipperADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mDataValue": "MaxStackDamageHPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "mRangedMultiplier": {
+              "mNumber": 0.699999988079071,
+              "__type": "NumberCalculationPart"
+            },
+            "__type": "{e9a3c91d}"
+          },
+          "MaxStackDamageVSStructures": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SkipperADRatioVSStructures",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mDataValue": "MaxStackDamageVSStructuresHPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "mRangedMultiplier": {
+              "mNumber": 0.699999988079071,
+              "__type": "NumberCalculationPart"
+            },
+            "__type": "{e9a3c91d}"
+          },
+          "BonusMinionResists": {
+            "mFormulaParts": [
+              {
+                "mLevel1Value": 70.0,
+                "mBreakpoints": [
+                  {
+                    "mLevel": 9,
+                    "mBonusPerLevelAtAndAfter": 6.0,
+                    "__type": "Breakpoint"
+                  }
+                ],
+                "__type": "ByCharLevelBreakpointsCalculationPart"
+              }
+            ],
+            "mRangedMultiplier": {
+              "mNumber": 0.5,
+              "__type": "NumberCalculationPart"
+            },
+            "__type": "{e9a3c91d}"
+          },
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SkipperADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mDataValue": "MaxStackDamageHPRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "mRangedMultiplier": {
+              "mNumber": 0.699999988079071,
+              "__type": "NumberCalculationPart"
+            },
+            "__type": "{e9a3c91d}"
+          }
+        }
+      },
+      "rangedMultiplier": 0.7
+    },
+    "4633": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/4633 EternityDamageIncreaseMax 0.08: Void Corruption, +2% damage per second in combat up to 8%. Assumed at full strength from the user's item chip onward.",
+      "name": "Riftmaker",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Magic",
+      "ampScope": "all",
+      "ampPercent": 0.08
+    },
+    "8020": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/8020 DamageAmp 0.12: Unmake, nearby enemy champions take 12% more magic damage. Applied from the user's item chip onward.",
+      "name": "Abyssal Mask",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Magic",
+      "ampScope": "magic",
+      "ampPercent": 0.12
+    },
+    "4645": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/4645 HealthThreshold 0.4, SpellItemDamageAmp 0.2: Cinderbloom, magic and true damage crit targets below 40% health for +20%. Assumed met from the user's item chip onward (best case).",
+      "name": "Shadowflame",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Magic",
+      "ampScope": "magicAndTrue",
+      "ampPercent": 0.2
+    },
+    "3161": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3161 SpellDamageIncrease 0.03 x StackCount 4, RangedMod 0.5: Focused Will, ability and passive damage +3% per stack (4 stacks; ranged half). Assumed at full stacks from the user's item chip onward.",
+      "name": "Spear of Shojin",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Magic",
+      "ampScope": "ability",
+      "ampPercent": 0.12,
+      "rangedAmpPercent": 0.06
+    },
+    "3036": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3036 MaxBonusDamagePercent 0.15, MaxBonusHealth 1500: Giant Slayer, up to 15% more damage scaled by the target's bonus health (full at 1500). Bonus health = the target's visible item health. Applied automatically.",
+      "name": "Lord Dominik's Regards",
+      "trigger": "giantSlayer",
+      "damageType": "Physical",
+      "ampPercent": 0.15,
+      "giantSlayerBasis": "targetBonusHp",
+      "giantSlayerCapHp": 1500
+    },
+    "4015": {
+      "_note": "2026-10-17 from Data Dragon 16.20.1 item 4015 description: Giant Slayer, up to 15% more damage against champions with more max health than you, full at a 3000 difference. Applied automatically.",
+      "name": "Perplexity",
+      "trigger": "giantSlayer",
+      "damageType": "Magic",
+      "ampPercent": 0.15,
+      "giantSlayerBasis": "hpDifference",
+      "giantSlayerCapHp": 3000
+    },
+    "6610": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6610 CritModifier 0.8: Lightshield Strike, the first attack against a champion critically strikes with 80% of the normal crit bonus (patch 26.1 lowered it from 100%; 160% at the default 175% crit). Healing not modelled. Applied automatically to the combo's first attack.",
+      "name": "Sundered Sky",
+      "trigger": "firstAttackCrit",
+      "damageType": "Physical",
+      "critDamageScalar": 0.8
+    },
+    "3179": {
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3179 ProcDamage = 50 + 1.5 x mStat 29 (Lethality, as in Pyke R): Nightstalker, the next attack after being unseen deals that as bonus true damage. Fires at the user's item chip.",
+      "name": "Umbral Glaive",
+      "trigger": "itemsNode",
+      "damageType": "True",
+      "calc": "ProcDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "LethalityAmount",
+            "values": [
+              18.0
+            ]
+          },
+          {
+            "name": "MeleeDamage",
+            "values": [
+              3.0
+            ]
+          },
+          {
+            "name": "RangedDamage",
+            "values": [
+              2.0
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              90.0
+            ]
+          },
+          {
+            "name": "OutOfVisionDuration",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "AttackReadyDuration",
+            "values": [
+              4.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "MeleeItemCalcValue": {
+            "mSimpleTooltipCalculationDisplay": 5,
+            "mExpandedTooltipCalculationDisplay": 5,
+            "mFormulaParts": [
+              {
+                "mDataValue": "MeleeDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "RangedItemCalcValue": {
+            "mSimpleTooltipCalculationDisplay": 5,
+            "mExpandedTooltipCalculationDisplay": 5,
+            "mFormulaParts": [
+              {
+                "mDataValue": "RangedDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "ChampRange": {
+            "mSimpleTooltipCalculationDisplay": 5,
+            "mExpandedTooltipCalculationDisplay": 5,
+            "mDefaultGameCalculation": "{792cf56b}",
+            "mConditionalGameCalculation": "{06387172}",
+            "mConditionalCalculationRequirements": {
+              "__type": "IsRangedCastRequirement"
+            },
+            "__type": "GameCalculationConditional"
+          },
+          "{792cf56b}": {
+            "mFormulaParts": [
+              {
+                "mNumber": 1.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "{06387172}": {
+            "mFormulaParts": [
+              {
+                "mNumber": 2.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "ProcDamage": {
+            "mFormulaParts": [
+              {
+                "mNumber": 50.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mStat": 29,
+                "mCoefficient": 1.5,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "TotalWardDamage": {
+            "mFormulaParts": [
+              {
+                "mNumber": 3.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "mRangedMultiplier": {
+              "mNumber": 0.6669999957084656,
+              "__type": "NumberCalculationPart"
+            },
+            "__type": "{e9a3c91d}"
+          }
+        }
+      }
     }
   }
 }

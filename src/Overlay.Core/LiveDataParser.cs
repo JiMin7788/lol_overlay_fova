@@ -353,6 +353,8 @@ public static class LiveDataParser
             else if (reader.ValueTextEquals("items"u8)) ReadItems(ref reader, e);
             // M31 P3 (Smite jungler-ID fallback, unlike position/ available in every game mode).
             else if (reader.ValueTextEquals("summonerSpells"u8)) ReadSummonerSpells(ref reader, e);
+            // M40: the keystone (runes.keystone.id); the scoreboard shows it for every player.
+            else if (reader.ValueTextEquals("runes"u8)) e.KeystoneId = ReadKeystoneId(ref reader);
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
     }
@@ -376,6 +378,36 @@ public static class LiveDataParser
                 e.Spell2RawName = ReadRawDisplayName(ref reader, e.Spell2RawName);
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
+    }
+
+    /// <summary>allPlayers[].runes: { keystone: { id }, primaryRuneTree, secondaryRuneTree }.
+    /// Returns keystone.id, 0 when missing.</summary>
+    private static int ReadKeystoneId(ref Utf8JsonReader reader)
+    {
+        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); return 0; }
+
+        int id = 0;
+        int depth = reader.CurrentDepth;
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == depth) break;
+            if (reader.TokenType != JsonTokenType.PropertyName) continue;
+
+            if (reader.ValueTextEquals("keystone"u8))
+            {
+                if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) { reader.Skip(); continue; }
+                int inner = reader.CurrentDepth;
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndObject && reader.CurrentDepth == inner) break;
+                    if (reader.TokenType != JsonTokenType.PropertyName) continue;
+                    if (reader.ValueTextEquals("id"u8)) { reader.Read(); id = NumI(ref reader); }
+                    else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
+                }
+            }
+            else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
+        }
+        return id;
     }
 
     private static string ReadRawDisplayName(ref Utf8JsonReader reader, string existing)
@@ -477,6 +509,7 @@ public static class LiveDataParser
             KillEventRecord? slot = null;
             InhibEventRecord? inhibSlot = null;
             TurretEventRecord? turretSlot = null;
+            bool gameEnd = false; // (M42) this event is GameEnd; its "Result" is the outcome
 
             while (reader.Read())
             {
@@ -513,6 +546,11 @@ public static class LiveDataParser
                         inhibSlot.IsInhibRespawned = true;
                         inhibSlot.EventId = eventId;
                     }
+                    else if (reader.ValueTextEquals("GameEnd"u8))
+                    {
+                        gameEnd = true;
+                        s.GameEnded = true;
+                    }
                     else if (reader.ValueTextEquals("TurretKilled"u8) && s.TurretEventCount < s.TurretEvents.Length)
                     {
                         turretSlot = s.TurretEvents[s.TurretEventCount];
@@ -539,6 +577,11 @@ public static class LiveDataParser
                 {
                     reader.Read();
                     if (slot is not null) slot.VictimName = ReadStringIfChanged(ref reader, slot.VictimName);
+                }
+                else if (reader.ValueTextEquals("Result"u8))
+                {
+                    reader.Read();
+                    if (gameEnd && reader.TokenType == JsonTokenType.String) s.GameResult = reader.GetString() ?? string.Empty;
                 }
                 else if (reader.ValueTextEquals("InhibKilled"u8))
                 {

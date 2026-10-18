@@ -533,4 +533,18 @@ public class ChampionBinTests
         Assert.Equal("MarkDamagePercentMin", part.InterpolationStartDataValue);
         Assert.Equal("MarkDamagePercentMax", part.InterpolationEndDataValue);
     }
+
+    /// <summary>Naafiri's R entry in spellNames is "NaafiriWAbility/Naafiriw" (lowercase w) while the
+    /// object is ".../NaafiriW" — Riot swapped her W and R and kept the old internal names. An exact
+    /// lookup dropped the R slot, so R was missing from her palette and her all-in preset (R first)
+    /// could not be added.</summary>
+    [Fact]
+    public void Naafiri_RSlotResolvesDespiteThePointerCase()
+    {
+        var spells = ChampionBinParser.ParseChampion("Naafiri", File.ReadAllText(FixturePath("naafiri")));
+        Assert.True(spells.ContainsKey("R"));
+        Assert.Contains("TotalDamage", spells["R"].SpellCalculations.Keys);
+        // W is The Call of the Pack (the internally named "NaafiriR" object): a buff, no damage calc.
+        Assert.DoesNotContain("TotalDamage", spells["W"].SpellCalculations.Keys);
+    }
 }

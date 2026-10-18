@@ -33,6 +33,9 @@ internal static class DDragonUpdater
     {
         try
         {
+            // Before PruneOld can delete the previous version's icons.
+            await Task.Run(SeedIconsFromPreviousVersion, ct).ConfigureAwait(false);
+
             var root = DDragonIconProvider.DDragonRoot;
             var versionsJson = await DDragonIconProvider.GetStringOrNullAsync($"{root}/api/versions.json", ct)
                 .ConfigureAwait(false);
@@ -62,6 +65,49 @@ internal static class DDragonUpdater
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) { Log("Data Dragon refresh failed: " + ex.Message); }
+    }
+
+    /// <summary>A new patch starts with an empty icon folder, so every ability icon used to come
+    /// from the CDN on demand (a visible delay per champion) until the prefetcher had re-downloaded
+    /// all ~1,300 of them. Icons rarely change between patches and a reworked ability gets a new
+    /// file name, so the previous version's files are copied in first; the prefetcher then fetches
+    /// only what is new. Skips files already present. Never throws.</summary>
+    private static void SeedIconsFromPreviousVersion()
+    {
+        try
+        {
+            if (DDragonData.ParseVersion(DDragonIconProvider.Version) is not { } current) return;
+            var root = Path.Combine(AppPaths.AssetCacheDir, "ddragon");
+            if (!Directory.Exists(root)) return;
+            var previous = Directory.GetDirectories(root)
+                .Select(d => (Dir: d, Version: DDragonData.ParseVersion(Path.GetFileName(d))))
+                .Where(x => x.Version is { } v && v < current && Directory.Exists(Path.Combine(x.Dir, "img")))
+                .OrderByDescending(x => x.Version)
+                .Select(x => x.Dir)
+                .FirstOrDefault();
+            if (previous is null) return;
+
+            var from = Path.Combine(previous, "img");
+            var to = Path.Combine(root, DDragonIconProvider.Version, "img");
+            int copied = 0;
+            foreach (var file in Directory.EnumerateFiles(from, "*.png", SearchOption.AllDirectories))
+            {
+                var target = Path.Combine(to, Path.GetRelativePath(from, file));
+                if (File.Exists(target)) continue;
+                try
+                {
+                    // Via .part like a download: a loader must never read a half-copied file, and
+                    // the prefetcher may write the same file meanwhile.
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                    File.Copy(file, target + ".part", overwrite: true);
+                    File.Move(target + ".part", target, overwrite: false);
+                    copied++;
+                }
+                catch (IOException) { /* written by the prefetcher meanwhile */ }
+            }
+            if (copied > 0) Log($"copied {copied} icons from {Path.GetFileName(previous)} to {DDragonIconProvider.Version}");
+        }
+        catch { /* the prefetcher downloads whatever is still missing */ }
     }
 
     /// <summary>Deletes downloaded version folders older than the one in use (their data and

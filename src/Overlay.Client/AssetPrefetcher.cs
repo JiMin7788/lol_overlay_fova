@@ -20,7 +20,7 @@ namespace Overlay.Client;
 /// </summary>
 internal static class AssetPrefetcher
 {
-    private const int Parallelism = 6;
+    private const int Parallelism = 16;
 
     public static async Task RunAsync(CancellationToken ct)
     {
@@ -29,7 +29,7 @@ internal static class AssetPrefetcher
         try
         {
             // Let startup (repositories, first paint, update check) go first.
-            await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(3), ct).ConfigureAwait(false);
 
             var jobs = new List<Func<Task<bool>>>();
             var champions = ReadKeys(BundledDDragonFile("champion.json"));

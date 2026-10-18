@@ -36,7 +36,8 @@ public static class ChampionBinParser
             if (string.IsNullOrEmpty(relPath)) continue;
 
             var spellKey = $"Characters/{championId}/Spells/{relPath}";
-            if (!root.TryGetProperty(spellKey, out var spellObj)) continue;
+            if (!root.TryGetProperty(spellKey, out var spellObj) && !TryGetPropertyIgnoreCase(root, spellKey, out spellObj))
+                continue;
             if (!spellObj.TryGetProperty("mSpell", out var mSpell)) continue;
 
             result[slot] = new BinSkillData
@@ -176,6 +177,21 @@ public static class ChampionBinParser
         SpellCalculations = ParseSpellCalculations(spell),
         EffectAmounts = ParseEffectAmounts(spell),
     };
+
+    /// <summary>Riot's own pointer can differ in case from the object it names: Naafiri's R entry in
+    /// spellNames is "NaafiriWAbility/Naafiriw" while the object is "…/NaafiriW". An exact lookup
+    /// dropped her R slot entirely (no R on the palette, so her all-in preset could not be added).</summary>
+    private static bool TryGetPropertyIgnoreCase(JsonElement root, string key, out JsonElement value)
+    {
+        foreach (var prop in root.EnumerateObject())
+            if (string.Equals(prop.Name, key, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        value = default;
+        return false;
+    }
 
     private static JsonElement? FindByType(JsonElement root, string type)
     {

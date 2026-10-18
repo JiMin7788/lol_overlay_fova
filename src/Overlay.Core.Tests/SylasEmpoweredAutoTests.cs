@@ -80,6 +80,22 @@ public class SylasEmpoweredAutoTests : IDisposable
         AssertClose(AD, qaa - qa, "second auto after a single cast");
     }
 
+    /// <summary>The passive attached to an auto in the editor (the FX sub-icon) is the same empowered
+    /// attack: it REPLACES the physical auto. It used to be added on top (AD + passive).</summary>
+    [Fact]
+    public void PassiveAttachedToAnAuto_ReplacesIt_InsteadOfAdding()
+    {
+        AssertClose(Passive, RunCombo(new[] { "A+P" }), "bare auto with the passive attached");
+    }
+
+    /// <summary>A spell already armed the swap; attaching the passive too must not count it twice.</summary>
+    [Fact]
+    public void PassiveAttachedAfterASpell_IsStillOneEmpoweredAuto()
+    {
+        double q = RunCombo(new[] { "Q" });
+        AssertClose(Passive, RunCombo(new[] { "Q", "A+P" }) - q, "Q then auto with the passive attached");
+    }
+
     // ── harness ──────────────────────────────────────────────────────────────────
 
     private double RunCombo(string[] slots)
@@ -94,9 +110,11 @@ public class SylasEmpoweredAutoTests : IDisposable
         var engine = new ComboEngine(new DamageEngine(), new RuneEngine());
         var editor = new ComboEditor(engine, config);
         var draft = editor.CreateCombo("Sylas", "c");
+        var passive = SkillDamageDb.GetAttachableBonusEffects("Sylas").Single(e => e.Slot == "P");
         foreach (var s in slots)
-            editor.AddNode(draft.Id, s == "A"
+            editor.AddNode(draft.Id, s == "A" || s == "A+P"
                 ? new ComboNode("A_" + Guid.NewGuid().ToString("N"), ComboNodeType.Aa, "AA", 0, 0, 0, ComboDamageType.Physical, 1.0, 0, 0, 0, 0, 0)
+                    with { UserBonusEffects = s == "A+P" ? new[] { passive } : null }
                 : new ComboNode(s + "_" + Guid.NewGuid().ToString("N"), ComboNodeType.Skill, s, 0, 0, 0, ComboDamageType.Magic, 1.0, 0, 0, 0, 0, 0));
         editor.SaveCombo(draft.Id);
 

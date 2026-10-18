@@ -179,6 +179,7 @@ public class ItemEffectTests : IDisposable
         {
             0 => ap,
             2 => statFormula == 1 ? baseAd : statFormula == 2 ? totalAd - baseAd : totalAd,
+            8 => 0.25, // crit chance (fraction)
             _ => 0.0,
         };
 
@@ -213,6 +214,24 @@ public class ItemEffectTests : IDisposable
         Assert.Equal(ItemTrigger.Spellblade, lich.Trigger);
         Assert.Equal(HitDamageType.Magic, lich.DamageType);
 
+        // (2026-10-17, BIN Items/*) Iceborn Gauntlet 6662 — spellblade physical = 1.5 * BASE AD = 90.
+        Assert.Equal(90.0, Proc("6662", out var iceborn), precision: 3);
+        Assert.Equal(ItemTrigger.Spellblade, iceborn.Trigger);
+        Assert.Equal(HitDamageType.Physical, iceborn.DamageType);
+
+        // Essence Reaver 3508 — spellblade physical = 1.25 * BASE AD + 50 * crit chance(0.25) = 87.5.
+        Assert.Equal(87.5, Proc("3508", out var reaver), precision: 3);
+        Assert.Equal(HitDamageType.Physical, reaver.DamageType);
+
+        // Dusk and Dawn 2510 — spellblade MAGIC = 0.75 * BASE AD + 0.10 * AP = 55.
+        Assert.Equal(55.0, Proc("2510", out var dusk), precision: 3);
+        Assert.Equal(HitDamageType.Magic, dusk.DamageType);
+
+        // Terminus 3302 — on-hit magic = 30 + 0.10 * bonus AD(40) + 0.10 * AP(100) = 44.
+        Assert.Equal(44.0, Proc("3302", out var terminus), precision: 3);
+        Assert.Equal(ItemTrigger.OnHit, terminus.Trigger);
+        Assert.Equal(HitDamageType.Magic, terminus.DamageType);
+
         // Wit's End 3091 (hand-authored from a live wiki.leagueoflegends.com fetch, not BIN —
         // see item_effects.json's per-item _note) — on-hit magic = FrayDamage(45) flat, per the
         // wiki's current passive text "Basic attacks deal 45 bonus magic damage on-hit."
@@ -243,12 +262,12 @@ public class ItemEffectTests : IDisposable
         Assert.Equal(0.01, hydra.MeleeHpPercent!.Value, precision: 4);
         Assert.Equal(0.005, hydra.RangedHpPercent!.Value, precision: 4);
 
-        // Kraken Slayer 3095 (hand-authored, patch V14.19 base / V25.14 missing-health scaling,
+        // Kraken Slayer 6672 (was filed under 3095, now Stormrazor; hand-authored, patch V14.19 base / V25.14 missing-health scaling,
         // current through V25.16) — stack-then-consume item: no BIN calc, so it's read straight
         // off ItemEffectDb like the two %-HP items above. Both the BASE damage AND the real
         // missing-health scaling term (0.75, wired into Damage.ExecuteType.BaseWithMissingHpBonus
         // — see the KrakenSlayer_* integration tests below) are modeled.
-        var kraken = ItemEffectDb.Get("3095") ?? throw new Xunit.Sdk.XunitException("item 3095 not loaded");
+        var kraken = ItemEffectDb.Get("6672") ?? throw new Xunit.Sdk.XunitException("item 6672 not loaded");
         Assert.Equal(ItemTrigger.StackThenConsume, kraken.Trigger);
         Assert.Equal(HitDamageType.Physical, kraken.DamageType);
         Assert.Equal(2, kraken.StacksRequired);
@@ -257,6 +276,80 @@ public class ItemEffectTests : IDisposable
         Assert.Equal(120.0, kraken.RangedDamageAtLevel1!.Value, precision: 3);
         Assert.Equal(160.0, kraken.RangedDamageAtLevel18!.Value, precision: 3);
         Assert.Equal(0.75, kraken.MissingHpBonusScalar!.Value, precision: 3);
+        Assert.Equal(9, kraken.LevelBreakpoint);
+        // 3095 is Stormrazor now: it must not carry Kraken's every-third-attack proc any more.
+        Assert.NotEqual(ItemTrigger.StackThenConsume, ItemEffectDb.Get("3095")?.Trigger);
+    }
+
+    /// <summary>Stacks carried into the combo are unknown (user decision 2026-10-17): the resolved
+    /// number assumes none, the range ceiling assumes two. 2 autos → 0-1 procs, 7 autos → 2-3.</summary>
+    [Theory]
+    [InlineData(2, 0, 1)]
+    [InlineData(3, 1, 1)]
+    [InlineData(7, 2, 3)]
+    public void KrakenSlayer_ProcCountIsARange_ByAutoCount(int autos, int minProcs, int maxProcs)
+    {
+        ChampionRepository.Initialize(new[]
+        {
+            AttackerChampion("KrakenRangeAttacker", attackRange: 175),
+            Dummy("KrakenRangeDummy", hp: 100000, armor: 0, mr: 0),
+        });
+        var stats = new ActivePlayerStats { AttackDamage = 100 };
+        var snap = Snapshot("KrakenRangeAttacker", stats, level: 1, enemyChampion: "KrakenRangeDummy", enemyLevel: 6,
+            activeItems: new[] { 6672 });
+        var result = RunCombo("KrakenRangeAttacker", AaSequence(autos), snap);
+
+        // Huge HP pool: missing-health scaling stays ~1.0, so each proc is ~150.
+        double autoDamage = 100.0 * autos;
+        Assert.Equal(minProcs, (int)Math.Round((result.TotalDamage - autoDamage) / 150.0));
+        Assert.Equal(maxProcs, (int)Math.Round((result.RangeMax - autoDamage) / 150.0));
+    }
+
+    /// <summary>Kraken pinned to an auto with the item FX (user decision 2026-10-17): that auto is a
+    /// proc, earlier autos are not, and the count restarts after it; the range collapses (known).</summary>
+    [Theory]
+    [InlineData(new[] { 0 }, 2, 1)]          // A* A        -> 1 proc (the pinned one)
+    [InlineData(new[] { 1 }, 2, 1)]          // A A*        -> 1 (the first auto no longer guesses)
+    [InlineData(new[] { 0 }, 4, 2)]          // A* A A A    -> pinned + 3rd after it
+    [InlineData(new[] { 2 }, 7, 2)]          // A A A* A A A A -> pinned + 3rd after it
+    public void KrakenSlayer_PinnedToAnAuto_ProcsThereAndCountsOn(int[] pinned, int autos, int procs)
+    {
+        ChampionRepository.Initialize(new[]
+        {
+            AttackerChampion("KrakenPinAttacker", attackRange: 175),
+            Dummy("KrakenPinDummy", hp: 100000, armor: 0, mr: 0),
+        });
+        var stats = new ActivePlayerStats { AttackDamage = 100 };
+        var snap = Snapshot("KrakenPinAttacker", stats, level: 1, enemyChampion: "KrakenPinDummy", enemyLevel: 6,
+            activeItems: new[] { 6672 });
+        var nodes = AaSequence(autos)
+            .Select((n, i) => pinned.Contains(i) ? n with { AttachedItemId = "6672" } : n).ToArray();
+        var result = RunCombo("KrakenPinAttacker", nodes, snap);
+
+        double autoDamage = 100.0 * autos;
+        Assert.Equal(procs, (int)Math.Round((result.TotalDamage - autoDamage) / 150.0));
+        Assert.Equal(procs, (int)Math.Round((result.RangeMax - autoDamage) / 150.0));
+    }
+
+    /// <summary>Kraken's base is flat 150 through level 8, then +5 per level from 9 (BIN Items/6672
+    /// ByCharLevelBreakpoints). It used to interpolate from level 1, overstating mid levels.</summary>
+    [Theory]
+    [InlineData(8, 150.0)]
+    [InlineData(9, 155.0)]
+    [InlineData(18, 200.0)]
+    public void KrakenSlayer_BaseFollowsTheLevel9Breakpoint(int level, double expectedBase)
+    {
+        ChampionRepository.Initialize(new[]
+        {
+            AttackerChampion("KrakenMeleeAttackerLv", attackRange: 175),
+            Dummy("KrakenDummyLv", hp: 5000, armor: 0, mr: 0),
+        });
+        var stats = new ActivePlayerStats { AttackDamage = 100 };
+        var snap = Snapshot("KrakenMeleeAttackerLv", stats, level: level, enemyChampion: "KrakenDummyLv", enemyLevel: 6,
+            activeItems: new[] { 6672 });
+        var result = RunCombo("KrakenMeleeAttackerLv", AaSequence(3), snap);
+        // Proc after AA3 at 300/5000 missing: base x 1.045.
+        Assert.Equal(expectedBase * 1.045, result.NodeBreakdown[3].Damage, precision: 2);
     }
 
     // ── (a) on-hit item adds a magic hit to an AA, mitigated by MR (not the AA's armor) ─
@@ -458,7 +551,7 @@ public class ItemEffectTests : IDisposable
         Assert.Equal(10.0, rangedResult.NodeBreakdown[1].Damage, precision: 2);
     }
 
-    // ── Kraken Slayer (3095): "stack then consume, repeatable" — the critical correctness ──
+    // ── Kraken Slayer (6672): "stack then consume, repeatable" — the critical correctness ──
     // ── properties of the new StackThenConsume trigger, counted over the combo's own AA ─────
     // ── sequence (COMBO-INTERNAL, no live game-state needed — see item_effects.json _note). ─
     // Level 1 is used throughout so the level-interpolated base damage is the exact endpoint
@@ -495,7 +588,7 @@ public class ItemEffectTests : IDisposable
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenMeleeAttacker1", stats, level: 1, enemyChampion: "KrakenDummy1", enemyLevel: 6,
-            activeItems: new[] { 3095 });
+            activeItems: new[] { 6672 });
 
         var result = RunCombo("KrakenMeleeAttacker1", AaSequence(aaCount), snap);
 
@@ -515,7 +608,7 @@ public class ItemEffectTests : IDisposable
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenMeleeAttacker2", stats, level: 1, enemyChampion: "KrakenDummy2", enemyLevel: 6,
-            activeItems: new[] { 3095 });
+            activeItems: new[] { 6672 });
 
         var result = RunCombo("KrakenMeleeAttacker2", AaSequence(3), snap);
 
@@ -542,7 +635,7 @@ public class ItemEffectTests : IDisposable
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenMeleeAttacker3", stats, level: 1, enemyChampion: "KrakenDummy3", enemyLevel: 6,
-            activeItems: new[] { 3095 });
+            activeItems: new[] { 6672 });
 
         var result = RunCombo("KrakenMeleeAttacker3", AaSequence(6), snap);
 
@@ -581,7 +674,7 @@ public class ItemEffectTests : IDisposable
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenMeleeAttacker4", stats, level: 1, enemyChampion: "KrakenDummy6", enemyLevel: 6,
-            activeItems: new[] { 3095 });
+            activeItems: new[] { 6672 });
 
         var result = RunCombo("KrakenMeleeAttacker4", AaSequence(3), snap);
 
@@ -605,7 +698,7 @@ public class ItemEffectTests : IDisposable
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenRangedAttacker", stats, level: 1, enemyChampion: "KrakenDummy4", enemyLevel: 6,
-            activeItems: new[] { 3095 });
+            activeItems: new[] { 6672 });
 
         var result = RunCombo("KrakenRangedAttacker", AaSequence(3), snap);
 
@@ -635,10 +728,162 @@ public class ItemEffectTests : IDisposable
         var noItems = Snapshot("Ahri", stats, level: 6, enemyChampion: "KrakenDummy5");
         var baseResult = RunCombo("Ahri", new[] { SkillNode("Q"), AaNode() }, noItems);
 
-        var withKraken = Snapshot("Ahri", stats, level: 6, enemyChampion: "KrakenDummy5", activeItems: new[] { 3095 });
+        var withKraken = Snapshot("Ahri", stats, level: 6, enemyChampion: "KrakenDummy5", activeItems: new[] { 6672 });
         var krakenResult = RunCombo("Ahri", new[] { SkillNode("Q"), AaNode() }, withKraken);
 
         Assert.Equal(baseResult.NodeBreakdown.Count, krakenResult.NodeBreakdown.Count);
         Assert.Equal(baseResult.TotalDamage, krakenResult.TotalDamage, precision: 4);
+    }
+
+    // ── (2026-10-17) conditional procs the combo settles itself ───────────────────
+
+    private ComboResult AutosAgainst(string attacker, string dummy, double hp, int autos, int[] items, double ad = 100)
+    {
+        ChampionRepository.Initialize(new[] { AttackerChampion(attacker, attackRange: 175), Dummy(dummy, hp: hp, armor: 0, mr: 0) });
+        var snap = Snapshot(attacker, new ActivePlayerStats { AttackDamage = ad }, level: 6, enemyChampion: dummy, enemyLevel: 6,
+            activeItems: items);
+        return RunCombo(attacker, AaSequence(autos), snap);
+    }
+
+    [Fact]
+    public void Eclipse_FiresOnTheSecondSeparateHit_Once()
+    {
+        Assert.Equal(100.0, AutosAgainst("EclA", "EclD", 5000, 1, new[] { 6692 }).TotalDamage, precision: 2);
+        // Second auto: + 8% of 5000 max HP (melee) = 400, once even with more autos.
+        Assert.Equal(200.0 + 400.0, AutosAgainst("EclA2", "EclD2", 5000, 2, new[] { 6692 }).TotalDamage, precision: 2);
+        Assert.Equal(400.0 + 400.0, AutosAgainst("EclA3", "EclD3", 5000, 4, new[] { 6692 }).TotalDamage, precision: 2);
+    }
+
+    [Fact]
+    public void Stormsurge_FiresOnlyWhenTheComboDealsAQuarterOfMaxHp()
+    {
+        // 3 autos = 300 >= 25% of 1000: + 125 (AP 0) squall.
+        Assert.Equal(300.0 + 125.0, AutosAgainst("StormA", "StormD", 1000, 3, new[] { 4646 }).TotalDamage, precision: 2);
+        // 300 < 25% of 2000: nothing.
+        Assert.Equal(300.0, AutosAgainst("StormA2", "StormD2", 2000, 3, new[] { 4646 }).TotalDamage, precision: 2);
+    }
+
+    [Theory]
+    [InlineData(6655, 160.0)]   // Luden's: 2 x (75 + 0.05 x 100 AP)
+    [InlineData(2503, 66.0)]    // Blackfire: 3s x (20 + 0.02 x 100 AP)
+    [InlineData(6653, 240.0)]   // Liandry's: 6% of 4000 max HP
+    public void FirstAbilityProcs_AddOnceToTheFirstDamagingAbility(int item, double added)
+    {
+        ChampionRepository.Initialize(new[] { LoadChampion("Ahri", baseAd: 60), Dummy("FaDummy", hp: 4000, armor: 0, mr: 0) });
+        var stats = new ActivePlayerStats { AttackDamage = 100, AbilityPower = 100, AbilityQ = 5, AbilityW = 5 };
+        var nodes = new[] { SkillNode("Q"), SkillNode("W"), AaNode() };
+        var none = RunCombo("Ahri", nodes, Snapshot("Ahri", stats, level: 6, enemyChampion: "FaDummy"));
+        var with = RunCombo("Ahri", nodes, Snapshot("Ahri", stats, level: 6, enemyChampion: "FaDummy", activeItems: new[] { item }));
+        Assert.Equal(added, with.TotalDamage - none.TotalDamage, precision: 1);
+    }
+
+    // ── (2026-10-17) the "모든 아이템" chip ───────────────────────────────────────
+
+    private static ComboNode ItemsChip() => new(
+        Id: ComboEditor.ItemsNodeId + "_9", NodeType: ComboNodeType.Summoner, Name: ComboEditor.ItemsNodeId,
+        Cooldown: 0, Mana: 0, Damage: 0, DamageType: ComboDamageType.True,
+        RatioAD: 0, RatioBonusAD: 0, RatioAP: 0, CastTime: 0, Delay: 0, TravelTime: 0);
+
+    private double ChipDamage(int level, int[] items, bool withChip = true, double ap = 100)
+    {
+        ChampionRepository.Initialize(new[] { AttackerChampion("ChipA", attackRange: 175), Dummy("ChipD", hp: 5000, armor: 0, mr: 0) });
+        var snap = Snapshot("ChipA", new ActivePlayerStats { AttackDamage = 100, AbilityPower = ap }, level: level,
+            enemyChampion: "ChipD", enemyLevel: 6, activeItems: items);
+        var nodes = withChip ? new[] { AaNode(), ItemsChip() } : new[] { AaNode() };
+        return RunCombo("ChipA", nodes, snap).TotalDamage - 100.0; // minus the plain auto
+    }
+
+    [Theory]
+    [InlineData(3095, 1, 100.0)]            // Stormrazor: 100 magic
+    [InlineData(3152, 1, 150.0)]            // Rocketbelt: 135 + 15% AP
+    [InlineData(3146, 1, 205.0)]            // Gunblade: 175 (level 1) + 30% AP
+    [InlineData(3146, 18, 283.0)]           // Gunblade: 253 (level 18) + 30% AP
+    [InlineData(6698, 1, 80.0)]             // Profane Hydra active: 80% AD
+    [InlineData(3094, 1, 40.0)]             // Rapid Firecannon: 40 magic
+    [InlineData(3118, 1, 195.0)]            // Malignance: 3s x (60 + 5% AP)
+    public void ItemsChip_FiresEachOwnedUncertainItemOnce(int item, int level, double added)
+        => Assert.Equal(added, ChipDamage(level, new[] { item }), precision: 1);
+
+    [Fact]
+    public void ItemsChip_VoltaicTakesTheTargetsCurrentHealth()
+        // After one 100 auto the 5000 HP dummy has 4900: 9% (melee) = 441.
+        => Assert.Equal(441.0, ChipDamage(1, new[] { 6699 }), precision: 1);
+
+    [Fact]
+    public void WithoutTheChip_UncertainItemsNeverFire_AndTheChipAloneAddsNothing()
+    {
+        Assert.Equal(0.0, ChipDamage(1, new[] { 3095, 3146 }, withChip: false), precision: 3);
+        Assert.Equal(0.0, ChipDamage(1, Array.Empty<int>()), precision: 3);
+        Assert.Equal(100.0 + 205.0, ChipDamage(1, new[] { 3095, 3146 }), precision: 1);
+    }
+
+    // ── (2026-10-17) chip-only niche items, chip amps, Giant Slayer, Sundered Sky ──
+
+    private double Total(ComboNode[] nodes, int[] items, double hp = 5000, double maxHealth = 0,
+        double attackRange = 175, [System.Runtime.CompilerServices.CallerMemberName] string tag = "")
+    {
+        string a = "A" + tag + attackRange, d = "D" + tag + hp;
+        ChampionRepository.Initialize(new[] { AttackerChampion(a, attackRange), Dummy(d, hp: hp, armor: 0, mr: 0) });
+        var snap = Snapshot(a, new ActivePlayerStats { AttackDamage = 100, MaxHealth = maxHealth }, level: 6,
+            enemyChampion: d, enemyLevel: 6, activeItems: items);
+        return RunCombo(a, nodes, snap).TotalDamage;
+    }
+
+    [Theory]
+    [InlineData(3084, 175, 190.0)]   // Heartsteel: 70 + 6% of 2000 max health
+    [InlineData(3742, 175, 40.0)]    // Dead Man's Plate: 100% base AD (0 here) + 40
+    [InlineData(3181, 175, 100.0)]   // Hullbreaker: 120% base AD (0) + 5% of 2000
+    [InlineData(3181, 550, 70.0)]    // ranged: x 0.7
+    public void ItemsChip_FiresTheNicheItems(int item, double range, double added)
+        => Assert.Equal(added, Total(new[] { AaNode(), ItemsChip() }, new[] { item }, maxHealth: 2000, attackRange: range) - 100.0,
+            precision: 1);
+
+    [Theory]
+    [InlineData(4633, 208.0)]   // Riftmaker: +8% on everything after the chip
+    [InlineData(6653, 206.0)]   // Liandry's Suffering: +6% (no ability, so no burn)
+    [InlineData(4645, 200.0)]   // Shadowflame: magic and true only
+    [InlineData(8020, 200.0)]   // Abyssal Mask: magic only
+    [InlineData(3161, 200.0)]   // Shojin: abilities only
+    public void ItemsChip_AmpsOnlyTheHitsAfterIt_InTheirScope(int item, double total)
+        => Assert.Equal(total, Total(new[] { AaNode(), ItemsChip(), AaNode() with { Id = "AA_1" } }, new[] { item }), precision: 1);
+
+    [Fact]
+    public void ItemsChip_AbyssalMaskAmpsAMagicProcFiredAtTheChip()
+        // Stormrazor's 100 magic lands at the chip, so the mask's +12% reaches it.
+        => Assert.Equal(100.0 + 112.0, Total(new[] { AaNode(), ItemsChip() }, new[] { 3095, 8020 }), precision: 1);
+
+    [Fact]
+    public void WithoutTheChip_AmpsNeverApply()
+        => Assert.Equal(200.0, Total(new[] { AaNode(), AaNode() with { Id = "AA_1" } }, new[] { 4633, 3161, 4645 }), precision: 1);
+
+    [Theory]
+    [InlineData(5000, 115.0)]   // 3000 more max health than my 2000: the full 15%
+    [InlineData(3500, 107.5)]   // 1500 more: half
+    [InlineData(1000, 100.0)]   // less than mine: nothing
+    public void Perplexity_GiantSlayerScalesWithTheHealthLead(double targetHp, double total)
+        => Assert.Equal(total, Total(new[] { AaNode() }, new[] { 4015 }, hp: targetHp, maxHealth: 2000), precision: 1);
+
+    [Fact]
+    public void SunderedSky_TheFirstAttackCritsFor80PercentOfTheBonus()
+        // 100 x (1 + 0.8 x 0.75) = 160, then a plain 100.
+        => Assert.Equal(260.0, Total(new[] { AaNode(), AaNode() with { Id = "AA_1" } }, new[] { 6610 }), precision: 1);
+
+    [Fact]
+    public void ItemsChip_UmbralGlaiveDeals50Plus150PercentLethalityAsTrueDamage()
+        // Umbral Glaive's own 18 lethality: 50 + 27.
+        => Assert.Equal(77.0, ChipDamage(1, new[] { 3179 }), precision: 1);
+
+    [Fact]
+    public void DuskAndDawn_TheEmpoweredAttackAppliesOnHitItemsTwice()
+    {
+        ChampionRepository.Initialize(new[] { LoadChampion("Ahri", baseAd: 60), Dummy("DdDummy", hp: 100000, armor: 0, mr: 0) });
+        var stats = new ActivePlayerStats { AttackDamage = 100, AbilityPower = 100, AbilityQ = 5 };
+        var nodes = new[] { SkillNode("Q"), AaNode() };
+        double Run(params int[] items) => RunCombo("Ahri", nodes,
+            Snapshot("Ahri", stats, level: 6, enemyChampion: "DdDummy", activeItems: items)).TotalDamage;
+        double witsEnd = Run(3091) - Run();
+        Assert.True(witsEnd > 0);
+        // With Dusk and Dawn, Wit's End lands twice on the empowered attack.
+        Assert.Equal(2 * witsEnd, Run(2510, 3091) - Run(2510), precision: 3);
     }
 }
