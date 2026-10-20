@@ -17,9 +17,11 @@ public enum HotkeyModifiers
 }
 
 /// <summary>
-/// A parsed, normalized hotkey combination: a set of <see cref="HotkeyModifiers"/> plus a
-/// single non-modifier <see cref="Key"/> (e.g. "1", "F4", "A"). This is the pure, Win32-free
-/// value the M13 Core reasons about; the Win32 layer maps it to <c>RegisterHotKey</c> args.
+/// A parsed, normalized hotkey combination: a set of <see cref="HotkeyModifiers"/> plus one or more
+/// non-modifier keys (e.g. "1", "F4", "A"; (M46) "Q+W" for two held together - <see cref="Key"/> joins
+/// them sorted, so the order they were pressed in does not matter), at most <see cref="MaxKeys"/> of them;
+/// modifiers are not limited (CTRL+ALT+SHIFT+A stays valid). This is the pure, Win32-free value the M13 Core reasons about; the
+/// Win32 layer maps a single-key combo to <c>RegisterHotKey</c> args.
 ///
 /// <para><b>Normalization is the point.</b> "alt+1", "Alt + 1" and "1+ALT" all
 /// <see cref="Parse"/> to the same combo, and <see cref="Canonical"/> renders one stable
@@ -32,6 +34,9 @@ public enum HotkeyModifiers
 /// </summary>
 public sealed record HotkeyCombo(HotkeyModifiers Modifiers, string Key)
 {
+    /// <summary>(M46, user request) Non-modifier keys in one chord: ALT+Q+W, Q+W+E.</summary>
+    public const int MaxKeys = 3;
+
     // Fixed render order so the Canonical string is deterministic regardless of input order.
     private static readonly (HotkeyModifiers Flag, string Token)[] CanonicalOrder =
     {
@@ -69,7 +74,8 @@ public sealed record HotkeyCombo(HotkeyModifiers Modifiers, string Key)
     public string Canonical => Build();
 
     /// <summary>Parses a hotkey string. Throws <see cref="FormatException"/> if it is empty,
-    /// has an empty component, names more than one non-modifier key, or names no key.</summary>
+    /// has an empty component, names a key twice, names more than <see cref="MaxKeys"/> non-modifier
+    /// keys, or names none.</summary>
     public static HotkeyCombo Parse(string hotkey)
     {
         if (!TryParseInternal(hotkey, out var combo, out var error))
@@ -94,7 +100,7 @@ public sealed record HotkeyCombo(HotkeyModifiers Modifiers, string Key)
         }
 
         var modifiers = HotkeyModifiers.None;
-        string? key = null;
+        var keys = new List<string>(MaxKeys);
 
         foreach (var raw in hotkey.Split('+'))
         {
@@ -114,22 +120,44 @@ public sealed record HotkeyCombo(HotkeyModifiers Modifiers, string Key)
             if (KeyAliases.TryGetValue(token, out var alias))
                 token = alias;
 
-            if (key is not null)
+            if (keys.Contains(token))
             {
-                error = $"Hotkey '{hotkey}' names more than one non-modifier key ('{key}' and '{token}').";
+                error = $"Hotkey '{hotkey}' names '{token}' twice.";
                 return false;
             }
-            key = token;
+            keys.Add(token);
         }
 
-        if (key is null)
+        if (keys.Count == 0)
         {
             error = $"Hotkey '{hotkey}' has no non-modifier key.";
             return false;
         }
+        if (keys.Count > MaxKeys)
+        {
+            error = $"Hotkey '{hotkey}' names {keys.Count} non-modifier keys; at most {MaxKeys}.";
+            return false;
+        }
 
-        combo = new HotkeyCombo(modifiers, key);
+        combo = FromKeys(modifiers, keys);
         return true;
+    }
+
+    /// <summary>(M46) The combo of <paramref name="modifiers"/> and the non-modifier <paramref name="keys"/>, in the same
+    /// normalized form <see cref="Parse"/> produces (keys sorted). No count check - a chord built from what is held
+    /// simply never equals a registered one when it is too long.</summary>
+    public static HotkeyCombo FromKeys(HotkeyModifiers modifiers, IEnumerable<string> keys)
+        => new(modifiers, string.Join("+", keys.Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal)));
+
+    /// <summary>(M46) What a key-down can mean, best first: every non-modifier key held (<paramref name="held"/>, the one
+    /// just pressed included) with the modifiers, then the modifiers with only the key just pressed - so a key held for
+    /// something else (Space for the camera) never blocks a plain binding.</summary>
+    public static IEnumerable<HotkeyCombo> Candidates(HotkeyModifiers modifiers, IReadOnlyCollection<string> held, string pressed)
+    {
+        var exact = FromKeys(modifiers, held.Append(pressed));
+        yield return exact;
+        var single = new HotkeyCombo(modifiers, pressed);
+        if (single != exact) yield return single;
     }
 
     private string Build()

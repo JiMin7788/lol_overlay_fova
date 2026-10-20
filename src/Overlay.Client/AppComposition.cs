@@ -100,7 +100,6 @@ public sealed class AppComposition : IDisposable
 
     // M07 / M08
     private ItemTracker? _items;
-    private RecallTimer? _recall;
 
     // (loop 125) Same-lane enemy return predictor (minimap-left return timer HUD).
     private LaneReturnPredictor? _laneReturn;
@@ -108,11 +107,38 @@ public sealed class AppComposition : IDisposable
     /// same-lane-enemy return prediction (same pattern as <see cref="LatestSnapshot"/>).</summary>
     public LaneReturnPredictor? LaneReturnPredictor => _laneReturn;
 
+    /// <summary>(2026-10-19) Global gold estimate (null when off / no estimate yet), and whether
+    /// League's scoreboard is toggled open (Tab) — the overlay shows the estimate with the scoreboard.</summary>
+    public GlobalGoldView? GlobalGoldView => _globalGold?.LatestView;
+    public bool ScoreboardOpen => _hotkeyHook?.IsScoreboardOpen ?? false;
+
+    /// <summary>(2026-10-20, user request) Whether the global gold panel is up: with its key left at TAB it follows the
+    /// scoreboard; with another key (<c>overlay.globalGoldHotkey</c>) that key toggles it.</summary>
+    public bool GlobalGoldShown => GoldFollowsScoreboard(GlobalGoldHotkey) ? ScoreboardOpen : _globalGoldToggled;
+
+    private volatile bool _globalGoldToggled;
+
+    private string GlobalGoldHotkey => _config.Get("overlay.globalGoldHotkey") as string ?? "TAB";
+
+    /// <summary>TAB is League's own scoreboard key: the panel mirrors it instead of binding it.</summary>
+    public static bool GoldFollowsScoreboard(string chord) => string.Equals(chord.Trim(), "TAB", StringComparison.OrdinalIgnoreCase);
+    public void ResetScoreboard()
+    {
+        _hotkeyHook?.ResetScoreboard();
+        _nextItemsShown = false; // (M46) the shop starts closed too
+    }
+
     /// <summary>(M40) Latest enemy kill-threat estimates; null when the feature is off.</summary>
     public IReadOnlyList<EnemyThreat>? EnemyThreats => _threat?.Latest;
 
-    /// <summary>(M43) Candidate items ranked by the damage they add, while I am dead; else null.</summary>
-    public IReadOnlyList<NextItemRow>? NextItems => _nextItems;
+    /// <summary>(M43) Candidate items ranked by the damage they add (or, M46, by how well they withstand the enemies),
+    /// while the card is open - its key, default P, League's shop key; else null. The preview always shows it.</summary>
+    public IReadOnlyList<NextItemRow>? NextItems
+        => _nextItemsShown || _previewNextItemsFor is not null ? _nextItems : null;
+
+    // (M46, user request) Open / closed by the next-item key; closed at game start, like the shop.
+    private volatile bool _nextItemsShown;
+    private string? _nextItemsKey;
 
     /// <summary>(M42) Saved post-game reviews.</summary>
     public Overlay.Core.Review.KillReviewStore Reviews => _reviewStore;
@@ -134,9 +160,11 @@ public sealed class AppComposition : IDisposable
     private readonly Overlay.Core.Review.KillReviewStore _reviewStore =
         new(Path.Combine(AppPaths.UserDataDir, "history"));
     private string? _reviewComboSub;
-    // (M43) Next-item ranking, computed once per death on the 1s timer and shown while dead.
+    // (M43) Next-item ranking, computed on the 1s timer once per build (M46: while dead or while the card is open).
     private volatile IReadOnlyList<NextItemRow>? _nextItems;
-    private bool _wasDead;
+    /// <summary>The preview champion the current <see cref="_nextItems"/> were ranked for, or null
+    /// when they belong to a real death.</summary>
+    private volatile string? _previewNextItemsFor;
     private Overlay.Core.StaticGameData? _staticData;
 
     // M19 §3.2 — gated on overlay.items.inhibitorTimers.enabled
@@ -225,6 +253,84 @@ public sealed class AppComposition : IDisposable
     /// <summary>Latest per-tick game snapshot captured from the M01 poller (or null before the
     /// first tick / when no game is running). Read by the home views for live stats/scoreboard.</summary>
     public GameSnapshot? LatestSnapshot => _latestSnapshot;
+
+    // ── Overlay preview (2026-10-19) ─────────────────────────────────────────
+
+    /// <summary>True while the overlay is shown with no game running (the header's 미리보기). The
+    /// overlay, a combo hotkey and the threat/next-item cards then use <see cref="Overlay.Core.Overlay.PreviewGameState"/>.</summary>
+    public bool PreviewActive
+    {
+        get => _previewActive;
+        set { _previewActive = value; if (!value) _previewNextItemsFor = null; }
+    }
+    private volatile bool _previewActive;
+
+    /// <summary>The champion "I" play in the preview: the combo editor's selection, else the
+    /// champion of a saved combo, else a default. Set by <c>ComboSettingsView</c> and by a combo
+    /// hotkey fired in preview (so the sample game matches the combo being shown).</summary>
+    public string? PreviewChampionId
+    {
+        get => _previewChampionId ?? FirstSavedComboChampion();
+        set => _previewChampionId = string.IsNullOrEmpty(value) ? null : value;
+    }
+    private volatile string? _previewChampionId;
+
+    private GameSnapshot? _previewSnapshot;
+    private string? _previewSnapshotFor;
+
+    /// <summary>The preview's sample game for <see cref="PreviewChampionId"/>, rebuilt only when that
+    /// champion changes; null while the preview is off.</summary>
+    public GameSnapshot? PreviewSnapshot
+    {
+        get
+        {
+            if (!_previewActive) return null;
+            string? champion = PreviewChampionId;
+            if (_previewSnapshot is null || _previewSnapshotFor != champion)
+            {
+                _previewSnapshot = Overlay.Core.Overlay.PreviewGameState.Build(champion);
+                _previewSnapshotFor = champion;
+            }
+            return _previewSnapshot;
+        }
+    }
+
+    /// <summary>What the overlay draws from: the live game when there is one, else the preview's
+    /// sample game while the preview is on.</summary>
+    public GameSnapshot? OverlaySnapshot
+        => _latestSnapshot is { HasData: true } live ? live : PreviewSnapshot ?? _latestSnapshot;
+
+    private string? FirstSavedComboChampion()
+    {
+        if (_config.Get("combos.saved") is not IDictionary<string, object?> saved) return null;
+        foreach (var value in saved.Values)
+            if (value?.ToString() is { Length: > 0 } json) // config values are not always CLR strings
+                try
+                {
+                    if (System.Text.Json.JsonSerializer.Deserialize<SavedCombo>(json) is { ChampionId.Length: > 0 } c)
+                        return c.ChampionId;
+                }
+                catch (System.Text.Json.JsonException) { /* corrupt entry — try the next */ }
+        return null;
+    }
+
+    /// <summary>A saved combo of <paramref name="championId"/> (the first found), for the preview to
+    /// show a real card as soon as it opens. Null when that champion has none.</summary>
+    public string? FirstSavedComboId(string? championId)
+    {
+        if (string.IsNullOrEmpty(championId) || _config.Get("combos.saved") is not IDictionary<string, object?> saved)
+            return null;
+        foreach (var (id, value) in saved)
+            if (value?.ToString() is { Length: > 0 } json) // config values are not always CLR strings
+                try
+                {
+                    if (System.Text.Json.JsonSerializer.Deserialize<SavedCombo>(json) is { } c
+                        && string.Equals(c.ChampionId, championId, StringComparison.Ordinal))
+                        return id;
+                }
+                catch (System.Text.Json.JsonException) { }
+        return null;
+    }
 
     /// <summary>M29 ad slot backing the HOME banner. Constructed here (not in the window) so it
     /// subscribes to GAME.CONNECTED/DISCONNECTED for the whole app lifetime and there is exactly one
@@ -498,17 +604,13 @@ public sealed class AppComposition : IDisposable
             graceMs: () => GetDouble("minimap.afterimage.visibleGraceMs", 1200));
         _afterimages.Start();
 
-        // M07 Item Tracker
-        _items = new ItemTracker();
+        // M07 Item Tracker — (2026-10-19) my own completions only; enemies' have their own card.
+        _items = new ItemTracker(snapshot: () => _latestSnapshot);
         _items.Start();
 
-        // M08 Recall Timer. Its HUD toggle is read live per frame, so only the remote flag gates
-        // construction (a forced-off timer must not speak either).
-        if (!_flags.IsForcedOff("recallTimer"))
-        {
-            _recall = new RecallTimer();
-            _recall.Start();
-        }
+        // (2026-10-19, user decision) M08 Recall Timer is no longer started: its only output was a
+        // "X respawns in Ns" toast for every death of all ten players, and the enemy portrait row
+        // already shows each enemy's respawn / return countdown.
 
         // M19 §3.2 Inhibitor Timer — default ON (loop 71, user request; real API-backed data).
         if (GetBool("overlay.items.inhibitorTimers.enabled", true))
@@ -524,9 +626,10 @@ public sealed class AppComposition : IDisposable
             _nexusTurretTimer.Start();
         }
 
-        // (loop 125) Same-lane enemy return predictor — default OFF (1.0 gated tier, pending Riot). Needs the static map-distance presets;
+        // (loop 125) Same-lane enemy return predictor — default ON again (2026-10-20, user decision: other products ship
+        // it; it had been gated pending Riot). Needs the static map-distance presets;
         // if that bundled file is missing/corrupt the feature simply stays off (never crashes startup).
-        if (GetBool("overlay.items.laneReturn.enabled", false) && !_flags.IsForcedOff("laneReturn"))
+        if (GetBool("overlay.items.laneReturn.enabled", true) && !_flags.IsForcedOff("laneReturn"))
         {
             try
             {
@@ -544,7 +647,10 @@ public sealed class AppComposition : IDisposable
         // Live Client never populates `position` (see EnemyJunglerLocator).
         if (GetBool("overlay.items.enemyJunglerSpotted.enabled", false) && !_flags.IsForcedOff("enemyJunglerSpotted"))
         {
-            _enemyJunglerSpotted = new EnemyJunglerSpottedDetector(() => _latestSnapshot);
+            // (2026-10-19) Quiet while minimap vision is capturing: the presence tracker announces the
+            // same sighting with a location, and one event used to raise two cards.
+            _enemyJunglerSpotted = new EnemyJunglerSpottedDetector(() => _latestSnapshot,
+                suppressWhen: () => _minimapCapture?.IsCapturing == true);
             _enemyJunglerSpotted.Start();
         }
 
@@ -601,7 +707,9 @@ public sealed class AppComposition : IDisposable
         // correctly read R's missing-HP term off the running remaining-HP DamageEngine.Simulate
         // already threads through the node loop (Q/E/W's damage reduces it before R reads it).
         _comboRunner = new ComboRunner(comboEngine, _config, () => _latestSnapshot,
-            runeEngine: _runeEngine);
+            runeEngine: _runeEngine,
+            // (2026-10-19) a combo hotkey pressed in the overlay preview computes on its sample game
+            previewSnapshot: () => PreviewSnapshot);
         _comboRunner.Start();
 
         // (M40) Enemy kill threat: recomputed off the UI thread only when an enemy's level/items/
@@ -610,7 +718,8 @@ public sealed class AppComposition : IDisposable
         if (!_flags.IsForcedOff("enemyThreat"))
         {
             var runner = _comboRunner;
-            _threat = new EnemyThreatMonitor(() => _latestSnapshot, runner.ComputeThreat);
+            // OverlaySnapshot: the live game, or the preview's sample game while the preview is on.
+            _threat = new EnemyThreatMonitor(() => OverlaySnapshot, runner.ComputeThreat);
         }
         // One 1s timer: threat estimates (when on), then the post-game review sample, which reads
         // them. The review runs even with the threat line off (it then has no danger windows).
@@ -623,7 +732,12 @@ public sealed class AppComposition : IDisposable
                     _reviewStore.Save(finished);
                 UpdateNextItems(runner: _comboRunner);
             }
-            catch (Exception ex) { Log("threat/review tick failed: " + ex.Message); }
+            catch (Exception ex)
+            {
+                // Once per distinct failure: this runs every second, and Log now writes a file.
+                if (ex.Message != _lastTickError) Log("threat/review tick failed: " + ex.Message);
+                _lastTickError = ex.Message;
+            }
         }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
         // A combo hotkey result is a "combo check" for the review: target + share of its max HP.
         _reviewComboSub = Overlay.Core.EventBus.EventBus.Subscribe("UI.COMBO_RESULT", evt =>
@@ -738,6 +852,20 @@ public sealed class AppComposition : IDisposable
                         // Resolved fresh on every fire (not once at Register time above) — that's
                         // the fix for loop 44 bug 2.
                         var activeChampionId = ResolveActiveChampionId();
+
+                        // (2026-10-19) Overlay preview, no game: fire the preview champion's combo on
+                        // this key, else the first one bound to it — and make that champion the
+                        // preview's "me" so the sample game matches the card.
+                        if (activeChampionId is null && _previewActive)
+                        {
+                            string? preferred = PreviewChampionId;
+                            var pick = bindings.Find(b => string.Equals(b.ChampionId, preferred, StringComparison.Ordinal));
+                            if (pick.ComboId is null) pick = bindings[0];
+                            PreviewChampionId = pick.ChampionId;
+                            Overlay.Core.EventBus.EventBus.Publish("COMBO.TRIGGER", pick.ComboId, "M13");
+                            return;
+                        }
+
                         if (activeChampionId is not null)
                         {
                             foreach (var binding in bindings)
@@ -848,11 +976,35 @@ public sealed class AppComposition : IDisposable
         _overlayCardHotkeyRegIds.Clear();
 
         string comboKey = _config.Get("overlay.comboOverlayHotkey") as string ?? "Alt+1";
-        string skillKey = _config.Get("overlay.skillOverlayHotkey") as string ?? "Alt+2";
+        string skillKey = _config.Get("overlay.skillOverlayHotkey") as string ?? "ALT+`"; // (M46, user request) was Alt+2
         try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(comboKey, () => ToggleConfigFlag("overlay.items.comboResult.enabled", true), "§40.combo")); }
         catch (Exception ex) { Log($"Combo-overlay hotkey '{comboKey}' skipped: {ex.Message}"); }
         try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(skillKey, () => ToggleConfigFlag("overlay.items.skillOverlay.enabled", false), "§40.skill")); }
         catch (Exception ex) { Log($"Skill-overlay hotkey '{skillKey}' skipped: {ex.Message}"); }
+
+        // (M46, user request) The next-item card's key, default P: League's shop key, so the card opens with the shop.
+        string nextItemKey = _config.Get("overlay.nextItemHotkey") as string ?? "P";
+        try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(nextItemKey, () => _nextItemsShown = !_nextItemsShown, "nextitem")); }
+        catch (Exception ex) { Log($"Next-item hotkey '{nextItemKey}' skipped: {ex.Message}"); }
+
+        // (2026-10-20, user request) The global gold panel's own key; TAB (the default) follows the scoreboard instead.
+        string goldKey = GlobalGoldHotkey;
+        if (!GoldFollowsScoreboard(goldKey))
+        {
+            try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(goldKey, () => _globalGoldToggled = !_globalGoldToggled, "gold")); }
+            catch (Exception ex) { Log($"Global-gold hotkey '{goldKey}' skipped: {ex.Message}"); }
+        }
+
+        // (2026-10-19, user request) Pick the Nth enemy of the portrait row as the combo target
+        // without clicking. Same config write as a portrait click; ComboRunner re-runs the shown card
+        // on the change. A combo bound to one of these keys keeps it (combos register first).
+        for (int i = 0; i < TargetHotkeys.Length; i++)
+        {
+            int index = i;
+            string key = TargetHotkeys[i];
+            try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(key, () => SelectTargetByIndex(index), "target")); }
+            catch (Exception ex) { Log($"Target hotkey '{key}' skipped: {ex.Message}"); }
+        }
 
         // §43: dump the last ~2s of minimap frames when the user sees a wrong callout. Registered
         // only while minimap.debugCapture is on, so a normal session never binds the key at all.
@@ -862,6 +1014,22 @@ public sealed class AppComposition : IDisposable
             try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(dumpKey, () => DumpMinimapDebugFrames(), "§43.dump")); }
             catch (Exception ex) { Log($"Minimap debug-dump hotkey '{dumpKey}' skipped: {ex.Message}"); }
         }
+    }
+
+    /// <summary>Target keys for enemies 1-5 of the portrait row. ALT+F4 is skipped on purpose: it is
+    /// Windows' close-window chord (pressed in game it closes League), and this app's hook is global,
+    /// so taking it would also stop it closing anything else. Enemy 4 and 5 move to F5/F6.</summary>
+    public static readonly string[] TargetHotkeys = { "ALT+F1", "ALT+F2", "ALT+F3", "ALT+F5", "ALT+F6" };
+
+    /// <summary>Pins the <paramref name="index"/>-th enemy of the portrait row (scoreboard order, the
+    /// same list the row draws) as the combo target. No-op past the end of the roster.</summary>
+    private void SelectTargetByIndex(int index)
+    {
+        if (OverlaySnapshot is not { HasData: true } snap) return;
+        var roster = ComboRunner.EnemyRoster(snap);
+        if (index >= roster.Count) return;
+        _config.Set("targeting.mode", "Manual");
+        _config.Set("targeting.manualTarget", roster[index].ChampionName);
     }
 
     /// <summary>§43: writes the retained minimap frames to a timestamped folder under
@@ -886,27 +1054,48 @@ public sealed class AppComposition : IDisposable
         catch (Exception ex) { Log($"Minimap debug dump failed: {ex.Message}"); }
     }
 
-    /// <summary>(M43) On the transition to dead, ranks the candidate items once (death is when I
-    /// shop); clears the list on respawn. Skipped while the card is off or the remote flag
-    /// <c>nextItem</c> forces it off.</summary>
+    /// <summary>(M43) Ranks the candidate items while I am dead (the shopping moment) or (M46) while the card is open,
+    /// once per build: my items, level, target and the ranking mode (<c>overlay.nextItemMode</c>, damage or tank).
+    /// Skipped while the card is off or the remote flag <c>nextItem</c> forces it off.</summary>
     private void UpdateNextItems(ComboRunner? runner)
     {
         var snap = _latestSnapshot;
+        // (2026-10-19) Preview: rank once for the sample game (nobody is dead there), so the card
+        // can be seen and placed before a real game.
+        if (snap is not { HasData: true } && PreviewSnapshot is { } preview)
+        {
+            // (M46) ...in the chosen ranking mode
+            bool previewTank = string.Equals(_config.Get("overlay.nextItemMode") as string, "tank", StringComparison.OrdinalIgnoreCase);
+            string? champion = PreviewChampionId is { } pc ? pc + (previewTank ? "|tank" : "") : null;
+            if (runner is null || _previewNextItemsFor == champion) return;
+            _previewNextItemsFor = champion;
+            _staticData ??= TryLoadStaticData();
+            _nextItems = previewTank
+                ? runner.RankTankItems(preview, Overlay.Core.Items.NextItemCandidates.ForTank(Array.Empty<int>()))
+                : runner.RankNextItems(preview, Overlay.Core.Items.NextItemCandidates.For(Array.Empty<int>(), _staticData));
+            return;
+        }
+        if (_previewNextItemsFor is not null) { _previewNextItemsFor = null; _nextItems = null; _nextItemsKey = null; }
         Overlay.Core.ScoreboardEntry? me = null;
         if (snap is { HasData: true })
             for (int i = 0; i < snap.PlayerCount; i++)
                 if (snap.Players[i].SummonerName == snap.ActivePlayerSummonerName
                     || (snap.Players[i].RiotId.Length > 0 && snap.Players[i].RiotId == snap.ActivePlayerRiotId))
                     me = snap.Players[i];
-        bool dead = me?.IsDead == true;
-        if (!dead) { _nextItems = null; _wasDead = false; return; }
-        if (_wasDead) return; // already ranked for this death
-        _wasDead = true;
+        if (me is null) { _nextItems = null; _nextItemsKey = null; return; }
+        if (!me.IsDead && !_nextItemsShown) return;
         if (runner is null || !GetBool("overlay.items.nextItemCard.enabled", true) || _flags.IsForcedOff("nextItem")) return;
 
+        var owned = me.ItemIds.Take(me.ItemCount).ToArray();
+        bool tank = string.Equals(_config.Get("overlay.nextItemMode") as string, "tank", StringComparison.OrdinalIgnoreCase);
+        string key = string.Join(",", owned) + "|" + me.Level + "|" + tank + "|" + (_config.Get("targeting.manualTarget") as string);
+        if (key == _nextItemsKey) return; // already ranked for this build
+        _nextItemsKey = key;
+
         _staticData ??= TryLoadStaticData();
-        var owned = me!.ItemIds.Take(me.ItemCount).ToArray();
-        _nextItems = runner.RankNextItems(snap!, Overlay.Core.Items.NextItemCandidates.For(owned, _staticData));
+        _nextItems = tank
+            ? runner.RankTankItems(snap!, Overlay.Core.Items.NextItemCandidates.ForTank(owned))
+            : runner.RankNextItems(snap!, Overlay.Core.Items.NextItemCandidates.For(owned, _staticData));
     }
 
     private static Overlay.Core.StaticGameData? TryLoadStaticData()
@@ -920,7 +1109,6 @@ public sealed class AppComposition : IDisposable
     /// Un-forcing does not restart anything; that takes effect on the next launch.</summary>
     private void ApplyRemoteFlags()
     {
-        if (_flags.IsForcedOff("recallTimer")) Interlocked.Exchange(ref _recall, null)?.Dispose();
         if (_flags.IsForcedOff("laneReturn")) Interlocked.Exchange(ref _laneReturn, null)?.Dispose();
         if (_flags.IsForcedOff("enemyJunglerSpotted")) Interlocked.Exchange(ref _enemyJunglerSpotted, null)?.Dispose();
         if (_flags.IsForcedOff("enemyItemAlert")) Interlocked.Exchange(ref _enemyItemAlert, null)?.Dispose();
@@ -946,8 +1134,31 @@ public sealed class AppComposition : IDisposable
     private string GetString(string key, string fallback)
         => _config.Get(key) is string s && !string.IsNullOrWhiteSpace(s) ? s : fallback;
 
+    /// <summary>(design pass) Also written to <c>logs/app.log</c>: skipped hotkeys, a degraded data
+    /// init and failed ticks used to exist only in Debug.WriteLine — invisible in a normal run and
+    /// absent from the bug-report zip, which collects <c>logs/*.log</c>. Never throws.</summary>
+    private static readonly string AppLogPath =
+        Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
+
     private static void Log(string message)
-        => Debug.WriteLine($"[AppComposition] {message}");
+    {
+        Debug.WriteLine($"[AppComposition] {message}");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(AppLogPath)!);
+            if (!_appLogStamped)
+            {
+                _appLogStamped = true;
+                File.AppendAllText(AppLogPath,
+                    $"{BuildStampPrefix}{BugReport.Version} | started {DateTime.Now:yyyy-MM-dd HH:mm:ss} ==={Environment.NewLine}");
+            }
+            File.AppendAllText(AppLogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} {message}{Environment.NewLine}");
+        }
+        catch { /* diagnostics must never crash the app */ }
+    }
+
+    private static bool _appLogStamped;
+    private string? _lastTickError;
 
     /// <summary>(loop 525) Ad-slot diagnostics to <c>logs/ads.log</c> next to the exe — Debug.WriteLine
     /// is invisible in a normal run, so this is how we can actually see whether the slot configured,
@@ -1164,7 +1375,6 @@ public sealed class AppComposition : IDisposable
         _enemyVoice?.Dispose();
         _afterimages?.Dispose();
         _items?.Dispose();
-        _recall?.Dispose();
         _laneReturn?.Dispose();
         _enemyJunglerSpotted?.Dispose();
         _enemyItemAlert?.Dispose();

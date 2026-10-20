@@ -17,14 +17,13 @@ namespace Overlay.Core.Damage;
 public sealed class DamageEngine
 {
     /// <summary>
-    /// Standard League critical-strike damage multiplier used when a node is marked
-    /// <see cref="ComboNode.CanCrit"/>. Not specified numerically anywhere in the M05
-    /// spec (Step 4 only says "critical multiplier" without a value) — 1.75 is the
-    /// current base League crit-damage multiplier absent crit-damage-boosting items/
-    /// keystones, which this engine has no input field for. Documented assumption,
-    /// see M05 agent report Notes for Reviewer.
+    /// Base League critical-strike damage multiplier, used when the attacker's live
+    /// <see cref="AttackerStat.CritDamageMultiplier"/> is not reported (0). (2026-10-19) 2.0, not
+    /// the 1.75 assumed since M05: a live game reports <c>critDamage</c> 200 with no crit-damage
+    /// item, the user confirms basic attacks crit for 200%, and Garen E's BIN
+    /// <c>1 + CritMod 0.3 × (critDamage − 1)</c> gives the measured +30% only at 2.0.
     /// </summary>
-    public const double CritDamageMultiplier = 1.75;
+    public const double CritDamageMultiplier = 2.0;
 
     /// <summary>Number of bisection iterations used to solve <c>killThresholdHP</c>.
     /// 60 iterations over any realistic HP range (0..a few thousand) converges to
@@ -102,6 +101,7 @@ public sealed class DamageEngine
         var max = new TrackState(defender.CurrentHP, defender.Shield);
 
         var breakdown = new List<(string NodeId, double Damage)>(nodes.Count);
+        var shred = ShredState.None; // (2026-10-19) shred left by earlier nodes — the same on every track
 
         foreach (var node in nodes)
         {
@@ -110,12 +110,16 @@ public sealed class DamageEngine
             double baseRaw = node.Damage
                 + node.RatioAD * (attacker.Ad + attacker.BonusAD)
                 + node.RatioAP * attacker.Ap;
+            shred = shred.Before(node); // (M45 loop 50) lethality a hit grants counts on that hit too
+            var nodeDefender = ShreddedDefender(defender, shred);
+            var nodeAttacker = ShreddedAttacker(attacker, shred);
 
-            double blendDamage = ProcessNode(node, baseRaw, attacker, defender, blend, CritTrack.Blend);
+            double blendDamage = ProcessNode(node, baseRaw, nodeAttacker, nodeDefender, blend, CritTrack.Blend);
             breakdown.Add((node.NodeId, blendDamage));
 
-            ProcessNode(node, baseRaw, attacker, defender, min, CritTrack.Min);
-            ProcessNode(node, baseRaw, attacker, defender, max, CritTrack.Max);
+            ProcessNode(node, baseRaw, nodeAttacker, nodeDefender, min, CritTrack.Min);
+            ProcessNode(node, baseRaw, nodeAttacker, nodeDefender, max, CritTrack.Max);
+            shred = shred.After(node);
         }
 
         if (blend.RemainingHp < 0) blend.RemainingHp = 0;
@@ -170,6 +174,8 @@ public sealed class DamageEngine
                 // the defender's HP remaining *at the moment it lands*, replacing
                 // the flat ratioAD/ratioAP formula (tick-type execute skills).
                 raw = node.ExecutePercent * track.RemainingHp;
+                // (M45 loop 16) "Deals a minimum of X" (Dr. Mundo Q): the floor wins once the target is low.
+                if (node.ExecuteFloor > raw) raw = node.ExecuteFloor;
                 break;
             case ExecuteType.MissingHp:
                 // Additive bonus based on HP already missing at this point in the
@@ -206,7 +212,7 @@ public sealed class DamageEngine
         // EffectiveResistMultiplier; True is unmitigated. Extracted to
         // <see cref="MitigationMultiplier"/> (M20 fold work) for the same reuse-not-
         // duplicate reason as CritFactor above.
-        double mitigated = raw * MitigationMultiplier(node.DamageType, attacker, defender);
+        double mitigated = raw * NodeMultiplier(node, attacker, defender);
 
         track.TotalDamage += mitigated;
 
@@ -235,6 +241,13 @@ public sealed class DamageEngine
 
         // Step 5: execute checks.
         if (node.ExecuteType == ExecuteType.Threshold && track.RemainingHp <= node.ExecuteThreshold)
+        {
+            track.RemainingHp = 0;
+            track.Executed = true;
+        }
+        // (M45 loop 49) the holder's damage executes below a share of max health (The Collector)
+        else if (attacker.ExecuteBelowMaxHpFraction > 0 && hpLoss > 0
+                 && track.RemainingHp <= attacker.ExecuteBelowMaxHpFraction * defender.MaxHP)
         {
             track.RemainingHp = 0;
             track.Executed = true;
@@ -279,10 +292,10 @@ public sealed class DamageEngine
     /// damage (Step 4), extracted so <see cref="Fold"/> (M20 §5.1) can fold a node's
     /// crit-scaled damage into its effective <c>B</c>/<c>r</c>/<c>s</c>/<c>p</c> terms
     /// using the exact same rule instead of re-deriving it. Blend uses the probability-
-    /// weighted expected-value factor (unchanged constant <see cref="CritDamageMultiplier"/>,
-    /// not the attacker's real crit-damage stat — matches the pre-existing Blend
-    /// behavior); Min never assumes a crit; Max uses <see cref="ResolveCritMultiplier"/>
-    /// (guaranteed crit, real stat if reported). Returns 1.0 (no-op) whenever the node
+    /// weighted expected-value factor; Min never assumes a crit; Max is a guaranteed crit. Both
+    /// Blend and Max use <see cref="ResolveCritMultiplier"/> — the real stat when reported
+    /// (2026-10-19: Blend used to keep the constant, so an Infinity Edge never reached the
+    /// expected number, only the ceiling). Returns 1.0 (no-op) whenever the node
     /// can't crit or the attacker's crit chance is 0, for any track.
     ///
     /// <para>(M27 — <see cref="ComboNode.CritDamageScalar"/>, default 1.0) A curated ability hit can
@@ -297,11 +310,21 @@ public sealed class DamageEngine
     private static double CritFactor(ComboNode node, AttackerStat attacker, CritTrack critTrack)
     {
         if (node.GuaranteedCrit) return 1.0 + node.CritDamageScalar * (ResolveCritMultiplier(attacker) - 1.0);
+        // (M45 loop 50) A partial crit lifted by a crit of its own: Min = no crit of its own (the floor), Max = it crits,
+        // Blend = weighed by the chance. The true share is of the damage after mitigation - the same multiplier as the
+        // node's own (52 on a 347 crit at 0 armor; before / after armor is not yet measured, this is the smaller).
+        if (node.PartialCritFloor > 0)
+        {
+            double c = node.CanCrit ? Math.Clamp(attacker.CriticalChance, 0.0, 1.0) : 0.0;
+            double own = critTrack switch { CritTrack.Blend => c, CritTrack.Max => c > 0 ? 1.0 : 0.0, _ => 0.0 };
+            double bonus = node.CritDamageScalar * (ResolveCritMultiplier(attacker) - 1.0);
+            return (1.0 - own) * (1.0 + node.PartialCritFloor * bonus) + own * (1.0 + bonus) * (1.0 + node.CritTrueShare);
+        }
         if (!node.CanCrit || attacker.CriticalChance <= 0) return 1.0;
         double s = node.CritDamageScalar;
         return critTrack switch
         {
-            CritTrack.Blend => 1.0 + s * attacker.CriticalChance * (CritDamageMultiplier - 1.0),
+            CritTrack.Blend => 1.0 + s * attacker.CriticalChance * (ResolveCritMultiplier(attacker) - 1.0),
             CritTrack.Max => 1.0 + s * (ResolveCritMultiplier(attacker) - 1.0),
             _ => 1.0, // Min: worst-case-for-damage, never assume a crit lands.
         };
@@ -330,14 +353,12 @@ public sealed class DamageEngine
     /// League-accurate effective-resistance mitigation multiplier for one resistance
     /// channel (armor or MR). Order: flat reduction -> percent reduction -> percent
     /// penetration (only once the post-reduction resistance is still positive) -> flat
-    /// penetration. Percent penetration alone can only drive the post-reduction
-    /// resistance down to (not below) zero; flat penetration (lethality / Void Staff's
-    /// flat term via the caller) is applied AFTER that and CAN drive the resistance
-    /// negative — matching how lethality genuinely over-penetrates a low-resistance
-    /// target in live League (loop 38 pending-changes fix; previously flat pen was
-    /// wrongly clamped at 0, silently capping mitigation at "no reduction" instead of
-    /// amplifying). A negative resistance (from reduction or flat pen) amplifies damage
-    /// via the <c>2 - 100/(100-R)</c> branch instead of the usual <c>100/(100+R)</c>.
+    /// penetration. Penetration, percent or flat, only drives the post-reduction resistance
+    /// down to (not below) zero; only a REDUCTION makes it negative, which amplifies damage via the
+    /// <c>2 - 100/(100-R)</c> branch instead of the usual <c>100/(100+R)</c>. (M45 loop 50, measured
+    /// by the user in the Practice Tool: AD 173 with 10 lethality hits a 0-armor dummy for exactly 173,
+    /// and with 25 lethality a 30-armor one for 263 x 100/105 = 250. Loop 38 had let flat pen go
+    /// negative - "lethality over-penetrates" - which the game does not do.)
     /// </summary>
     private static double EffectiveResistMultiplier(
         double baseResist, double reductionFlat, double reductionPercent,
@@ -349,7 +370,7 @@ public sealed class DamageEngine
         if (r > 0)
         {
             r *= 1.0 - penPercent;          // % pen, never below 0
-            r -= penFlat;                   // flat pen / lethality — CAN drive R negative
+            r = Math.Max(0.0, r - penFlat); // flat pen / lethality, never below 0 either (M45 loop 50, measured)
         }
         return r >= 0 ? 100.0 / (100.0 + r) : 2.0 - 100.0 / (100.0 - r);
     }
@@ -370,6 +391,55 @@ public sealed class DamageEngine
                 attacker.MagicPenPercent, attacker.MagicPenFlat),
             _ => 1.0, // True damage: unmitigated.
         };
+
+    /// <summary>(2026-10-19) What reaches HP per point of raw damage: resistance mitigation, then the
+    /// target's reduction of damage from attacks (Plated Steelcaps) when the node is an attack.</summary>
+    private static double NodeMultiplier(ComboNode node, AttackerStat attacker, DefenderStat defender)
+        => MitigationMultiplier(node.DamageType, attacker, defender)
+           * (node.IsAttack ? defender.AttackDamageTakenMultiplier : 1.0);
+
+    /// <summary>(2026-10-19, M45) Armor / MR reduction left on the target by earlier nodes of the combo —
+    /// percent (Garen E's sixth strike −25% armor, Kog'Maw Q) and flat (Corki E, Rengar R). The largest of
+    /// each kind applies: the same debuff re-applied does not stack.</summary>
+    internal readonly record struct ShredState(double ArmorPercent, double MrPercent, double ArmorFlat, double MrFlat,
+        double ArmorPenFlat = 0)
+    {
+        public static readonly ShredState None = default;
+
+        public ShredState After(ComboNode node) => new(
+            Math.Max(ArmorPercent, node.ArmorShredPercentAfter), Math.Max(MrPercent, node.MrShredPercentAfter),
+            Math.Max(ArmorFlat, node.ArmorShredFlatAfter), Math.Max(MrFlat, node.MrShredFlatAfter),
+            Math.Max(ArmorPenFlat, node.ArmorPenFlatFrom));
+
+        /// <summary>(M45 loop 50) The lethality a node grants applies to that node already (Voltaic Cyclosword's
+        /// energized attack: measured 250 against 30 armor = its 263 at 30 - (10 + 15) armor).</summary>
+        public ShredState Before(ComboNode node)
+            => node.ArmorPenFlatFrom > ArmorPenFlat ? this with { ArmorPenFlat = node.ArmorPenFlatFrom } : this;
+    }
+
+    /// <summary>(M45 loop 48) The attacker with the lethality earlier hits granted (Voltaic Cyclosword's energized
+    /// attack: +15 / +12 for 4 s) - flat pen, applied after percent pen as lethality is, not an armor reduction.</summary>
+    private static AttackerStat ShreddedAttacker(AttackerStat attacker, ShredState shred)
+        => shred.ArmorPenFlat > 0 ? attacker with { ArmorPenFlat = attacker.ArmorPenFlat + shred.ArmorPenFlat } : attacker;
+
+    /// <summary>The defender under the shred earlier nodes left: flat reductions add, percent ones combine
+    /// multiplicatively with what the defender already carries.</summary>
+    private static DefenderStat ShreddedDefender(DefenderStat defender, ShredState shred)
+        => shred == ShredState.None ? defender : defender with
+        {
+            ArmorReductionFlat = defender.ArmorReductionFlat + shred.ArmorFlat,
+            ArmorReductionPercent = 1.0 - (1.0 - defender.ArmorReductionPercent) * (1.0 - shred.ArmorPercent),
+            MrReductionFlat = defender.MrReductionFlat + shred.MrFlat,
+            MrReductionPercent = 1.0 - (1.0 - defender.MrReductionPercent) * (1.0 - shred.MrPercent),
+        };
+
+    /// <summary>The shred the first <paramref name="count"/> nodes leave behind.</summary>
+    private static ShredState ShredBefore(IReadOnlyList<ComboNode> nodes, int count)
+    {
+        var shred = ShredState.None;
+        for (int i = 0; i < count && i < nodes.Count; i++) shred = shred.After(nodes[i]);
+        return shred;
+    }
 
     /// <summary>
     /// Step 6's killThresholdHP: a genuine inverse calculation of "the maximum
@@ -439,22 +509,28 @@ public sealed class DamageEngine
     /// (documented limitation, not a silent wrong answer — M20 §7's "Handling" column).
     /// </summary>
     internal static (double A, double B)? Fold(
-        IReadOnlyList<ComboNode> nodes, AttackerStat attacker, DefenderStat defender, CritTrack track)
+        IReadOnlyList<ComboNode> nodes, AttackerStat attacker, DefenderStat defender, CritTrack track,
+        ShredState initialShred = default)
     {
         if (defender.Shield > 0) return null;
 
         double a = 1.0, b = 0.0;
         double m = defender.MaxHP;
+        var shred = initialShred; // (2026-10-19) same running shred as Simulate
 
         foreach (var node in nodes)
         {
             if (node.ExecuteType == ExecuteType.Threshold) return null;
+            // (M45 loop 16) a floored current-health hit is max(percent x HP, floor) - not affine in H0
+            if (node.ExecuteType == ExecuteType.CurrentHp && node.ExecuteFloor > 0) return null;
 
             double baseRaw = node.Damage
                 + node.RatioAD * (attacker.Ad + attacker.BonusAD)
                 + node.RatioAP * attacker.Ap;
             double cf = CritFactor(node, attacker, track);
-            double k = MitigationMultiplier(node.DamageType, attacker, defender);
+            shred = shred.Before(node);
+            double k = NodeMultiplier(node, ShreddedAttacker(attacker, shred), ShreddedDefender(defender, shred));
+            shred = shred.After(node);
             double bEff = cf * baseRaw; // crit-scaled B (§5.1 derivations: crit scales the whole raw term)
 
             switch (node.ExecuteType)
@@ -510,8 +586,9 @@ public sealed class DamageEngine
         if (defender.MaxHP <= 0) return 0;
         if (Fold(nodes, attacker, defender, CritTrack.Max) is not { } folded) return null;
         if (folded.A == 0) return 0; // degenerate guard: avoid 0/0 or x/0
-        double h = folded.B / folded.A;
-        return h < 0 ? 0 : h;
+        // (M45 loop 49) an execute below a share of max health kills where the fold leaves that much
+        double h = (folded.B + attacker.ExecuteBelowMaxHpFraction * defender.MaxHP) / folded.A;
+        return h < 0 ? 0 : Math.Min(h, defender.MaxHP);
     }
 
     /// <summary>
@@ -532,9 +609,9 @@ public sealed class DamageEngine
         var suffix = new List<ComboNode>(nodes.Count - startIndex);
         for (int i = startIndex; i < nodes.Count; i++) suffix.Add(nodes[i]);
 
-        if (Fold(suffix, attacker, defender, track) is not { } folded) return null;
+        if (Fold(suffix, attacker, defender, track, ShredBefore(nodes, startIndex)) is not { } folded) return null;
         if (folded.A == 0) return 0;
-        double h = folded.B / folded.A;
+        double h = (folded.B + attacker.ExecuteBelowMaxHpFraction * defender.MaxHP) / folded.A;
         return h < 0 ? 0 : h;
     }
 
@@ -866,7 +943,26 @@ public sealed record ComboNode(
     // = ungated, byte-identical to every pre-existing node.
     double? HpBelowGateFraction = null,
     // (2026-10-17, Sundered Sky) Crits on every track, whatever the attacker's crit chance.
-    bool GuaranteedCrit = false);
+    bool GuaranteedCrit = false,
+    // (2026-10-19) An attack — a basic attack, or a skill hit that is (part of) one: Garen Q, a folded
+    // swing, an on-hit rider. A target's Plated Steelcaps reduces exactly these.
+    bool IsAttack = false,
+    // (2026-10-19) Once this node lands, the target's armor is reduced by this fraction for every later
+    // node of the combo (Garen E's sixth strike: 0.25). The largest shred so far applies; 0 = none.
+    double ArmorShredPercentAfter = 0,
+    // (M45 loop 4) The same for magic resist (Kog'Maw Q), and flat points of each (Corki E, Rengar R).
+    double MrShredPercentAfter = 0,
+    double ArmorShredFlatAfter = 0,
+    double MrShredFlatAfter = 0,
+    // (M45 loop 16) The least raw damage a CurrentHp execute deals ("a minimum of X"); 0 = none.
+    double ExecuteFloor = 0,
+    // (M45 loop 48) Lethality this hit grants the attacker for the rest of the combo (Voltaic Cyclosword) - (loop 50)
+    // from this hit on: the energized attack itself is measured with it.
+    double ArmorPenFlatFrom = 0,
+    // (M45 loop 50) The node crits on every track for at least this share of a crit; a crit of its own (the crit chance)
+    // makes it full and adds CritTrueShare of that damage as true damage (Fiendhunter Bolts: 0.8, 0.15). 0 = off.
+    double PartialCritFloor = 0,
+    double CritTrueShare = 0);
 
 /// <summary>
 /// Attacker's live stats. The four penetration fields are caller-supplied truth (the
@@ -876,7 +972,8 @@ public sealed record ComboNode(
 /// </summary>
 /// <param name="CritDamageMultiplier">Real crit-damage multiplier (e.g. 2.0 = 200%
 /// total damage on crit) from the Live Client API's <c>championStats.critDamage</c>
-/// (base 175% + any crit-damage-boosting items, e.g. Infinity Edge). 0 means "not
+/// (reported in percent — base 200% + crit-damage items such as Infinity Edge — and divided by
+/// 100 in LiveDataParser). 0 means "not
 /// reported" (API absent/older shape) — <see cref="DamageEngine"/> falls back to its
 /// own <see cref="DamageEngine.CritDamageMultiplier"/> constant in that case rather
 /// than treating 0 as a real "0x on crit" value. Default 0 keeps every pre-existing
@@ -892,7 +989,9 @@ public sealed record AttackerStat(
     double ArmorPenPercent = 0,
     double MagicPenFlat = 0,
     double MagicPenPercent = 0,
-    double CritDamageMultiplier = 0);
+    double CritDamageMultiplier = 0,
+    // (M45 loop 49) the attacker's damage executes the target below this share of its max health (The Collector)
+    double ExecuteBelowMaxHpFraction = 0);
 
 /// <summary>
 /// Defender's live stats. Per M05's "DefenderStat 산출 원칙", Armor/Mr must already be
@@ -910,7 +1009,9 @@ public sealed record DefenderStat(
     double ArmorReductionFlat = 0,
     double ArmorReductionPercent = 0,
     double MrReductionFlat = 0,
-    double MrReductionPercent = 0);
+    double MrReductionPercent = 0,
+    // (2026-10-19) Multiplier on damage the target takes from attacks (Plated Steelcaps: 0.9).
+    double AttackDamageTakenMultiplier = 1.0);
 
 /// <summary>
 /// Minimal placeholder input type for M06 Rune Engine output. M06 doesn't exist yet

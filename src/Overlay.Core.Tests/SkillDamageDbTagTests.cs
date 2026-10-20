@@ -181,13 +181,15 @@ public class SkillDamageDbTagTests : IDisposable
     public void Malzahar_W_RetrofittedTag_Zone_ParsesCorrectly()
     {
         SkillDamageDb.ResetForTests();
-        var hits = SkillDamageDb.GetHits("Malzahar", "W");
-        var hit = Assert.Single(hits!);
+        // R is Malzahar's burst-ceiling slot (the real data file).
+        Assert.Contains("BurstCeiling", SkillDamageDb.GetSlotTags("Malzahar", "R"));
+
+        // (M45 loop 15) The hit-level Zone tag on a duration-scaled hit parses - on the pre-rework W
+        // "Null Zone" fixture, since the real W is Void Swarm.
+        SkillDamageDb.LoadForTests("Malzahar", NullZoneFixture.Json);
+        var hit = Assert.Single(SkillDamageDb.GetHits("Malzahar", "W")!);
         Assert.True(hit.IsDurationScaled);
         Assert.NotNull(hit.Tags);
         Assert.Contains("Zone", hit.Tags!);
-
-        // R is Malzahar's burst-ceiling slot.
-        Assert.Contains("BurstCeiling", SkillDamageDb.GetSlotTags("Malzahar", "R"));
     }
 }

@@ -6,9 +6,11 @@
   "_noteE": "Searing Charge: TotalDamage = BaseDamage + 0.4x bonus Armor (mStat1/mStatFormula2) + 0.4x bonus MR (mStat6/mStatFormula2). Matches wiki 'Physical Damage: 80/125/170/215/260 (+40% bonus armor)(+40% bonus MR)' exactly.",
   "_noteR": "Call of the Forge God: RDamageCalc = RBaseDamage + 0.2x AP (no mStat -> default AP id 0). Base values (125/225/325 at ranks 1-3) are BIN-internal-consistent with Ornn's 3-rank ultimate pattern. Tagged BurstCeiling: the ultimate's landing impact + knockup is Ornn's single highest realistic burst-damage contribution.",
   "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteFloorW": "(2026-10-19, M45 loop 16) Bellows Breath deals at least TotalMinimumDamage to champions.",
+  "_noteRidesW": "(2026-10-20, M45 loop 43) Brittle: W's final flame applies it and the next IMMOBILIZING effect spends it (E's knock up, R's) - consumedByNextAbility, appliesTo E / R. It rode every cast, before W too.",
   "W": {
-    "hits": [ { "type": "Magic", "hpPercentDataValue": "MaxPercentHPPerTickTooltip", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ],
-    "bonusEffects": [ { "trigger": "onAbility", "hits": [ { "type": "Magic", "hpPercentCalc": "BrittlePercentMaxHPCalc", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] } ]
+    "hits": [ { "type": "Magic", "hpPercentDataValue": "MaxPercentHPPerTickTooltip", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"], "minDamageCalc": "TotalMinimumDamage" } ],
+    "bonusEffects": [ { "trigger": "onAbility", "consumedByNextAbility": true, "appliesTo": ["E", "R"], "hits": [ { "type": "Magic", "hpPercentCalc": "BrittlePercentMaxHPCalc", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] } ]
   },
   "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
   "R": { "hits": [ { "type": "Magic", "calc": "RDamageCalc", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },

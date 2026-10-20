@@ -1,5 +1,7 @@
 {
   "_note": "Curated (T2c + T3.x passive pass). Q (Icathian Rain) fires 6 missiles; MaxDamageTotal already sums all missiles on one target, so it is used with count 1 instead of the per-missile tooltip calc the auto pass picked. W base damage is EffectValueCalculationPart (not evaluable), E/R are utility/shield. P (Second Skin/Plasma): basic attacks apply on-hit MAGIC damage (PBaseDamage = level-interpolated base 4→24 + 0.12x AP, KaisaPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit; the additional per-stack scaling term (PCurrentPerStackDamage) is intentionally omitted as a conservative approximation (only the flat base proc is modeled, not the stack ramp). CORRECTED loop 219: W (Void Seeker) was previously left uncurated with the stated reason 'W base damage is EffectValueCalculationPart (not evaluable)'. That reasoning is disproven by this codebase's own Evelynn R (Last Caress), which already successfully curates via calc:'CritDamage' -> GameCalculationModified -> 'Damage', and 'Damage' itself is EffectValueCalculationPart(mEffectIndex=1) + StatByCoefficient(0.75) -- the identical shape to Kaisa W's 'TotalDamage' (EffectValueCalculationPart(mEffectIndex=1) + StatByCoefficient(mStat=2 TOTAL AD, 1.3) + StatByCoefficient(no mStat -> AP, 0.45)). The engine resolves a named calc's formula tree generically including EffectValueCalculationPart (it reads the SAME spell node's mEffectAmount array by index) -- this is unrelated to the genuinely-unsupported BuffCounterByNamedDataValueCalculationPart/BuffCounterByCoefficientCalculationPart class (live buff-stack state, e.g. this champion's own P per-stack term, still correctly left uncurated). Independently corroborated against this session's pre-collected Kaisa web evidence: wiki quote '30/55/80/105/130 (+130% AD)(+45% AP)' matches TotalDamage's formula (BIN mEffectAmount#1 = [30,55,80,105,130] for ranks 1-5, StatByCoefficient AD=1.3 total AD, AP=0.45) exactly, digit for digit -- confirms TotalDamage is the real live formula, not a tooltip-only approximation, despite its 'tooltipOnly': true flag (that flag is UI metadata only; grepped for it across the engine and it is never read/branched on, same non-finding as AurelionSol's MaxDamageTooltip false-positive-filter case this session). W curated as a single Magic hit, calc:'TotalDamage', count 1. [M32 pilot-crosscheck follow-up ADJUDICATED 2026-07-24: the follow-up claim that Q secondary-missile 25% values are NOT_IN_BIN is CLOSED - they are composed INSIDE the curated MaxDamageTotal calc via the ExtraHitReduction DataValue (BIN calc tree: BaseDamage+BonusADRatio+APRatio twice, second branch scaled by ExtraHitReduction). Single-target full-volley total already curated; no change needed. Evidence: curation_evidence/Kaisa.json.]",
+  "_notePlasmaP": "(2026-10-19, M45 loop 8) An attack on a target holding PMaxStacks (4) Plasma consumes it for PExecutePercentage missing health - procEvery 5 on her own attacks (W / allies add stacks the combo does not see).",
+  "_notePerStackP": "(2026-10-19, M45 loop 12) Plasma also deals PCurrentPerStackDamage per stack already on the target, up to PMaxStacks - the stack knob on the attack (unset = 0).",
   "P": {
     "bonusEffects": [
       {
@@ -8,19 +10,24 @@
           {
             "type": "Magic",
             "calc": "PBaseDamage",
-            "count": 1
+            "count": 1,
+            "perStackCalc": "PCurrentPerStackDamage",
+            "maxStacksDataValue": "PMaxStacks"
           }
         ]
-      }
+      },
+      { "trigger": "onHit", "procEvery": 5, "hits": [ { "type": "Magic", "hpPercentCalc": "PExecutePercentage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"] } ] }
     ]
   },
+  "_noteMissilesQ": "(2026-10-19, M45 loop 7) Was MaxDamageTotal (all six missiles on one target, assumed). Now one missile plus the extra missiles on the hit-count knob at ExtraHitReduction (25%), up to 5 (Effect2Amount 6 - 1); the knob at its cap reproduces MaxDamageTotal (metric F checks the sum). Evolved Q (11) is not modeled.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
-        "calc": "MaxDamageTotal",
+        "calc": "TotalIndividualMissileDamage",
         "count": 1
-      }
+      },
+      { "type": "Physical", "perAttackCalc": "TotalIndividualMissileDamage", "damageMultiplierDataValue": "ExtraHitReduction", "maxAttackCount": 5, "count": 1 }
     ]
   },
   "W": {

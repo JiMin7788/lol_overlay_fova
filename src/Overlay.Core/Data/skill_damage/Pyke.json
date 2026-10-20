@@ -4,10 +4,11 @@
   "_noteR": "Death from Below: RDamage (the tooltip's headline calc) sums a ByCharLevelBreakpoints base + 0.8x bonus AD (mStat 2, resolvable) + 1.5x mStat=29 (Lethality -- NOT in FormulaInterpreter's mapped stat set, same gap as P above), so evaluating 'RDamage' throws KeyNotFoundException at every rank. The BIN separately exposes the two resolvable sub-terms as their OWN named calcs: 'RBaseDamage' (just the level-breakpoint base, no stat scaling) and 'RADDamage' (just the 0.8x bonus AD term alone) -- curated as TWO hits reconstructing the AD-only portion of the true total (same 'sum of independently-resolvable sub-calcs' pattern as Garen R's flat+percent split). 'RLethalityDamage' (the 1.5x Lethality term) is NOT curated -- unresolvable, and its omission means this combo tool UNDERCOUNTS Pyke R for any build carrying Lethality items (a common, even typical, Pyke build), a documented limitation rather than a fabricated number. Tagged BurstCeiling: Death from Below is Pyke's single highest realistic burst/execute contribution (ultimate) despite the undercount.",
   "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
   "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteReducedR": "(2026-10-20, M45 loop 25) Champions ABOVE the execute threshold take ReducedDamage (50%) of the threshold amount (ReducedDamageFinal); below it they are executed (execute_effects pyke_r). The node dealt the whole amount.",
   "R": {
     "hits": [
-      { "type": "Physical", "calc": "RBaseDamage", "count": 1 },
-      { "type": "Physical", "calc": "RADDamage", "count": 1 }
+      { "type": "Physical", "calc": "RBaseDamage", "count": 1, "damageMultiplierDataValue": "ReducedDamage" },
+      { "type": "Physical", "calc": "RADDamage", "count": 1, "damageMultiplierDataValue": "ReducedDamage" }
     ],
     "tags": ["BurstCeiling", "AoeUltimate"]
   },

@@ -118,7 +118,6 @@ public class SweepBacklogClosureTests : IDisposable
     /// <summary>Every one of these adds to an unchanged floor: unticked must equal what the file
     /// resolved before the term was curated, or the change was not additive.</summary>
     [Theory]
-    [InlineData("Gangplank", "R")]
     [InlineData("AurelionSol", "R")]
     [InlineData("Shaco", "E")]
     public void TheFloorIsUnchanged_AndTheToggleRaisesIt(string championId, string slot)
@@ -154,11 +153,15 @@ public class SweepBacklogClosureTests : IDisposable
 
         // An un-upgraded R has no centre cannonball at all, so this is purely additive: the curated
         // hit has no baseline calc of its own.
+        // (M45 loop 22) the later waves ride the count knob (the third hit), so the toggle is no longer the
+        // only thing the range ceiling reaches - the floor and the toggle are checked here instead.
         var hits = SkillDamageDb.GetHits("Gangplank", "R")!;
-        Assert.Equal(2, hits.Length);
-        Assert.Equal(string.Empty, hits[1].Calc);
-        Assert.Equal("DeathsDaughterDamage", hits[1].MetCalc);
+        Assert.Equal(3, hits.Length);
+        Assert.Equal(string.Empty, hits[2].Calc);
+        Assert.Equal("DeathsDaughterDamage", hits[2].MetCalc);
+        Assert.Equal("OneWaveDamage", hits[1].PerAttackCalc);
         Assert.True(upgraded > barrage);
+        Assert.Equal(barrage, Run("Gangplank", "R", null).TotalDamage, 2);
     }
 
     /// <summary>(loop 486, user correction) Two-Shiv Poison's maximum is BOTH amplifications: the
@@ -177,13 +180,14 @@ public class SweepBacklogClosureTests : IDisposable
         Assert.Equal(0.3, hits[0].ConditionValue, 3);
         Assert.Equal("TotalExecuteDamage", hits[0].MetCalc);
 
-        // The backstab payload, on the passive object via binSpell, magic where the dagger is
-        // physical, and at ITS execute tier because the box means the best case.
+        // The backstab payload, on the passive object via binSpell, at ITS execute tier because the
+        // box means the best case. (M45 loop 9) Both are magic: the 16.20 tooltip deals the dagger as
+        // "magic damage" - the older curation had typed it physical.
         Assert.Equal("FromBehind", hits[1].ConditionType);
         Assert.Equal("ShivDamageExecute", hits[1].MetCalc);
         Assert.Equal("P", hits[1].BinSpell);
         Assert.Equal(HitDamageType.Magic, hits[1].Type);
-        Assert.Equal(HitDamageType.Physical, hits[0].Type);
+        Assert.Equal(HitDamageType.Magic, hits[0].Type);
     }
 
     [Fact]

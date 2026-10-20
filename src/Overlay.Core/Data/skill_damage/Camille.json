@@ -11,25 +11,29 @@
       { "type": "Physical", "calc": "BonusDamage", "count": 1 }
     ]
   },
+  "_noteTrueQ2": "(2026-10-20, M45 loop 23) The empowered recast converts DamageConversionPercentage (40% -> 100% by level) of the Attack's damage - the swing and the bonus - into true damage.",
   "Q2": {
     "icon": "assets/characters/camille/hud/icons2d/camille_q2.png",
     "hits": [
-      { "type": "Physical", "basicAttack": true, "count": 1 },
+      { "type": "Physical", "basicAttack": true, "binSpell": "Q", "trueShareCalc": "DamageConversionPercentage", "count": 1 },
       {
             "type": "Physical",
             "calc": "EmpoweredBonusDamage",
             "binSpell": "Q",
-            "count": 1
+            "count": 1,
+            "trueShareCalc": "DamageConversionPercentage"
       }
     ]
   },
+  "_noteOuterW": "(2026-10-19, M45 loop 17) Enemies hit by the outer half also take OuterEdgeTooltip max health physical damage - SweetSpot condition (unmet = none).",
   "W": {
     "hits": [
       {
         "type": "Physical",
         "calc": "BaseDamageTotal",
         "count": 1
-      }
+      },
+      { "type": "Physical", "conditionType": "SweetSpot", "metHpPercentCalc": "OuterEdgeTooltip", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
     ]
   },
   "E": {

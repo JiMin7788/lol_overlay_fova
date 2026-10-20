@@ -16,6 +16,8 @@
     ]
   },
   "_noteE": "Electro Harpoon (RumbleE): TotalDamage = base magic. M25 §11.G (loop 106): Rumble's Danger Zone (Heat >= 50, his own resource, exposed live via GameSnapshot.ResourceValue) empowers his abilities +50%. BIN 'EmpDamage' = GameCalculationModified(TotalDamage x 1.5), so this is now a ResourceGte-50 CONDITIONAL hit (AutoResolvable): calc:TotalDamage is the UNMET baseline (Heat < 50 = prior value, identity), metCalc:EmpDamage is the MET Danger-Zone value (Heat >= 50). Deterministic from live Heat -> resolves the same in both range graphs (no widening), same shape as Renekton Q Fury. (The x1.5 is BIN-sourced via GameCalculationModified, not hardcoded; the 50-Heat Danger-Zone threshold is Rumble's fixed resource gate.)",
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "conditionType": "ResourceGte", "conditionValue": 50, "metCalc": "EmpDamage", "count": 1 } ], "tags": ["MagicResistShred"] },
-  "R": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["Zone", "BurstCeiling", "AoeUltimate"] }
+  "_noteShredE": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Electro Harpoon reduces magic resist by PercMagicPen; later nodes of the combo hit the reduced resistance.",
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "conditionType": "ResourceGte", "conditionValue": 50, "metCalc": "EmpDamage", "count": 1, "mrShredDataValue": "PercMagicPen" } ], "tags": ["MagicResistShred"] },
+  "_noteRateR": "(2026-10-19, M45 loop 7) Was TotalDamage (the full 4.5 s trail lifetime, assumed). The tooltip states a per-second burn in an escapable trail: rate x exposure seconds on the node, up to TrailDuration; unset = 0 s (M24). The range ceiling still reaches the full trail.",
+  "R": { "hits": [ { "type": "Magic", "perSecondCalc": "DamagePerSecond", "maxDurationSeconds": 4.5, "maxDurationDataValue": "TrailDuration", "count": 1 } ], "tags": ["Zone", "BurstCeiling", "AoeUltimate"] }
 }

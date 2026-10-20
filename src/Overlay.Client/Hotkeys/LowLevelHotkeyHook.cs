@@ -26,8 +26,9 @@ namespace Overlay.Client.Hotkeys;
 ///  • It checks each key event ONLY against the registered combos and fires on a match.
 ///  • It NEVER logs, stores, buffers, or transmits any keystroke. There is no key history, no
 ///    file/console output of keys, no "all keys" collection. The ONLY state kept is the set of
-///    registered combos plus the currently-held MODIFIER keys, and that modifier state is
-///    tracked purely from this hook's own key events — never via <c>GetAsyncKeyState</c> /
+///    registered combos, the currently-held MODIFIER keys, and an open/closed flag that mirrors
+///    League's scoreboard toggle on Tab (2026-10-19: the global-gold panel shows alongside the
+///    scoreboard). That state is tracked purely from this hook's own key events — never via <c>GetAsyncKeyState</c> /
 ///    <c>GetKeyboardState</c> (those are intentionally not used).
 ///  • It does NOT consume/swallow the key: every event is passed through with
 ///    <c>CallNextHookEx</c>, so normal gameplay typing is completely unaffected.
@@ -68,6 +69,7 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     private const uint VK_CONTROL = 0x11, VK_LCONTROL = 0xA2, VK_RCONTROL = 0xA3;
     private const uint VK_MENU = 0x12, VK_LMENU = 0xA4, VK_RMENU = 0xA5; // Alt
     private const uint VK_LWIN = 0x5B, VK_RWIN = 0x5C;
+    private const uint VK_TAB = 0x09; // League's scoreboard key — held state only (see class doc)
 
     [StructLayout(LayoutKind.Sequential)]
     private struct KBDLLHOOKSTRUCT
@@ -118,6 +120,13 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     // Currently-held MODIFIER keys only (by vkCode). Not a keystroke log — modifiers only,
     // cleared on key-up, and used solely to build the chord for a registered-combo match.
     private readonly HashSet<uint> _heldModifiers = new();
+    // Mirror of League's scoreboard TOGGLE: flipped on each Tab press (key-repeat ignored via
+    // _tabDown). Two bools; no key history.
+    private volatile bool _scoreboardOpen;
+
+    // (M46) Non-modifier keys currently down, as combo tokens - a chord may hold up to three keys (Q+W).
+    private readonly List<string> _heldKeys = new();
+    private bool _tabDown;
 
     /// <summary>Raised (on the install/UI thread, from the hook callback) with the OS id of the
     /// registered combo that was pressed. Subscribe and forward to
@@ -211,7 +220,8 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     public void Reinstall()
     {
         if (_disposed) return;
-        lock (_lock) _heldModifiers.Clear();
+        lock (_lock) { _heldModifiers.Clear(); _heldKeys.Clear(); }
+        _tabDown = false;
 
         IntPtr old = _hookHandle;
         IntPtr fresh = Install();
@@ -240,6 +250,15 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
             return (CurrentModifiers() & modifier) == modifier;
     }
 
+    /// <summary>Mirror of League's scoreboard toggle (Tab): true after an odd number of Tab presses
+    /// since <see cref="ResetScoreboard"/>. Same hook-event tracking as the modifiers, same policy.
+    /// Alt/Ctrl/Win+Tab are not presses (Alt+Tab switches windows); plain or Shift+Tab are.</summary>
+    public bool IsScoreboardOpen => _scoreboardOpen;
+
+    /// <summary>The scoreboard starts closed in a new game — call on game start so a Tab pressed in
+    /// some other window beforehand cannot leave the mirror inverted.</summary>
+    public void ResetScoreboard() => _scoreboardOpen = false;
+
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
         _lastCallbackTick = Environment.TickCount64; // watchdog heartbeat (see WatchdogTick)
@@ -261,6 +280,14 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     private void OnKeyDown(uint vkCode)
     {
+        if (vkCode == VK_TAB && !_tabDown) // first down only — holding Tab auto-repeats key-down
+        {
+            _tabDown = true;
+            HotkeyModifiers mods;
+            lock (_lock) mods = CurrentModifiers();
+            if ((mods & (HotkeyModifiers.Alt | HotkeyModifiers.Control | HotkeyModifiers.Win)) == 0)
+                _scoreboardOpen = !_scoreboardOpen;
+        } // …and still match it below (SHIFT+TAB is a combo)
         if (IsModifier(vkCode))
         {
             lock (_lock) _heldModifiers.Add(vkCode);
@@ -270,11 +297,16 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
         var key = ToKeyToken(vkCode);
         if (key is null) return; // key we can't express as a combo token → cannot match anything.
 
-        int osId;
+        int osId = 0;
         lock (_lock)
         {
-            var pressed = new HotkeyCombo(CurrentModifiers(), key);
-            if (!_comboToOsId.TryGetValue(pressed, out osId)) return;
+            // (M46) the held keys together first (Q+W), then the key alone - a key held for something else never
+            // blocks a plain binding
+            bool found = false;
+            foreach (var pressed in HotkeyCombo.Candidates(CurrentModifiers(), _heldKeys, key))
+                if (_comboToOsId.TryGetValue(pressed, out osId)) { found = true; break; }
+            if (!_heldKeys.Contains(key)) _heldKeys.Add(key);
+            if (!found) return;
         }
 
         // (loop 518) Queue the fire instead of running the (potentially slow) handler on the hook
@@ -286,8 +318,11 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     private void OnKeyUp(uint vkCode)
     {
+        if (vkCode == VK_TAB) _tabDown = false;
         if (IsModifier(vkCode))
             lock (_lock) _heldModifiers.Remove(vkCode);
+        else if (ToKeyToken(vkCode) is { } token)
+            lock (_lock) _heldKeys.Remove(token);
     }
 
     private static bool IsModifier(uint vk) => vk switch
@@ -326,6 +361,7 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
         [0x25] = "LEFT", [0x26] = "UP", [0x27] = "RIGHT", [0x28] = "DOWN",
         [0x2D] = "INSERT", [0x2E] = "DELETE", [0x24] = "HOME", [0x23] = "END",
         [0x21] = "PAGEUP", [0x22] = "PAGEDOWN",
+        [0xC0] = "`", // (M46) VK_OEM_3, the backtick / tilde key (ALT+` = the skill overlay)
     };
 
     /// <summary>Maps a virtual-key code to the normalized key token a registered

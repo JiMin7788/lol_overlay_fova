@@ -1,13 +1,19 @@
 {
   "_note": "Curated (T3.x passive pass). P (Deadly Venom): basic attacks/abilities apply a stacking poison DoT dealing MAGIC damage per second (DamagePerSecond = level-breakpoint base [1@1,+1@5/9/13/17/21/25/29] + 0.03x AP, TwitchDeadlyVenomMarker.mSpellCalculations \u2014 breakpoints use the flat mAdditionalBonusAtThisLevel field, so they resolve exactly). Curated as a P bonusEffect trigger onHit \u2014 an assistive APPROXIMATION: the real mechanic is a per-second DoT tick that stacks up to 6, not a flat per-hit add (same documented approximation style as Mordekaiser's Darkness Rise aura). E kept as the auto first-pass physical pick.",
+  "_noteTypeP": "(2026-10-19, M45 loop 9) Type set to True from the tooltip - Deadly Venom: 'true damage per second'.",
+  "_noteVenomP": "(2026-10-20, M45 loop 23) Deadly Venom deals DamagePerSecond PER SECOND for Duration (it counted one second): each stack lasts at least Duration after it lands (a new attack refreshes them all), so each of the first MaxStacks (6) attacks adds a full Duration of its rate (guaranteedSeconds - a debuff, not a zone).",
   "P": {
     "bonusEffects": [
       {
         "trigger": "onHit",
+        "maxProcs": 6,
         "hits": [
           {
-            "type": "Magic",
-            "calc": "DamagePerSecond",
+            "type": "True",
+            "perSecondCalc": "DamagePerSecond",
+            "maxDurationSeconds": 6.0,
+            "maxDurationDataValue": "Duration",
+            "guaranteedSeconds": 6.0,
             "count": 1,
             "tags": [
               "Stacking"
@@ -17,6 +23,7 @@
       }
     ]
   },
+  "_noteStacksE": "(2026-10-19, M45 loop 12) Expunge deals Physical/MagicDamagePerStack per Deadly Venom stack - was one stack assumed. The count knob is the stack count, up to the venom MaxStacks 6.",
   "E": {
     "tags": [
       "Stacking"
@@ -29,12 +36,14 @@
       },
       {
         "type": "Physical",
-        "calc": "PhysicalDamagePerStack",
+        "perAttackCalc": "PhysicalDamagePerStack",
+        "maxAttackCount": 6,
         "count": 1
       },
       {
         "type": "Magic",
-        "calc": "MagicDamagePerStack",
+        "perAttackCalc": "MagicDamagePerStack",
+        "maxAttackCount": 6,
         "count": 1
       }
     ]

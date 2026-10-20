@@ -5,5 +5,6 @@
   "Q": { "hits": [ { "type": "Physical", "calc": "BaseDamage", "conditionType": "VsIsolated", "metCalc": "IsoDamage", "count": 1 } ] },
   "W": { "hits": [ { "type": "Physical", "calc": "BaseDamage", "count": 1 } ] },
   "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] }
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Unseen Threat: while unseen, his next Attack against a champion - once (maxProcs 1; R's stealth re-arms it, which the combo does not track: a floor); it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] }
 }

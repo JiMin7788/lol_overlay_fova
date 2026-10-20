@@ -21,9 +21,24 @@ public static class NextItemCandidates
             if (!item.AvailableOnSummonersRift || item.IsBoots || item.BuildsInto.Count > 0
                 || item.GoldTotal < MinGold || owned.Contains(item.Id)) continue;
             var extra = int.TryParse(item.Id, out int id) ? staticData?.GetItem(id) : null;
-            bool damage = item.Stats.Ad > 0 || item.Stats.Ap > 0 || ItemEffectDb.Get(item.Id) is not null
+            bool damage = item.Stats.Ad > 0 || item.Stats.Ap > 0 || ItemEffectDb.Get(item.Id) is { Trigger: not ItemTrigger.IncomingAttackReduction }
                 || extra is { Lethality: > 0 } or { FlatMagicPen: > 0 } or { PercentArmorPen: > 0 } or { PercentMagicPen: > 0 };
             if (damage) result.Add(item.Id);
+        }
+        return result;
+    }
+
+    /// <summary>(M46, user request) The tank side: the same finished / ≥2,200 gold / Summoner's Rift / not owned / not
+    /// boots filter, adding HP, armor or MR - what the enemies' combos are measured against.</summary>
+    public static IReadOnlyList<string> ForTank(IEnumerable<int> ownedItemIds)
+    {
+        var owned = new HashSet<string>(ownedItemIds.Select(i => i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        var result = new List<string>();
+        foreach (var item in ItemRepository.GetAll())
+        {
+            if (!item.AvailableOnSummonersRift || item.IsBoots || item.BuildsInto.Count > 0
+                || item.GoldTotal < MinGold || owned.Contains(item.Id)) continue;
+            if (item.Stats.Hp > 0 || item.Stats.Armor > 0 || item.Stats.Mr > 0) result.Add(item.Id);
         }
         return result;
     }

@@ -7,6 +7,7 @@ using Overlay.Client.Render;
 using Overlay.Core;
 using Overlay.Core.Combo;
 using Overlay.Core.Config;
+using Overlay.Core.Gold;
 using Overlay.Core.Items;
 using Overlay.Core.Overlay;
 using Overlay.Core.Render;
@@ -62,6 +63,20 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? _afterimageQuery;
     private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? _threatQuery;
     private readonly Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? _nextItemQuery;
+
+    /// <summary>(2026-10-19) True while the overlay is the header's 미리보기 (shown with no game). The
+    /// snapshot provider then serves the sample game; this flag adds what a snapshot cannot carry —
+    /// sample alert toasts and minimap timers, held on screen — plus the per-element size bars.</summary>
+    private readonly Func<bool> _isPreview;
+
+    /// <summary>(2026-10-19) Global gold estimate, and whether League's scoreboard is toggled
+    /// open (Tab). The estimate shows as a panel WITH the scoreboard rather than as a toast that
+    /// re-popped on every item change anyone made.</summary>
+    private readonly Func<GlobalGoldView?>? _globalGoldQuery;
+    private readonly Func<bool> _scoreboardOpen;
+
+    /// <summary>Enemy appear/disappear cards on screen at once; the oldest beyond this are not drawn.</summary>
+    private const int MaxPresenceCards = 3;
 
     /// <summary>M02 loop 38 continuation 12: reports whether the configured click-to-target
     /// modifier (default Ctrl) is currently held. Injected by <c>MainWindow</c> (which owns the
@@ -148,6 +163,14 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// actually on screen THIS frame — mirrors the existing <see cref="_portraitRect"/> pattern.</summary>
     private readonly Dictionary<string, Rect> _elementRects = new();
 
+    /// <summary>(2026-10-19) Last frame's rect per element with the offset it was drawn at, and
+    /// this frame's offsets — the anchor (rect − offset) is stable frame to frame, which lets
+    /// <see cref="GetOffset"/> keep an element on screen without every builder knowing its size
+    /// before it asks for the offset. See <see cref="KeepOnScreen"/>.</summary>
+    private readonly Dictionary<string, (Rect Rect, double Dx, double Dy)> _prevPlacement = new();
+    private readonly Dictionary<string, (double Dx, double Dy)> _offsetsThisFrame = new();
+    private double _surfaceW, _surfaceH;
+
     /// <summary>M02 pending-change #1: key of the element currently being dragged (movable
     /// mode), or null when no drag is in progress.</summary>
     private string? _draggingKey;
@@ -175,9 +198,15 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                         Func<GameSnapshot, Overlay.Core.Combo.SkillPanelResult?>? skillPanelQuery,
                         Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery,
                         Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? threatQuery,
-                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery)
+                        Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery,
+                        Func<bool>? isPreview,
+                        Func<GlobalGoldView?>? globalGoldQuery,
+                        Func<bool>? scoreboardOpen)
     {
         _window = window;
+        _isPreview = isPreview ?? (() => false);
+        _globalGoldQuery = globalGoldQuery;
+        _scoreboardOpen = scoreboardOpen ?? (() => false);
         // E1: the shared ConfigManager is injected by AppComposition (one instance for the
         // whole app) instead of constructing a duplicate here.
         _config = config;
@@ -205,6 +234,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         _surface.MouseMove += OnSurfaceMouseMove;
         _surface.MouseLeftButtonUp += OnSurfaceMouseUp;
         _surface.MouseWheel += OnSurfaceMouseWheel; // one-time minimap calibration resize (movable mode)
+        _surface.MouseRightButtonUp += OnSurfaceRightClick; // (2026-10-19) preview size bar: reset to 1.0
 
         // Keep the render surface the SAME size as the overlay window. The surface lives in a Canvas
         // (WidgetCanvas), which does not stretch its children, and its size was previously set only
@@ -235,9 +265,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                                     Func<GameSnapshot, Overlay.Core.Combo.SkillPanelResult?>? skillPanelQuery = null,
                                     Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Jungle.EnemyAfterimageTracker.Afterimage>?>? afterimageQuery = null,
                                     Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.EnemyThreat>?>? threatQuery = null,
-                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery = null)
+                                    Func<System.Collections.Generic.IReadOnlyList<Overlay.Core.Combo.NextItemRow>?>? nextItemQuery = null,
+                                    Func<bool>? isPreview = null,
+                                    Func<GlobalGoldView?>? globalGoldQuery = null,
+                                    Func<bool>? scoreboardOpen = null)
     {
-        var self = new OverlayHost(window, host, config, snapshot, isTargetClickModifierHeld, isMovable, laneReturnQuery, inhibitorQuery, nexusTurretQuery, gameCfgQuery, skillPanelQuery, afterimageQuery, threatQuery, nextItemQuery);
+        var self = new OverlayHost(window, host, config, snapshot, isTargetClickModifierHeld, isMovable, laneReturnQuery, inhibitorQuery, nexusTurretQuery, gameCfgQuery, skillPanelQuery, afterimageQuery, threatQuery, nextItemQuery, isPreview, globalGoldQuery, scoreboardOpen);
         self.SyncSurfaceToWindow();
         self._coordinator.Start();
         self._timer.Start();
@@ -300,6 +333,17 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     private void OnSurfaceMouseDown(object sender, MouseButtonEventArgs e)
     {
         var pt = e.GetPosition(_surface);
+
+        // (2026-10-19) Preview size bar: press anywhere on it to set the size there, then drag.
+        if (_sizeBars.Find(b => b.Hit.Contains(pt)) is { Key: not null } bar)
+        {
+            _sizeDragKey = bar.Key;
+            _sizeDragTrack = bar.Track;
+            _sizeDragValue = SizeAt(bar.Track, pt.X);
+            _surface.CaptureMouse();
+            e.Handled = true;
+            return;
+        }
 
         // (§40) Portrait-row selection: click an enemy portrait to pin it as the combo target. Takes
         // priority in NON-movable mode; in movable mode the row is dragged as one element instead.
@@ -401,6 +445,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
     private void OnSurfaceMouseMove(object sender, MouseEventArgs e)
     {
+        if (_sizeDragKey is not null)
+        {
+            _sizeDragValue = SizeAt(_sizeDragTrack, e.GetPosition(_surface).X);
+            return;
+        }
         if (_draggingKey is null) return;
 
         var pt = e.GetPosition(_surface);
@@ -415,6 +464,14 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// single drag gesture in the first place).</summary>
     private void OnSurfaceMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_sizeDragKey is not null)
+        {
+            _config.Set("overlay.elementScale." + _sizeDragKey, _sizeDragValue);
+            _sizeDragKey = null;
+            _surface.ReleaseMouseCapture();
+            e.Handled = true;
+            return;
+        }
         if (_draggingKey is null) return;
 
         if (_draggingKey == "minimapCal")
@@ -455,8 +512,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         }
         _pendingTapChampion = null;
 
-        _config.Set("overlay.positions." + _draggingKey + ".x", _dragLiveDx);
-        _config.Set("overlay.positions." + _draggingKey + ".y", _dragLiveDy);
+        // Commit where the element is actually drawn — the live offset clamped on screen by
+        // KeepOnScreen — not where the pointer went past the edge.
+        var (commitDx, commitDy) = _offsetsThisFrame.TryGetValue(_draggingKey, out var drawn)
+            ? drawn : (_dragLiveDx, _dragLiveDy);
+        _config.Set("overlay.positions." + _draggingKey + ".x", commitDx);
+        _config.Set("overlay.positions." + _draggingKey + ".y", commitDy);
         _surface.ReleaseMouseCapture();
         _draggingKey = null;
         e.Handled = true;
@@ -469,10 +530,36 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// pointer smoothly frame-to-frame.</summary>
     private (double dx, double dy) GetOffset(string key)
     {
-        if (_draggingKey == key) return (_dragLiveDx, _dragLiveDy);
+        double dx, dy;
+        if (_draggingKey == key)
+        {
+            dx = _dragLiveDx;
+            dy = _dragLiveDy;
+        }
+        else
+        {
+            dx = _config.Get("overlay.positions." + key + ".x") is double dxv ? dxv : 0;
+            dy = _config.Get("overlay.positions." + key + ".y") is double dyv ? dyv : 0;
+        }
+        (dx, dy) = KeepOnScreen(key, dx, dy);
+        _offsetsThisFrame[key] = (dx, dy);
+        return (dx, dy);
+    }
 
-        double dx = _config.Get("overlay.positions." + key + ".x") is double dxv ? dxv : 0;
-        double dy = _config.Get("overlay.positions." + key + ".y") is double dyv ? dyv : 0;
+    /// <summary>(2026-10-19, user report: "미리보기 시 오버레이가 화면 밖으로 벗어남") Offsets are absolute
+    /// DIPs saved on whatever surface the user dragged on — a big game window, or before the size
+    /// knob went up — so on a smaller preview monitor an element could sit partly or wholly off
+    /// screen. Clamps the offset so the element's rect stays inside the surface. Display-only: the
+    /// saved offset is untouched, so the layout comes back where it was as soon as there is room
+    /// (a drag commits what is on screen — see <see cref="OnSurfaceMouseUp"/>).</summary>
+    private (double dx, double dy) KeepOnScreen(string key, double dx, double dy)
+    {
+        if (_surfaceW <= 0 || _surfaceH <= 0 || !_prevPlacement.TryGetValue(key, out var prev))
+            return (dx, dy); // first frame of an element: nothing known yet, clamped from the next
+        double anchorX = prev.Rect.X - prev.Dx, anchorY = prev.Rect.Y - prev.Dy;
+        double w = prev.Rect.Width, h = prev.Rect.Height;
+        dx = w >= _surfaceW ? -anchorX : Math.Clamp(dx, -anchorX, _surfaceW - w - anchorX);
+        dy = h >= _surfaceH ? -anchorY : Math.Clamp(dy, -anchorY, _surfaceH - h - anchorY);
         return (dx, dy);
     }
 
@@ -614,6 +701,10 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
     public void CloseDashboard() => _window.SetClickThrough(true);
 
+    /// <summary>(2026-10-19) Removes the combo card — the preview's card must not carry over into a
+    /// real game, or into the next preview (re-triggering a shown combo would toggle it off).</summary>
+    public void ClearComboCard() => _coordinator.ClearHud("UI.COMBO_RESULT");
+
     // ── Frame loop ────────────────────────────────────────────────────────────────
 
     private void RenderFrame()
@@ -628,10 +719,17 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         _pickerRects.Clear(); // (loop 118) rebuilt this frame only while the picker is open
         _rosterRects.Clear(); // (§40) enemy portrait-row cells hit-testable only this frame
         // M02 pending-change #1: same "only this frame's actual rects are hit-testable"
-        // guarantee, for per-element dragging.
+        // guarantee, for per-element dragging. The rects are kept one frame longer, with their
+        // offsets, for KeepOnScreen.
+        _prevPlacement.Clear();
+        foreach (var (key, rect) in _elementRects)
+            if (_offsetsThisFrame.TryGetValue(key, out var o)) _prevPlacement[key] = (rect, o.Dx, o.Dy);
+        _offsetsThisFrame.Clear();
         _elementRects.Clear();
 
         GetSurfaceSize(out double w, out double h);
+        _surfaceW = w;
+        _surfaceH = h;
         double scale = ReadScale(h);
 
         _queue.BeginFrame();
@@ -648,7 +746,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             if (snap?.HasData == true && IsEnabled("statusCard"))
             {
                 _cardBuffer.Clear();
-                BuildStatusCard(_cardBuffer, snap, scale);
+                BuildStatusCard(_cardBuffer, snap, ScaleFor("statusCard", scale));
                 for (int i = 0; i < _cardBuffer.Count; i++)
                     _queue.Enqueue(_cardBuffer[i], StatusCardZOrder);
             }
@@ -670,7 +768,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 if (threatSnap is { HasData: true })
                 {
                     _cardBuffer.Clear();
-                    BuildThreatCard(_cardBuffer, threatSnap, threats, w, h, scale);
+                    BuildThreatCard(_cardBuffer, threatSnap, threats, w, h, ScaleFor("threatCard", scale));
                     Enqueue(_cardBuffer, ComboStackZOrder);
                 }
             }
@@ -679,7 +777,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             if (IsEnabled("nextItemCard") && _nextItemQuery?.Invoke() is { Count: > 0 } nextItems)
             {
                 _cardBuffer.Clear();
-                BuildNextItemCard(_cardBuffer, nextItems, w, h, scale);
+                BuildNextItemCard(_cardBuffer, nextItems, w, h, ScaleFor("nextItemCard", scale));
                 Enqueue(_cardBuffer, ComboStackZOrder);
             }
 
@@ -691,7 +789,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 if (wardSnap is { HasData: true })
                 {
                     _cardBuffer.Clear();
-                    BuildEnemyWardPanel(_cardBuffer, wardSnap, w, h, scale);
+                    BuildEnemyWardPanel(_cardBuffer, wardSnap, w, h, ScaleFor("enemyWards", scale));
                     Enqueue(_cardBuffer, ComboStackZOrder);
                 }
             }
@@ -700,18 +798,47 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             // (the compact string toast vs. the taller enemy-item card) never overlap. Starts at the
             // top margin; non-stacking cards (minimap-anchored / top-center) leave it untouched.
             double toastY = 12.0 * scale;
-            foreach (var item in _coordinator.GetRenderList())
+            var renderList = _coordinator.GetRenderList();
+            // (2026-10-19) Each enemy has at most one appear/disappear card (keyed by champion); with
+            // five enemies that is still a column, so only the newest MaxPresenceCards are drawn. The
+            // list is ordered by z then show order, so the oldest presence cards come first.
+            int presenceToSkip = -MaxPresenceCards;
+            foreach (var item in renderList)
+                if (item.Payload.Type == HudType.EnemyPresence) presenceToSkip++;
+            foreach (var item in renderList)
             {
                 // M02 pending-change #1: per-HUD-type enable toggle, extended from the original
                 // 3 M19 §3 items to every HUD type (see ConfigSchema.OverlayItemsConfig).
                 if (!IsEnabled(ElementKey(item.Payload.Type))) continue;
                 // (§40) ComboResult is drawn by BuildComboStack above (top-center), not here.
                 if (item.Payload.Type == HudType.ComboResult) continue;
+                // (2026-10-19) Global gold shows with the scoreboard (below), never as a toast.
+                if (item.Payload.Type == HudType.GlobalGold) continue;
+                if (item.Payload.Type == HudType.EnemyPresence && presenceToSkip-- > 0) continue;
 
                 _cardBuffer.Clear();
                 BuildCard(_cardBuffer, item.Payload, item.ExpiryMs, w, h, scale, ref toastY);
                 for (int i = 0; i < _cardBuffer.Count; i++)
                     _queue.Enqueue(_cardBuffer[i], item.ZOrder);
+            }
+
+            // (2026-10-19) Preview: the alert cards a game would raise, held on screen (a real alert
+            // fades after seconds — too short to place or size it).
+            bool preview = _isPreview();
+            if (preview) BuildPreviewAlerts(w, h, scale, ref toastY);
+
+            // (2026-10-19) Global gold: while League's scoreboard is open (Tab toggles both), or (2026-10-20)
+            // while its own key has it on. In the preview it is always up, with sample numbers, so it can be
+            // placed and sized.
+            if (IsEnabled("globalGold"))
+            {
+                GlobalGoldView? gold = preview ? PreviewGlobalGold : _scoreboardOpen() ? _globalGoldQuery?.Invoke() : null;
+                if (gold is not null)
+                {
+                    _cardBuffer.Clear();
+                    BuildGlobalGoldPanel(_cardBuffer, gold, w, h, ScaleFor("globalGold", scale));
+                    Enqueue(_cardBuffer, 45);
+                }
             }
 
             // (user request) 적 복귀 예측(귀환+라인 복귀) timers were MOVED OUT of this minimap-left stack
@@ -835,6 +962,14 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 }
             }
         }
+        // (2026-10-19) Preview only: a size bar under every element, drawn last so it sits on top.
+        _sizeBars.Clear();
+        if (w > 0 && h > 0 && _isPreview())
+        {
+            _cardBuffer.Clear();
+            BuildSizeBars(_cardBuffer, w, h);
+            Enqueue(_cardBuffer, SizeBarZOrder);
+        }
         _surface.Submit(_queue.EndFrame());
 
         // (loop 118) After the frame is laid out, decide whether the overlay should be interactive
@@ -852,7 +987,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     {
         // Picker open, or the target-click modifier is held (a keyboard fallback in case the cursor
         // hover-test below is off, e.g. under unusual DPI), always want interaction.
-        bool want = _pickerOpen || _isTargetClickModifierHeld();
+        bool want = _pickerOpen || _isTargetClickModifierHeld() || _sizeDragKey is not null;
         // (§40) Also want interaction when hovering the enemy portrait ROW, so a plain click selects a
         // target without holding a key (same hover-to-interact as the combo card).
         if (!want && GetCursorPos(out var np))
@@ -862,6 +997,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 var local = _surface.PointFromScreen(new System.Windows.Point(np.X, np.Y));
                 if (_elementRects.TryGetValue("comboResult", out var card) && card.Contains(local)) want = true;
                 else if (_elementRects.TryGetValue("enemyPortraitRow", out var row) && row.Contains(local)) want = true;
+                else if (_sizeBars.Exists(b => b.Hit.Contains(local))) want = true;
             }
             catch (System.InvalidOperationException) { /* surface not connected to a PresentationSource yet */ }
         }
@@ -916,7 +1052,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // portrait + the item's icon), joining the top-right stack.
         if (payload.Type == HudType.EnemyItemAlert && payload.Content is EnemyItemAlert enemyItem)
         {
-            BuildEnemyItemCard(into, enemyItem, expiryMs, w, scale, ref toastY);
+            BuildEnemyItemCard(into, enemyItem, expiryMs, w, ScaleFor("enemyItemAlert", scale), ref toastY);
             return;
         }
 
@@ -924,7 +1060,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // the old plain-string notification), joining the top-right stack.
         if (payload.Type == HudType.EnemyPresence && payload.Content is EnemyPresenceHud presence)
         {
-            BuildEnemyPresenceCard(into, presence, expiryMs, w, scale, ref toastY);
+            BuildEnemyPresenceCard(into, presence, expiryMs, w, ScaleFor("notification", scale), ref toastY);
             return;
         }
 
@@ -935,7 +1071,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // toastIndex slot (that would leave a gap in the other toasts' stacking order).
         if (payload.Type is HudType.InhibitorTimer)
         {
-            BuildMinimapAnchoredCard(into, payload.Type, message, w, h, scale);
+            BuildMinimapAnchoredCard(into, payload.Type, message, w, h, ScaleFor(ElementKey(payload.Type), scale));
             return;
         }
 
@@ -944,11 +1080,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // top-right toast stack, so it must not consume a toastIndex slot either.
         if (payload.Type is HudType.EnemyJunglerSpottedAlert)
         {
-            BuildEnemyJunglerSpottedCard(into, message, expiryMs, w, h, scale);
+            BuildEnemyJunglerSpottedCard(into, message, expiryMs, w, h, ScaleFor("enemyJunglerSpotted", scale));
             return;
         }
 
-        BuildToastCard(into, payload.Type, message, w, scale, ref toastY);
+        BuildToastCard(into, payload.Type, message, w, ScaleFor(ElementKey(payload.Type), scale), ref toastY);
     }
 
     /// <summary>M30 real "적 정글 발견" alert: a small card centered top-of-screen, anchored
@@ -1083,7 +1219,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 string? selected = hud?.TargetChampion;
                 if (string.IsNullOrEmpty(selected)) selected = ReadManualTarget();
                 _cardBuffer.Clear();
-                BuildPortraitRow(_cardBuffer, roster, selected, centerX, ref y, scale);
+                BuildPortraitRow(_cardBuffer, roster, selected, centerX, ref y, ScaleFor("enemyPortraitRow", scale));
                 Enqueue(_cardBuffer, ComboStackZOrder);
                 y += gap;
             }
@@ -1094,7 +1230,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         if (hud is not null && IsEnabled("comboResult"))
         {
             _cardBuffer.Clear();
-            BuildComboCard(_cardBuffer, hud, centerX, ref y, scale);
+            BuildComboCard(_cardBuffer, hud, centerX, ref y, ScaleFor("comboResult", scale));
             Enqueue(_cardBuffer, ComboStackZOrder);
             y += gap;
         }
@@ -1105,7 +1241,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         if (IsEnabled("skillOverlay") && SkillPanel() is { } panel)
         {
             _cardBuffer.Clear();
-            BuildSkillCard(_cardBuffer, panel, centerX, ref y, scale);
+            BuildSkillCard(_cardBuffer, panel, centerX, ref y, ScaleFor("skillOverlay", scale));
             Enqueue(_cardBuffer, ComboStackZOrder);
             y += gap;
         }
@@ -1268,9 +1404,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         into.Add(Rect(x0, y0, panelW, panelH, PanelBorder));
         into.Add(Rect(x0 + 1, y0 + 1, panelW - 2, panelH - 2, RowBg));
 
-        string target = Localization.ChampionName(
+        // (M46) a tank ranking: the enemies' combined full combos against my max HP, before -> after
+        bool tank = top[0].Tank;
+        string target = tank ? string.Empty : Localization.ChampionName(
             Overlay.Core.ChampionDb.ChampionSummary.ResolveKoreanName(top[0].TargetChampion) ?? top[0].TargetChampion);
-        into.Add(Text($"다음 아이템 · {target} 상대 콤보 데미지", x0 + padH, y0 + padV, TextPrimary, titleF));
+        into.Add(Text(tank ? "다음 아이템 · 탱커 (적 풀콤보 버티기)" : $"다음 아이템 · {target} 상대 콤보 데미지",
+            x0 + padH, y0 + padV, TextPrimary, titleF));
 
         double y = y0 + padV + titleF * 1.6;
         foreach (var r in top)
@@ -1283,14 +1422,18 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             string name = item?.NameKo ?? item?.Name ?? r.ItemId;
             double tx = x0 + padH + icon + 8 * scale;
             into.Add(Text(name, tx, y + 1 * scale, TextPrimary, f));
-            string gain = $"+{r.GainPercent:0}%  ·  +{r.GainPer1000Gold:0} / 1000골드";
-            into.Add(Text(gain, tx, y + f * 1.25, r.GainPercent > 0 ? ThreatHpGreen : NameDim, capF + 1 * scale));
-            if (r.MakesOneShot)
+            string gain = r.Tank
+                ? $"적 콤보 합 {r.Before * 100:0}% → {r.After * 100:0}% (내 체력 대비)  ·  -{r.ShareCutPer1000Gold:0.0}%p / 1000골드"
+                : $"+{r.GainPercent:0}%  ·  +{r.GainPer1000Gold:0} / 1000골드";
+            bool better = r.Tank ? r.ShareCutPoints > 0 : r.GainPercent > 0;
+            into.Add(Text(gain, tx, y + f * 1.25, better ? ThreatHpGreen : NameDim, capF + 1 * scale));
+            if (!r.Tank && r.MakesOneShot)
                 into.Add(Text("원콤", x0 + panelW - padH - 26 * scale, y + 4 * scale, ThreatRed, f));
             y += rowH;
         }
 
-        into.Add(Text("치명타·공속·스킬가속·지속 효과는 계산 안 됨", x0 + padH, y + 1 * scale, NameDim, capF));
+        into.Add(Text(tank ? "보호막·회복·지속 효과는 계산 안 됨 · 적 스킬 모두 준비 기준"
+                           : "치명타·공속·스킬가속·지속 효과는 계산 안 됨", x0 + padH, y + 1 * scale, NameDim, capF));
     }
 
     private const uint ThreatRed = 0xFFE5484D;
@@ -1444,6 +1587,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// in the icon card's idiom (glyphs draw OVER the icon rather than beside a letter).</para>
     private void BuildComboCard(List<DrawCommand> into, ComboHudResult hud, double centerX, ref double y, double scale)
     {
+        if (CompactCards()) { BuildCompactComboCard(into, hud, centerX, ref y, scale); return; }
         var cr = hud.Result;
         double cardW = 412 * scale, padX = 14 * scale, padY = 13 * scale;
         double headerH = 20 * scale, hpBarH = 22 * scale, boxH = 48 * scale, chipSize = 30 * scale;
@@ -1508,6 +1652,14 @@ public sealed class OverlayHost : IOverlayView, IDisposable
                 if (hp % 1000 == 0) into.Add(Rect(tx - 1 * scale, cy, 2 * scale, hpBarH, 0xF2000000));
                 else into.Add(Rect(tx, cy + hpBarH * 0.5, 1 * scale, hpBarH * 0.5, 0xB3000000));
             }
+            // (M46) The crit expectation: a white line between the guaranteed and the max-roll ends, captioned in the
+            // same white at the gauge's right end (the freshness note keeps the left).
+            if (cr.CritExpected is double expected)
+            {
+                into.Add(Rect(innerX + hpBarW * System.Math.Clamp(expected / maxHp, 0, 1) - 1 * scale, cy, 2 * scale, hpBarH, HpExpectedLine));
+                string cap = "치명 기대 " + expected.ToString("0", CultureInfo.InvariantCulture);
+                into.Add(Text(cap, innerX + hpBarW - cap.Length * freshF * 0.62, cy + hpBarH + 3 * scale, HpExpectedLine, freshF));
+            }
             // The bright cut line marks the guaranteed-kill HP (rMin): at or below it, the kill is sure.
             double cutX = innerX + hpBarW * killMin;
             into.Add(Rect(cutX - 1 * scale, cy - 2 * scale, 2 * scale, hpBarH + 4 * scale, HpMinLine));
@@ -1561,71 +1713,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         }
         cy += m3;
 
-        var seq = hud.Sequence;
-        if (seq is null || seq.Count == 0)
-        {
-            var fb = new List<ComboSequenceToken>();
-            foreach (var t in (hud.CommandLabel ?? "").Split('-', StringSplitOptions.RemoveEmptyEntries))
-                fb.Add(new ComboSequenceToken(t, t is "Q" or "W" or "E" or "R" or "q" or "w" or "e" or "r"));
-            seq = fb;
-        }
-        double chipX = innerX, chipGap = 6 * scale, chipInset = 1.5 * scale;
+        var seq = SequenceOf(hud);
+        double chipX = innerX, chipGap = 6 * scale;
         foreach (var token in seq)
         {
             if (chipX + chipSize > innerR) break;
-            bool auto = !token.IsAbility;
-            uint col = auto ? SlotA : SlotColor(token.Label.ToUpperInvariant());
-
-            // (M28 §3, restored — see BuildComboCard's doc comment) A binary condition the user
-            // assumed MET draws a gold FRAME behind the chip: the chip background is painted on top
-            // of a slightly larger gold rect, leaving a thin border — the "empowered/glowing" read.
-            if (token.Knob == ComboKnobShape.MaxDamage)
-            {
-                double b = 1.5 * scale;
-                into.Add(RectSharp(chipX - b, cy - b, chipSize + 2 * b, chipSize + 2 * b, AccentGold));
-            }
-
-            // (user request) Combo-sequence ability chips are SHARP squares again ("정사각형으로 복구").
-            // The render layer rounds every Rect by default, which had softened these into rounded
-            // squares. Basic-attack (auto) keeps the default rounded chip behind its sword icon
-            // ("기본공격 제외").
-            into.Add(auto ? Rect(chipX, cy, chipSize, chipSize, col)
-                          : RectSharp(chipX, cy, chipSize, chipSize, col));
-
-            // (issue: use skill icons, not P/Q/W/E/R letters) Prefer the real Data Dragon icon:
-            // a summoner-spell token draws that spell's icon, an ability token draws the combo
-            // champion's P/Q/W/E/R spell/passive icon. Both are non-blocking (a not-yet-cached icon
-            // returns null and appears on a later frame), so we fall back to the sword (auto-attack)
-            // or the key letter until the icon is ready — exactly the pre-template behaviour.
-            string? iconPath = null;
-            if (token.SummonerSpellId is { Length: > 0 } sid)
-                iconPath = DDragonIconProvider.SummonerIconPathOrNull(sid);
-            else if (token.IsAbility && !string.IsNullOrEmpty(hud.CasterChampion))
-                iconPath = AbilityIconProvider.AbilityIconPathOrNull(hud.CasterChampion, token.Label);
-
-            if (iconPath is not null)
-                into.Add(Icon(iconPath, chipX + chipInset, cy + chipInset, chipSize - 2 * chipInset, chipSize - 2 * chipInset));
-            else if (auto)
-                into.Add(BasicAttackIcon(chipX + chipSize * 0.1, cy + chipSize * 0.1, chipSize * 0.8, chipSize * 0.8, 0xFFE6E8EC));
-            else
-                into.Add(Text(token.Label, chipX + chipSize * 0.32, cy + chipSize * 0.16, TextPrimary, 13 * scale));
-
-            // (M28 §3, restored) The knob glyphs, drawn OVER the icon so they survive the switch from
-            // letter chips to ability icons — that switch is exactly what dropped them (see §77).
-            switch (token.Knob)
-            {
-                case ComboKnobShape.MaxDamage: // ▲ corner badge, top-right (pairs with the gold frame)
-                    into.Add(Text("▲", chipX + chipSize - 8 * scale, cy - 4 * scale, AccentGold, 10 * scale));
-                    break;
-                case ComboKnobShape.Slider: // fill-bar underline at the knob's fraction (full = solid)
-                    into.Add(Rect(chipX, cy + chipSize + 1 * scale,
-                        chipSize * System.Math.Clamp(token.SliderFraction, 0, 1), 2 * scale, AccentGold));
-                    break;
-                case ComboKnobShape.Count: // ×n badge, bottom-right
-                    into.Add(Text("×" + token.Count.ToString(CultureInfo.InvariantCulture),
-                        chipX + chipSize - 12 * scale, cy + chipSize - 11 * scale, AccentGold, 10 * scale));
-                    break;
-            }
+            DrawSequenceChip(into, token, hud.CasterChampion, chipX, cy, chipSize, scale);
             chipX += chipSize + chipGap;
         }
 
@@ -1657,6 +1750,79 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         }
 
         y += cardH;
+    }
+
+    /// <summary>The card's chip sequence: the structured one, else parsed from the command label
+    /// (the legacy path before <see cref="ComboHudResult.Sequence"/> existed).</summary>
+    private static IReadOnlyList<ComboSequenceToken> SequenceOf(ComboHudResult hud)
+    {
+        if (hud.Sequence is { Count: > 0 } seq) return seq;
+        var fb = new List<ComboSequenceToken>();
+        foreach (var t in (hud.CommandLabel ?? "").Split('-', StringSplitOptions.RemoveEmptyEntries))
+            fb.Add(new ComboSequenceToken(t, t is "Q" or "W" or "E" or "R" or "q" or "w" or "e" or "r"));
+        return fb;
+    }
+
+    /// <summary>One combo-sequence chip: slot-coloured square (rounded for a basic attack), the real
+    /// ability / summoner icon when cached, and the M28 §3 knob glyphs. Shared by the full and the
+    /// compact combo card.</summary>
+    private static void DrawSequenceChip(List<DrawCommand> into, ComboSequenceToken token, string? casterChampion,
+                                         double chipX, double cy, double chipSize, double scale)
+    {
+        double chipInset = 1.5 * scale;
+        bool auto = !token.IsAbility;
+        uint col = auto ? SlotA : SlotColor(token.Label.ToUpperInvariant());
+
+        // (M28 §3, restored — see BuildComboCard's doc comment) A binary condition the user
+        // assumed MET draws a gold FRAME behind the chip: the chip background is painted on top
+        // of a slightly larger gold rect, leaving a thin border — the "empowered/glowing" read.
+        if (token.Knob == ComboKnobShape.MaxDamage)
+        {
+            double b = 1.5 * scale;
+            into.Add(RectSharp(chipX - b, cy - b, chipSize + 2 * b, chipSize + 2 * b, AccentGold));
+        }
+
+        // (user request) Combo-sequence ability chips are SHARP squares again ("정사각형으로 복구").
+        // The render layer rounds every Rect by default, which had softened these into rounded
+        // squares. Basic-attack (auto) keeps the default rounded chip behind its sword icon
+        // ("기본공격 제외").
+        into.Add(auto ? Rect(chipX, cy, chipSize, chipSize, col)
+                      : RectSharp(chipX, cy, chipSize, chipSize, col));
+
+        // (issue: use skill icons, not P/Q/W/E/R letters) Prefer the real Data Dragon icon:
+        // a summoner-spell token draws that spell's icon, an ability token draws the combo
+        // champion's P/Q/W/E/R spell/passive icon. Both are non-blocking (a not-yet-cached icon
+        // returns null and appears on a later frame), so we fall back to the sword (auto-attack)
+        // or the key letter until the icon is ready — exactly the pre-template behaviour.
+        string? iconPath = null;
+        if (token.SummonerSpellId is { Length: > 0 } sid)
+            iconPath = DDragonIconProvider.SummonerIconPathOrNull(sid);
+        else if (token.IsAbility && !string.IsNullOrEmpty(casterChampion))
+            iconPath = AbilityIconProvider.AbilityIconPathOrNull(casterChampion, token.Label);
+
+        if (iconPath is not null)
+            into.Add(Icon(iconPath, chipX + chipInset, cy + chipInset, chipSize - 2 * chipInset, chipSize - 2 * chipInset));
+        else if (auto)
+            into.Add(BasicAttackIcon(chipX + chipSize * 0.1, cy + chipSize * 0.1, chipSize * 0.8, chipSize * 0.8, 0xFFE6E8EC));
+        else
+            into.Add(Text(token.Label, chipX + chipSize * 0.32, cy + chipSize * 0.16, TextPrimary, 13 * scale));
+
+        // (M28 §3, restored) The knob glyphs, drawn OVER the icon so they survive the switch from
+        // letter chips to ability icons — that switch is exactly what dropped them (see §77).
+        switch (token.Knob)
+        {
+            case ComboKnobShape.MaxDamage: // ▲ corner badge, top-right (pairs with the gold frame)
+                into.Add(Text("▲", chipX + chipSize - 8 * scale, cy - 4 * scale, AccentGold, 10 * scale));
+                break;
+            case ComboKnobShape.Slider: // fill-bar underline at the knob's fraction (full = solid)
+                into.Add(Rect(chipX, cy + chipSize + 1 * scale,
+                    chipSize * System.Math.Clamp(token.SliderFraction, 0, 1), 2 * scale, AccentGold));
+                break;
+            case ComboKnobShape.Count: // ×n badge, bottom-right
+                into.Add(Text("×" + token.Count.ToString(CultureInfo.InvariantCulture),
+                    chipX + chipSize - 12 * scale, cy + chipSize - 11 * scale, AccentGold, 10 * scale));
+                break;
+        }
     }
 
     /// <summary>
@@ -1703,6 +1869,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// dimmed. Basic attack (A) shows the sword icon.</summary>
     private void BuildSkillCard(List<DrawCommand> into, Overlay.Core.Combo.SkillPanelResult panel, double centerX, ref double y, double scale)
     {
+        if (CompactCards()) { BuildCompactSkillCard(into, panel, centerX, ref y, scale); return; }
         var slots = panel.Slots;
         double cardW = 412 * scale, padX = 14 * scale, padY = 13 * scale;
         double headerH = 20 * scale, m = 13 * scale, boxIcon = 45 * scale, dmgF = 19 * scale;
@@ -2109,6 +2276,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     private const uint HpKillRed        = 0xFFE23327; // solid red = HP the combo GUARANTEES a kill on (≤ rMin)
     private const uint HpKillSpread     = 0x66E23327; // translucent red = min→max kill spread (kills only on the max roll)
     private const uint HpMinLine        = 0xFFFFE066; // #ffe066 guaranteed-kill cut line
+    private const uint HpExpectedLine   = 0xFFF2F4F7; // (M46) near-white crit-expectation line + its caption
     private const uint MaxBoxBg         = 0xFF1A1310; private const uint MaxBoxBorder = 0xFF3A2420;
     private const uint MinBoxBg         = 0xFF1A170F; private const uint MinBoxBorder = 0xFF3A3220;
     private const uint MaxDmgNum        = 0xFFFF7A6A; private const uint MaxDmgLabel  = 0xFFFF9A8A;
@@ -2159,7 +2327,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// below scales everything proportionally on other viewports and display scales.</summary>
     private const double ReferenceViewportHeight = 2160.0;
 
-    /// <summary>Read the effective HUD scale = user's <c>overlay.scale</c> knob (M19 §2, clamped 0.5–2.0)
+    /// <summary>Range of the user's <c>overlay.scale</c> knob — must match the Settings slider.</summary>
+    private const double MinUserScale = 0.3, MaxUserScale = 3.0;
+
+    /// <summary>Read the effective HUD scale = user's <c>overlay.scale</c> knob (M19 §2, clamped 0.3–3.0 —
+    /// the Settings slider's range since 2026-10-19; it was 0.5–2.0 behind a 0.75–1.5 slider)
     /// × an automatic resolution-fit factor (<paramref name="surfaceHeight"/> ÷
     /// <see cref="ReferenceViewportHeight"/>). The auto factor makes the overlay match the actual game
     /// viewport instead of always drawing at 4K size — fixes the "overlay ~2× too big / runs off a 1080p
@@ -2168,7 +2340,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     private double ReadScale(double surfaceHeight)
     {
         double s = _config.Get("overlay.scale") is double d ? d : 1.0;
-        s = s > 0 ? Math.Clamp(s, 0.5, 2.0) : 1.0;
+        s = s > 0 ? Math.Clamp(s, MinUserScale, MaxUserScale) : 1.0;
 
         // Auto-fit to the game viewport's DIP height. Everything is drawn in DIPs, which WPF
         // multiplies by the display scale on the way to the screen, so the HUD covers
@@ -2183,6 +2355,407 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         autoFit = Math.Clamp(autoFit, 0.2, 2.0);
 
         return s * autoFit;
+    }
+
+    // ── Per-element size, compact cards, preview (2026-10-19, user request) ─────────────────
+
+    /// <summary>Range of a per-element size (<c>overlay.elementScale.{key}</c>), on top of the global
+    /// size knob. The preview's size bars span exactly this.</summary>
+    private const double MinElementScale = 0.5, MaxElementScale = 2.0;
+
+    /// <summary>Above every HUD element, so a size bar is never hidden under the card it sizes.</summary>
+    private const int SizeBarZOrder = 500;
+
+    /// <summary>This frame's size bars (preview only): element key, clickable area, and the track the
+    /// pointer's x maps onto.</summary>
+    private readonly List<(string Key, Rect Hit, Rect Track)> _sizeBars = new();
+
+    /// <summary>The element whose size bar is being dragged (null = none), its track at press time,
+    /// and the live value — drawn immediately, written to config on release.</summary>
+    private string? _sizeDragKey;
+    private Rect _sizeDragTrack;
+    private double _sizeDragValue = 1.0;
+
+    private double ElementScale(string key)
+        => _config.Get("overlay.elementScale." + key) is double d && d > 0
+            ? Math.Clamp(d, MinElementScale, MaxElementScale) : 1.0;
+
+    /// <summary>The scale one element draws at: the global scale × its own size (the live drag
+    /// value while its bar is being dragged).</summary>
+    private double ScaleFor(string key, double scale)
+        => scale * (_sizeDragKey == key ? _sizeDragValue : ElementScale(key));
+
+    /// <summary>간단히 보기 (<c>overlay.compactCards</c>): the combo and skill cards drop the armor/MR
+    /// header and the HP gauge and keep the damage, the skill icons and a minimal portrait.</summary>
+    private bool CompactCards() => _config.Get("overlay.compactCards") is true;
+
+    /// <summary>Size at pointer x on a size-bar track, snapped to 0.05.</summary>
+    private static double SizeAt(Rect track, double x)
+    {
+        double frac = track.Width > 0 ? Math.Clamp((x - track.X) / track.Width, 0, 1) : 0.5;
+        double v = MinElementScale + frac * (MaxElementScale - MinElementScale);
+        return Math.Round(v * 20) / 20;
+    }
+
+    /// <summary>Right-click on a preview size bar puts that element back to its normal size.</summary>
+    private void OnSurfaceRightClick(object sender, MouseButtonEventArgs e)
+    {
+        var pt = e.GetPosition(_surface);
+        if (_sizeBars.Find(b => b.Hit.Contains(pt)) is not { Key: not null } bar) return;
+        _config.Set("overlay.elementScale." + bar.Key, 1.0);
+        e.Handled = true;
+    }
+
+    /// <summary>Compact combo card (간단히 보기): a minimal target portrait, the damage — max large,
+    /// min small when the two differ — (M46, user: "far too bare") a slim kill-threshold gauge against the target's
+    /// max HP, and the sequence's skill icons. No armor/MR header.</summary>
+    private void BuildCompactComboCard(List<DrawCommand> into, ComboHudResult hud, double centerX, ref double y, double scale)
+    {
+        var cr = hud.Result;
+        double pad = 8 * scale, portrait = 22 * scale, gap = 6 * scale;
+        double numF = 20 * scale, minF = 12 * scale, chipSize = 24 * scale, chipGap = 4 * scale;
+        double rMax = cr.RangeMax > 0 ? cr.RangeMax : cr.TotalDamage;
+        double rMin = cr.RangeMin > 0 ? cr.RangeMin : rMax;
+        string maxText = rMax.ToString("0", CultureInfo.InvariantCulture);
+        string minText = "최소 " + rMin.ToString("0", CultureInfo.InvariantCulture);
+        double? expected = cr.CritExpected; // (M46) the crit expectation: after the min, and a line on the gauge
+        if (expected is double ev) minText += " · 기대 " + ev.ToString("0", CultureInfo.InvariantCulture);
+        bool range =!string.Equals(maxText, rMin.ToString("0", CultureInfo.InvariantCulture), StringComparison.Ordinal);
+        var seq = SequenceOf(hud);
+
+        double row1H = Math.Max(portrait, numF * 1.2);
+        double maxW = maxText.Length * numF * 0.6;
+        double row1W = portrait + gap + maxW + (range ? gap + minText.Length * minF * 0.75 : 0);
+        double chipsW = seq.Count == 0 ? 0 : seq.Count * chipSize + (seq.Count - 1) * chipGap;
+        double maxHp = hud.TargetMaxHp, barH = 9 * scale;
+        bool gauge = maxHp > 0;
+        double cardW = pad * 2 + Math.Max(Math.Max(row1W, chipsW), gauge ? 150 * scale : 0);
+        double cardH = pad + row1H + (gauge ? gap + barH : 0) + (seq.Count > 0 ? gap + chipSize : 0) + pad;
+
+        var (dx, dy) = GetOffset("comboResult");
+        double x = centerX - cardW / 2 + dx, yy = y + dy;
+        _elementRects["comboResult"] = new Rect(x, yy, cardW, cardH);
+
+        into.Add(Rect(x + 2, yy + 3, cardW, cardH, CardShadow));
+        into.Add(Rect(x, yy, cardW, cardH, PanelBorder));
+        into.Add(Rect(x + 1, yy + 1, cardW - 2, cardH - 2, OverlayPanelBg));
+
+        double cx = x + pad, cy = yy + pad;
+        double py = cy + (row1H - portrait) / 2, bi = 1.5 * scale;
+        into.Add(Ellipse(cx, py, portrait, portrait, RingSelected));
+        string? pref = string.IsNullOrEmpty(hud.TargetChampion) ? null : _championIcons.GetPortraitReference(hud.TargetChampion);
+        if (pref is not null) into.Add(Icon(pref, cx + bi, py + bi, portrait - 2 * bi, portrait - 2 * bi, 2));
+        else into.Add(Ellipse(cx + bi, py + bi, portrait - 2 * bi, portrait - 2 * bi, NeutralChipBg));
+
+        double tx = cx + portrait + gap;
+        into.Add(TextMono(maxText, tx, cy + (row1H - numF * 1.2) / 2, MaxDmgNum, numF));
+        if (range)
+            into.Add(Text(minText, tx + maxW + gap, cy + (row1H - minF * 1.2) / 2 + 2 * scale, MinDmgNum, minF));
+        cy += row1H + gap;
+
+        if (gauge)
+        {
+            // the full card's gauge, slim: red to the guaranteed kill (min), translucent to the max roll, a tick per 1000
+            double barW = cardW - 2 * pad;
+            double killMin = Math.Clamp(rMin / maxHp, 0, 1), killMax = Math.Clamp(rMax / maxHp, 0, 1);
+            into.Add(Rect(cx - 1 * scale, cy - 1 * scale, barW + 2 * scale, barH + 2 * scale, HpBarBorder));
+            into.Add(Rect(cx, cy, barW, barH, HpBarBg));
+            into.Add(Rect(cx, cy, barW * killMin, barH, HpKillRed));
+            if (killMax > killMin)
+                into.Add(Rect(cx + barW * killMin, cy, barW * (killMax - killMin), barH, HpKillSpread));
+            for (int hp = 1000; hp < maxHp; hp += 1000)
+                into.Add(Rect(cx + hp / maxHp * barW - 1 * scale, cy, 2 * scale, barH, 0xF2000000));
+            if (expected is double e)
+                into.Add(Rect(cx + barW * Math.Clamp(e / maxHp, 0, 1) - 1 * scale, cy, 2 * scale, barH, HpExpectedLine));
+            into.Add(Rect(cx + barW * killMin - 1 * scale, cy - 2 * scale, 2 * scale, barH + 4 * scale, HpMinLine));
+            cy += barH + gap;
+        }
+
+        double chipX = cx;
+        foreach (var token in seq)
+        {
+            DrawSequenceChip(into, token, hud.CasterChampion, chipX, cy, chipSize, scale);
+            chipX += chipSize + chipGap;
+        }
+        y += cardH;
+    }
+
+    /// <summary>Compact skill card (간단히 보기): each slot's icon with its damage under it, no header.</summary>
+    private void BuildCompactSkillCard(List<DrawCommand> into, Overlay.Core.Combo.SkillPanelResult panel, double centerX, ref double y, double scale)
+    {
+        var slots = panel.Slots;
+        double pad = 8 * scale, icon = 24 * scale, gap = 6 * scale, dmgF = 12 * scale, cellW = 34 * scale;
+        int n = slots.Count;
+        double cardW = pad * 2 + n * cellW + Math.Max(0, n - 1) * gap;
+        double cardH = pad + icon + 3 * scale + dmgF * 1.25 + pad;
+
+        var (dx, dy) = GetOffset("skillOverlay");
+        double x = centerX - cardW / 2 + dx, yy = y + dy;
+        _elementRects["skillOverlay"] = new Rect(x, yy, cardW, cardH);
+
+        into.Add(Rect(x + 2, yy + 3, cardW, cardH, CardShadow));
+        into.Add(Rect(x, yy, cardW, cardH, PanelBorder));
+        into.Add(Rect(x + 1, yy + 1, cardW - 2, cardH - 2, OverlayPanelBg));
+
+        double bx = x + pad, cy = yy + pad, inset = 1.5 * scale;
+        foreach (var s in slots)
+        {
+            double iconX = bx + (cellW - icon) / 2;
+            bool auto = s.Slot == "A";
+            into.Add(auto ? Rect(iconX, cy, icon, icon, SlotColor(s.Slot)) : RectSharp(iconX, cy, icon, icon, SlotColor(s.Slot)));
+            string? iconPath = auto || string.IsNullOrEmpty(panel.CasterChampion)
+                ? null : AbilityIconProvider.AbilityIconPathOrNull(panel.CasterChampion, s.Slot);
+            if (iconPath is not null)
+                into.Add(Icon(iconPath, iconX + inset, cy + inset, icon - 2 * inset, icon - 2 * inset));
+            else if (auto)
+                into.Add(BasicAttackIcon(iconX + icon * 0.1, cy + icon * 0.1, icon * 0.8, icon * 0.8, 0xFFE6E8EC));
+            else
+                into.Add(Text(s.Slot, iconX + icon * 0.3, cy + icon * 0.15, TextPrimary, 12 * scale));
+
+            string d = s.Damage.ToString("0", CultureInfo.InvariantCulture);
+            into.Add(TextMono(d, bx + cellW / 2 - d.Length * dmgF * 0.3, cy + icon + 3 * scale,
+                s.Damage > 0.5 ? SkillDmgOn : SkillDmgOff, dmgF));
+            bx += cellW + gap;
+        }
+        y += cardH;
+    }
+
+    /// <summary>Preview: one of each alert a game would raise, held on screen for placing and sizing
+    /// (a real alert fades after a few seconds), plus sample minimap timers and a last-seen marker.
+    /// Respects each element's enable toggle — the preview shows what the game would show.</summary>
+    private void BuildPreviewAlerts(double w, double h, double scale, ref double toastY)
+    {
+        _cardBuffer.Clear();
+        if (IsEnabled("enemyItemAlert"))
+        {
+            var item = Overlay.Core.ChampionDb.ItemRepository.Get("3157");
+            BuildEnemyItemCard(_cardBuffer, new EnemyItemAlert("Ahri", "3157", item?.NameKo ?? item?.Name ?? "Zhonya's Hourglass"),
+                long.MaxValue, w, ScaleFor("enemyItemAlert", scale), ref toastY);
+        }
+        if (IsEnabled("itemAlert"))
+            BuildToastCard(_cardBuffer, HudType.ItemAlert, "[미리보기] 내 아이템 완성", w, ScaleFor("itemAlert", scale), ref toastY);
+        if (IsEnabled("notification"))
+            BuildEnemyPresenceCard(_cardBuffer, new EnemyPresenceHud("[미리보기] 리 신 · 적 캠프 · 사라짐", "LeeSin",
+                EnemyAlertKind.Disappear, 1), long.MaxValue, w, ScaleFor("notification", scale), ref toastY);
+        Enqueue(_cardBuffer, 80);
+
+        // In game this card stays quiet while minimap vision captures (the presence card above says
+        // the same thing with a location), so the preview leaves it out in that case too.
+#if LIGHT
+        const bool visionOn = false;
+#else
+        bool visionOn = _config.Get("minimap.vision") is true;
+#endif
+        if (IsEnabled("enemyJunglerSpotted") && !visionOn)
+        {
+            _cardBuffer.Clear();
+            BuildEnemyJunglerSpottedCard(_cardBuffer, "[미리보기] 적 정글 발견 · 리 신", long.MaxValue, w, h,
+                ScaleFor("enemyJunglerSpotted", scale));
+            Enqueue(_cardBuffer, 90);
+        }
+
+        var mm = ResolveMinimapRect(w, h, out _);
+        if (mm.Width <= 0) return;
+        _cardBuffer.Clear();
+        if (IsEnabled("inhibitorTimers"))
+        {
+            double f = 11 * scale;
+            AddMinimapTimerLabel(mm.X + 0.782 * mm.Width, mm.Y + 0.219 * mm.Height, FormatTimerSeconds(252), AccentGold, f);
+            AddMinimapTimerLabel(mm.X + 0.153 * mm.Width, mm.Y + 0.872 * mm.Height, FormatTimerSeconds(125), 0xFFF0C674, f);
+        }
+        if (AfterimageEnabled() && _championIcons.GetPortraitReference("LeeSin") is { } lee)
+        {
+            double size = Math.Max(10.0, mm.Width * 0.085);
+            _cardBuffer.Add(Icon(lee, mm.X + 0.30 * mm.Width - size / 2, mm.Y + 0.42 * mm.Height - size / 2, size, size, 2, AfterimageOpacity()));
+        }
+        Enqueue(_cardBuffer, StatusCardZOrder + 2);
+    }
+
+    /// <summary>Preview sample: team totals that are exactly the sum of the five lanes.</summary>
+    private static readonly GlobalGoldView PreviewGlobalGold = new(
+        new TeamGoldEstimate(41250, 39800, 1450, IsEstimate: true),
+        new[]
+        {
+            new LaneGoldEstimate("TOP", 8200, 7800),
+            new LaneGoldEstimate("JUNGLE", 7400, 7900),
+            new LaneGoldEstimate("MIDDLE", 9100, 8000),
+            new LaneGoldEstimate("BOTTOM", 10200, 9800),
+            new LaneGoldEstimate("UTILITY", 6350, 6300),
+        },
+        AllyIsBlue: true);
+
+    // Global gold panel palette: League's own scoreboard frame (hextech black, dark gold trim) so the
+    // panel reads as part of it, and blue/red for the two SIDES (Theme.xaml AllyColor/EnemyColor values).
+    private const uint GoldPanelBg     = 0xF2010A13; // #010A13 hextech black
+    private const uint GoldPanelBorder = 0xFF785A28; // #785A28 scoreboard trim
+    private const uint GoldBlue        = 0xFF4C8DFF;
+    private const uint GoldRed         = ThreatRed;  // same #E5484D
+    private const uint GoldBlueDim     = 0x804C8DFF; // the trailing side's share of the bar
+    private const uint GoldRedDim      = 0x80E5484D;
+    private const uint GoldBarTrack    = 0xFF1E2328;
+
+    /// <summary>A lead of this fraction of the two sides' average gold fills a bar completely. Gold
+    /// leads matter relative to the game's size — 1.5k is decisive at 8 minutes and small at 35 — and
+    /// raw shares (41k : 39k is 51 : 49) would barely move the bar.</summary>
+    private const double GoldLeadForFullBar = 0.20;
+
+    /// <summary>(2026-10-19) Global gold panel, shown while the scoreboard is open: a header strip
+    /// for League's scoreboard (sharp corners, its black/gold frame) centred just above it. Like the
+    /// scoreboard it is split by side — blue team left, red team right, the player's side tagged
+    /// "우리" — with the totals on the sides, the leading side and its lead in the middle, a
+    /// tug-of-war bar that leans to the leader, and — when positions are known — each lane's lead
+    /// with its own small bar. Every number is an estimate and the caption says so (P2). Draggable /
+    /// sizable as "globalGold".</summary>
+    private void BuildGlobalGoldPanel(List<DrawCommand> into, GlobalGoldView view, double w, double h, double scale)
+    {
+        var team = view.Team;
+        var lanes = view.Lanes;
+        bool allyBlue = view.AllyIsBlue;
+        double blueGold = allyBlue ? team.AllyGold : team.EnemyGold;
+        double redGold = allyBlue ? team.EnemyGold : team.AllyGold;
+        double pad = 12 * scale, capF = 11 * scale, numF = 20 * scale, diffF = 22 * scale, laneF = 12 * scale;
+        double panelW = 440 * scale, barH = 8 * scale, laneBarH = 3 * scale;
+        double laneH = lanes.Count > 0 ? 10 * scale + laneF * 1.35 + 3 * scale + laneBarH : 0;
+        double panelH = pad + capF * 1.4 + diffF * 1.2 + 6 * scale + barH + laneH + pad;
+
+        // League's scoreboard opens in the middle of the screen; the strip sits on top of it, its
+        // bottom edge at 17.25% of the height — where the user placed it over a live scoreboard
+        // (2560×1600 window, 2026-10-19). Bottom-anchored so a panel without lane rows keeps that gap.
+        var (dx, dy) = GetOffset("globalGold");
+        double x = w / 2 - panelW / 2 + dx, y = h * 0.1725 - panelH + dy;
+        _elementRects["globalGold"] = new Rect(x, y, panelW, panelH);
+
+        into.Add(RectSharp(x + 3, y + 3, panelW, panelH, CardShadow));
+        into.Add(RectSharp(x, y, panelW, panelH, GoldPanelBorder));
+        into.Add(RectSharp(x + 1, y + 1, panelW - 2, panelH - 2, GoldPanelBg));
+
+        double left = x + pad, right = x + panelW - pad, mid = x + panelW / 2;
+        double cy = y + pad;
+        string blueLabel = Localization.L("gold.blue"), redLabel = Localization.L("gold.red");
+        string mine = Localization.L("gold.mine"), caption = Localization.L("gold.caption");
+        double gap = 6 * scale, redX = right - ApproxTextWidth(redLabel, capF);
+        into.Add(Text(blueLabel, left, cy, GoldBlue, capF));
+        into.Add(Text(redLabel, redX, cy, GoldRed, capF));
+        into.Add(allyBlue
+            ? Text(mine, left + ApproxTextWidth(blueLabel, capF) + gap, cy, AccentGold, capF)
+            : Text(mine, redX - gap - ApproxTextWidth(mine, capF), cy, AccentGold, capF));
+        into.Add(Text(caption, mid - ApproxTextWidth(caption, capF) / 2, cy, TextDim, capF));
+        cy += capF * 1.4;
+
+        string blueText = FormatGold(blueGold), redText = FormatGold(redGold);
+        double numY = cy + (diffF - numF) * 0.6;
+        into.Add(TextMono(blueText, left, numY, GoldBlue, numF));
+        into.Add(TextMono(redText, right - MonoWidth(redText, numF), numY, GoldRed, numF));
+
+        // Centre: "블루 +1.5k" — which side leads, by how much; "±0" when even.
+        double lead = blueGold - redGold;
+        string leadText = FormatGoldLead(lead);
+        string leader = Math.Abs(lead) < 100 ? "" : Localization.L(lead > 0 ? "gold.blueShort" : "gold.redShort");
+        double leaderW = leader.Length > 0 ? ApproxTextWidth(leader, numF) + 2 * gap : 0;
+        double leadX = mid - (leaderW + MonoWidth(leadText, diffF)) / 2;
+        uint leadColor = GoldLeadColor(lead);
+        if (leader.Length > 0) into.Add(Text(leader, leadX, numY, leadColor, numF));
+        into.Add(TextMono(leadText, leadX + leaderW, cy, leadColor, diffF));
+        cy += diffF * 1.2 + 6 * scale;
+
+        DrawGoldTugBar(into, left, cy, right - left, barH, blueGold, redGold);
+        into.Add(RectSharp(mid - 1 * scale, cy - 3 * scale, 2 * scale, barH + 6 * scale, AccentGold));
+        cy += barH;
+
+        if (lanes.Count == 0) return;
+        cy += 10 * scale;
+        double cellW = (right - left) / lanes.Count, laneGap = 8 * scale;
+        for (int i = 0; i < lanes.Count; i++)
+        {
+            var lane = lanes[i];
+            string label = Localization.L("stats.role." + lane.Role);
+            double laneBlue = allyBlue ? lane.AllyGold : lane.EnemyGold;
+            double laneRed = allyBlue ? lane.EnemyGold : lane.AllyGold;
+            string value = FormatGoldLead(laneBlue - laneRed);
+            double labelW = ApproxTextWidth(label, laneF), valueW = MonoWidth(value, laneF);
+            double cx = left + i * cellW, tx = cx + (cellW - labelW - 5 * scale - valueW) / 2;
+            into.Add(Text(label, tx, cy, TextDim, laneF));
+            into.Add(TextMono(value, tx + labelW + 5 * scale, cy, GoldLeadColor(laneBlue - laneRed), laneF));
+            DrawGoldTugBar(into, cx + laneGap / 2, cy + laneF * 1.35 + 3 * scale, cellW - laneGap, laneBarH, laneBlue, laneRed);
+        }
+    }
+
+    /// <summary>Blue share from the left, red share from the right, meeting at the middle moved
+    /// toward the trailing side by the lead (full at <see cref="GoldLeadForFullBar"/>). The leading
+    /// side's part is solid, the trailing side's dimmed.</summary>
+    private static void DrawGoldTugBar(List<DrawCommand> into, double x, double y, double width, double height, double blue, double red)
+    {
+        double avg = (blue + red) / 2;
+        double lean = avg > 0 ? Math.Clamp((blue - red) / avg / GoldLeadForFullBar, -1, 1) : 0;
+        double split = width * (0.5 + lean / 2);
+        into.Add(RectSharp(x, y, width, height, GoldBarTrack));
+        if (split > 0) into.Add(RectSharp(x, y, split, height, lean >= 0 ? GoldBlue : GoldBlueDim));
+        if (split < width) into.Add(RectSharp(x + split, y, width - split, height, lean <= 0 ? GoldRed : GoldRedDim));
+    }
+
+    /// <summary>Blue minus red → the leading side's colour; within 100 gold reads as even (the
+    /// estimate is not that precise).</summary>
+    private static uint GoldLeadColor(double blueMinusRed)
+        => blueMinusRed >= 100 ? GoldBlue : blueMinusRed <= -100 ? GoldRed : TextPrimary;
+
+    /// <summary>41250 → "41.3k" (one decimal, like League's own gold readouts).</summary>
+    private static string FormatGold(double gold)
+        => (gold / 1000).ToString("0.0", CultureInfo.InvariantCulture) + "k";
+
+    /// <summary>The lead's size, whichever side has it (the colour says which): ±1450 → "+1.5k",
+    /// ±350 → "+350", within 100 → "±0".</summary>
+    private static string FormatGoldLead(double diff)
+    {
+        double a = Math.Abs(diff);
+        if (a < 100) return "±0";
+        return "+" + (a >= 1000 ? (a / 1000).ToString("0.0", CultureInfo.InvariantCulture) + "k" : a.ToString("0", CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>Consolas advance width is 0.55 em for every glyph.</summary>
+    private static double MonoWidth(string s, double font) => s.Length * font * 0.55;
+
+    /// <summary>Rough Segoe UI width, Hangul falling back to Malgun Gothic (~0.9 em) — enough to
+    /// centre or right-align a short label.</summary>
+    private static double ApproxTextWidth(string s, double font)
+    {
+        double em = 0;
+        foreach (char c in s)
+            em += c >= '\uAC00' && c <= '\uD7A3' ? 0.9 : c == ' ' ? 0.27 : c == '·' ? 0.3 : 0.55;
+        return em * font;
+    }
+
+    /// <summary>Preview: a size bar under each element on screen (above it when there is no room
+    /// below), plus a one-line note at the bottom saying this is sample data and how the bars work.
+    /// Fixed DIP size — the bar must stay usable whatever size its element is.</summary>
+    private void BuildSizeBars(List<DrawCommand> into, double w, double h)
+    {
+        const double trackW = 176, hitH = 28, labelW = 64, trackH = 6, knob = 16, labelF = 17;
+        double totalW = trackW + labelW;
+        foreach (var (key, rect) in _elementRects)
+        {
+            if (key == "minimapCal") continue;
+            double value = _sizeDragKey == key ? _sizeDragValue : ElementScale(key);
+            double x = Math.Clamp(rect.X + (rect.Width - totalW) / 2, 0, Math.Max(0, w - totalW));
+            double y = rect.Bottom + 8;
+            if (y + hitH > h) y = rect.Y - 8 - hitH;
+            y = Math.Clamp(y, 0, Math.Max(0, h - hitH));
+
+            var track = new Rect(x + 12, y + (hitH - trackH) / 2, trackW - 24, trackH);
+            _sizeBars.Add((key, new Rect(x, y, trackW, hitH), track));
+
+            double frac = (value - MinElementScale) / (MaxElementScale - MinElementScale);
+            into.Add(Rect(x, y, totalW, hitH, 0xE60F1117));
+            into.Add(Rect(track.X, track.Y, track.Width, track.Height, PanelBorder));
+            into.Add(Rect(track.X, track.Y, track.Width * frac, track.Height, AccentGold));
+            into.Add(Ellipse(track.X + track.Width * frac - knob / 2, track.Y + trackH / 2 - knob / 2, knob, knob, AccentGold));
+            into.Add(TextMono(value.ToString("0.00", CultureInfo.InvariantCulture) + "x", x + trackW, y + (hitH - labelF * 1.2) / 2, TextPrimary, labelF));
+        }
+
+        const string note = "미리보기 · 예시 게임 데이터 — 카드 아래 막대로 크기 조절, 우클릭하면 원래 크기";
+        double nf = 13, nw = note.Length * nf * 0.78, nh = nf * 1.9;
+        double nx = Math.Max(0, (w - nw) / 2), ny = h - nh - 72; // clear of a bottom taskbar
+        into.Add(Rect(nx, ny, nw, nh, 0xE60F1117));
+        into.Add(Text(note, nx + 12, ny + (nh - nf * 1.2) / 2, TextDim, nf));
     }
 
     /// <summary>(loop 519) Stop the render loop while the overlay window is hidden. Hiding the

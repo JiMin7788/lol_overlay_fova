@@ -173,6 +173,17 @@ public static class SkillDamage
     /// before this fix and now compute correctly; no previously-WORKING calc is affected since no
     /// other id's resolution path changed.
     /// </summary>
+    /// <summary>The attacker's total crit-damage multiplier (2.0 = 200%), or the 200% base when
+    /// the API did not report one.</summary>
+    public static double LiveCritMultiplier(ActivePlayerStats stats)
+        => stats.CritDamage > 0 ? stats.CritDamage : Damage.DamageEngine.CritDamageMultiplier;
+
+    /// <summary>(M45 loop 50) The champion's base max mana at <paramref name="level"/>. Bonus mana is the live max mana
+    /// (items, runes and abilities all in it) minus this - what the interpreter reads for a resource part flagged
+    /// bonus (Ryze Q / W / E, Actualizer).</summary>
+    public static double BaseResource(ChampionData champion, int level)
+        => LevelGrowth.Stat(champion.BaseStats.Mp, champion.StatsPerLevel.Mp, level);
+
     public static Func<int, int?, double> BuildStatResolver(ActivePlayerStats stats, ChampionData champion, int level)
     {
         // (§26-C fix, Cowork loop 166) Real (non-linear) per-level growth — NOT naive linear — to
@@ -223,8 +234,16 @@ public static class SkillDamage
             // The gated cases are unaffected (critChance→0 dominates); only the ungated additive term
             // is corrected. (Live crit-damage for guaranteed-crit enhancements — IE +30% — is a future
             // exposure, deferred with the §26-B IE runaway; keep the conservative floor here.)
-            StatCritChance => 0.0,
-            StatCritDamage => 0.0,
+            // (2026-10-19) Live, like every other stat. In these formulas crit is not a dice roll:
+            // Caitlyn R / Kindred E / Tristana E / Viego Q … scale their damage BY crit chance and
+            // crit damage, so the game's own number needs the real values (the old 0 under-counted
+            // every crit build). Bonus crit damage is the part above the 200% base — Talon Q's
+            // melee crit is 150% + bonus crit damage. A random crit (Garen E) is not in its damage
+            // calc; it is a curated hit's critCalc instead (SkillHit.CritCalc).
+            StatCritChance => Math.Clamp(stats.CritChance, 0.0, 1.0),
+            StatCritDamage => statFormula == StatFormulaBonusAd
+                ? Math.Max(0.0, LiveCritMultiplier(stats) - Damage.DamageEngine.CritDamageMultiplier)
+                : LiveCritMultiplier(stats),
             _ => throw new KeyNotFoundException($"Unmapped BIN mStat id '{statId}' — no live stat available"),
         };
     }
@@ -283,7 +302,7 @@ public static class SkillDamage
             // (M25 §12③) championLevel indexes "based on level" ByCharLevel* parts by CHAMPION level,
             // not ability rank (which under-counts a level-scaling ability at levels above its rank).
             return FormulaInterpreter.Evaluate(skill, calcName, rank, resolver, stats.ResourceMax,
-                championLevel: Math.Max(1, level));
+                championLevel: Math.Max(1, level), casterBaseResource: BaseResource(champion, level));
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or NotSupportedException)
         {
@@ -334,7 +353,7 @@ public static class SkillDamage
             // 0 (default) = the un-stacked floor, so non-stack calcs are unaffected.
             // (M25 §12③) championLevel indexes ByCharLevel* "based on level" parts by champion level.
             return FormulaInterpreter.Evaluate(skill, calcName, rank, resolver, stats.ResourceMax, stackCount,
-                championLevel: Math.Max(1, level));
+                championLevel: Math.Max(1, level), casterBaseResource: BaseResource(champion, level));
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or NotSupportedException)
         {
@@ -454,7 +473,7 @@ public static class SkillDamage
             // (M25 §11.G) stackCount feeds a BuffCounter per-stack term in a %HP fraction (e.g. Kindred E
             // PercentBiteDamage = 5% + 0.5% per Mark of missing HP); 0 (default) = the un-stacked base.
             double raw = FormulaInterpreter.Evaluate(skill, calcName, rank, resolver, stats.ResourceMax,
-                stackCount, championLevel: Math.Max(1, level));
+                stackCount, championLevel: Math.Max(1, level), casterBaseResource: BaseResource(champion, level));
             return raw >= 1.0 ? raw / 100.0 : raw;
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or NotSupportedException)

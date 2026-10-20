@@ -142,9 +142,14 @@ public class DistanceScaledHitTests : IDisposable
         Assert.True(result.TotalDamage > 0);
         // Resolved default = full charge (value identity with the prior curation): Total == RangeMax.
         Assert.Equal(result.TotalDamage, result.RangeMax, precision: 2);
-        // Range widened DOWN to the min-charge floor; min charge is exactly half the full charge.
+        // Range widened DOWN to the min-charge floor. (M45 loop 1) The node now folds the swing, which
+        // does not scale with distance, so the floor is not half the node: it is exactly what an
+        // explicit distance of 0 resolves to (MinDamage = MaxDamage / 2 is pinned at the calc level above).
         Assert.True(result.RangeMin < result.RangeMax, "an unset distance knob must widen the range floor");
-        Assert.Equal(result.RangeMax / 2.0, result.RangeMin, precision: 2);
+        var editor0 = new ComboEditor(engine, config);
+        string minComboId = SaveOneNodeCombo(editor0, "Hecarim", "E", userDistanceFraction: 0.0);
+        var atMin = RunCombo(Snapshot("Hecarim", "Garen"), minComboId, engine, config);
+        Assert.Equal(atMin.TotalDamage, result.RangeMin, precision: 2);
     }
 
     // ── 3. set knob (0 = min charge) collapses the range to the min value ──────────────
@@ -164,11 +169,13 @@ public class DistanceScaledHitTests : IDisposable
         Assert.Equal(resultMin.TotalDamage, resultMin.RangeMin, precision: 2);
         Assert.Equal(resultMin.TotalDamage, resultMin.RangeMax, precision: 2);
 
-        // And that collapsed min value is half of the unset (full-charge) total — cross-check vs test 2.
+        // And that collapsed min value is the unset (full-charge) combo's floor — cross-check vs test 2.
+        // (M45 loop 1: with the folded swing in the node the floor is no longer half the total.)
         var editor2 = new ComboEditor(engine, config);
         string maxComboId = SaveOneNodeCombo(editor2, "Hecarim", "E", userDistanceFraction: null);
         var resultMax = RunCombo(Snapshot("Hecarim", "Garen"), maxComboId, engine, config);
-        Assert.Equal(resultMax.TotalDamage / 2.0, resultMin.TotalDamage, precision: 2);
+        Assert.Equal(resultMax.RangeMin, resultMin.TotalDamage, precision: 2);
+        Assert.True(resultMax.TotalDamage > resultMin.TotalDamage, "full charge must out-damage the minimum");
     }
 
     // ── 4. resolved-anchor at the MIN end (Fizz R, Nidalee Q): unset -> Total==RangeMin, ──

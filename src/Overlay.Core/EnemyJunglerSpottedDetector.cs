@@ -43,8 +43,15 @@ public sealed class EnemyJunglerSpottedDetector : IDisposable
     /// <param name="currentSnapshot">Latest polled snapshot, e.g. <c>() => AppComposition.LatestSnapshot</c>
     /// (mirrors <see cref="Combo.ComboRunner"/>'s constructor convention).</param>
     /// <param name="clock">Time source for the TTS request timestamp (defaults to the system clock).</param>
-    public EnemyJunglerSpottedDetector(Func<GameSnapshot?> currentSnapshot, IClock? clock = null)
+    /// <summary>(2026-10-19) While this returns true the detector stays quiet: the minimap-vision
+    /// presence tracker announces the same sighting, with a location, and two cards for one event
+    /// was the duplication users saw. Null = never suppressed.</summary>
+    private readonly Func<bool>? _suppressWhen;
+
+    /// <param name="suppressWhen">See <see cref="_suppressWhen"/>.</param>
+    public EnemyJunglerSpottedDetector(Func<GameSnapshot?> currentSnapshot, IClock? clock = null, Func<bool>? suppressWhen = null)
     {
+        _suppressWhen = suppressWhen;
         _currentSnapshot = currentSnapshot ?? throw new ArgumentNullException(nameof(currentSnapshot));
         _clock = clock ?? new SystemClock();
     }
@@ -64,6 +71,7 @@ public sealed class EnemyJunglerSpottedDetector : IDisposable
     private void OnChanged(string? championName)
     {
         if (string.IsNullOrEmpty(championName)) return;
+        if (_suppressWhen?.Invoke() == true) return;
 
         var snap = _currentSnapshot();
         if (snap is null || !snap.HasData) return;

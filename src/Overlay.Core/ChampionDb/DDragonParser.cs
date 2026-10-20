@@ -81,6 +81,7 @@ public static class DDragonParser
                 AttackSpeed = raw.Stats.AttackSpeedPerLevel,
                 HpRegen = raw.Stats.HpRegenPerLevel,
                 MpRegen = raw.Stats.MpRegenPerLevel,
+                Mp = raw.Stats.MpPerLevel,
             },
             Skills = skills,
         };

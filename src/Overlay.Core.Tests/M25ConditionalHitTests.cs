@@ -285,14 +285,12 @@ public class M25ConditionalHitTests : IDisposable
     }
 
     [Fact]
-    public void KindredE_CritMultiplier_ResolvesToNoCritBase_IgnoresCritBuild()
+    public void KindredE_CritMultiplier_ScalesWithLiveCritChance()
     {
         // (§12②) Kindred E "BaseBiteDamage" carries a crit mMultiplier using mStat 8/9 (crit chance /
-        // crit damage) the resolver previously left unmapped -> the calc threw -> the slot fell back to
-        // the tooltip heuristic. Ability crit is modeled as NO crit (crit-neutral 0/1), so the
-        // mMultiplier collapses to 1 and the calc resolves to its BIN no-crit base (BaseDamage +
-        // 1.0*bonusAD). Setting a full crit build proves the resolver IGNORES live crit for abilities
-        // (RangeMin must stay the conservative no-crit floor -- only auto-attacks crit in this engine).
+        // crit damage). (2026-10-19) Those resolve LIVE now: the bite is not a random crit, its damage
+        // scales with crit chance by the game's own formula (1 + 0.5 × chance × (critDamage − 1)), so
+        // a crit build raises the real number. At 0% crit it is the plain BaseDamage + 1.0*bonusAD.
         var kindred = LoadChampionFromBin("Kindred");
         ChampionRepository.Initialize(new[] { kindred });
 
@@ -303,9 +301,13 @@ public class M25ConditionalHitTests : IDisposable
         };
 
         double? d = SkillDamage.ComputeCalcDamage(kindred, "E", "BaseBiteDamage", stats, level);
+        double? noCrit = SkillDamage.ComputeCalcDamage(kindred, "E", "BaseBiteDamage",
+            new ActivePlayerStats { AttackDamage = 200, AbilityPower = 0, AbilityE = 5 }, level);
         Assert.NotNull(d);
-        // BaseDamage[rank5]=200 + BonusADRatio(1.0)*bonusAD(200) = 400, crit mMultiplier collapsed to 1.
-        Assert.Equal(400.0, d!.Value, precision: 2);
+        // BaseDamage[rank5]=200 + BonusADRatio(1.0)*bonusAD(200) = 400 with no crit chance …
+        Assert.Equal(400.0, noCrit!.Value, precision: 2);
+        // … and ×1.5 at 100% crit chance and 200% crit damage.
+        Assert.Equal(600.0, d!.Value, precision: 2);
     }
 
     [Fact]
@@ -314,14 +316,14 @@ public class M25ConditionalHitTests : IDisposable
         // (§11.G %HP stack) Kindred E's mark bite deals "5% (+0.5% per Mark) of the target's MISSING
         // health" (wiki). The %HP fraction PercentBiteDamage carries a BuffCounter per-stack term (Marks)
         // now threaded through the %HP path from the 몇 스택 knob; 0 Marks = the 5% base (which correctly
-        // always applies -- the %HP does NOT require the target to be marked). Also exercises §12②: its
-        // crit mMultiplier collapses to 1 (ability crit = no crit), so a full crit build doesn't inflate it.
+        // always applies -- the %HP does NOT require the target to be marked). 0% crit chance here: the
+        // crit scaling is its own test (KindredE_CritMultiplier_ScalesWithLiveCritChance).
         var kindred = LoadChampionFromBin("Kindred");
 
         const int level = 9;
         var stats = new ActivePlayerStats
         {
-            AttackDamage = 100, AbilityPower = 0, AbilityE = 5, CritChance = 1.0, CritDamage = 2.0,
+            AttackDamage = 100, AbilityPower = 0, AbilityE = 5,
         };
 
         double? f0 = SkillDamage.ResolveHpPercentCalc(kindred, "E", "PercentBiteDamage", stats, level, stackCount: 0);
@@ -468,9 +470,11 @@ public class M25ConditionalHitTests : IDisposable
 
         // Default (UserConditionMet unset) = the UNMET not-wounded base (value identity, zero regression).
         Assert.Equal(baseDmg, result.TotalDamage, precision: 2);
-        // UserAssumed widens the range: floor = base, ceiling = the wounded bite.
+        // UserAssumed widens the range: floor = base, ceiling = the wounded bite. (M45 loop 47) Frenzied Maul applies
+        // on-hit effects, so the ceiling also carries the passive's lightning at its 5 stacks.
+        double lightning = SkillDamage.ComputeCalcDamage(voli, "P", "ChainLightningDamage", stats, level)!.Value;
         Assert.Equal(baseDmg, result.RangeMin, precision: 2);
-        Assert.Equal(bite, result.RangeMax, precision: 2);
+        Assert.Equal(bite + lightning, result.RangeMax, precision: 2);
     }
 
     [Fact]

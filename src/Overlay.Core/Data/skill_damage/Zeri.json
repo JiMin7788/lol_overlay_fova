@@ -4,21 +4,31 @@
   "_noteW": "Ultrashock Laser: TotalDamage = NamedDataValue(Damage, -10 to 230) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 120% bonus AD) + StatByNamedDataValue(APRatio=0.5 AP). Magic (Zeri's non-Q ability damage is magic type despite AD scaling, a known kit quirk). 'WallDamage' (a wall-bounce bonus) references mStat=9 (unsupported) and is skipped.",
   "_noteE": "Spark Surge CORRECTED (loop 221). BonusDamageTotal = NamedDataValue(BonusDamageBase, real ranks 22/24/26/28/30) + StatByNamedDataValue(no mStat -> AP default, BonusAPRatio=0.2), wrapped in mMultiplier 1+ProductOfSubParts[StatByNamedDataValue(mStat=8), SumOfSubParts[StatByCoefficient(mStat=9),-1]]. Both mStat 8/9 resolve to 0.0 in the current engine (\u00a726 no-crit floor, verified directly in SkillDamage.cs), so the multiplier is always 1 and BonusDamageTotal cleanly resolves. Matches wiki 'Bonus Magic Damage: 22/24/26/28/30 (+20% AP)' exactly (Magic, on the first target struck by the empowered Burst Fire during Spark Surge). Curated as a direct hit (not a bonusEffect) since it's tied to E's own cast window, count 1.",
   "_noteR": "Lightning Crash: FIXED this pass -- the prior stub used 'TotalBonusDamage' (a smaller secondary on-hit bonus after the nova, BonusMagicDamage 0-30 + 0.15 AP). The real ultimate burst is 'TotalActiveDamage' = NamedDataValue(ActiveDamage, 50-650) + StatByCoefficient(1.1 AP) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 60% bonus AD) -- the center-of-nova hit. Magic. A third calc, ChainPhysicalDamage (0.4x total AD, no base), is the lightning-chain damage to OTHER nearby enemies, out of scope for this single-primary-target combo model. Tagged BurstCeiling as Zeri's clearly largest single hit.",
+  "_noteCritQ": "(2026-10-19, user: skills crit only when the tooltip says so, each for its own amount) Burst Fire: tooltip This Ability can crit - a normal crit (scalar 1); the calc is named ActiveDamageThatCanCrit. Source: CommunityDragon lol.stringtable (latest, 2026-10-19) tooltip + the cached BIN calc.",
+  "_noteLivingBatteryP": "(2026-10-19, M45 loop 18) Living Battery: an uncharged attack deals ZeriQ MinDamage magic damage; a fully charged one PassiveMaxDamage + PassiveMaxChargePercentHealth max health (Upgraded box on the AA node). Neither crits (attackShape). The minion execute is not modeled.",
+  "P": { "hits": [ { "type": "Magic", "calc": "MinDamage", "binSpell": "Q", "conditionType": "Upgraded", "metCalc": "PassiveMaxDamage", "attackShape": true, "count": 1 }, { "type": "Magic", "conditionType": "Upgraded", "metHpPercentCalc": "PassiveMaxChargePercentHealth", "hpBasis": "Max", "binSpell": "Q", "attackShape": true, "count": 1, "tags": ["PercentMaxHp"] } ] },
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Burst Fire can crit and applies on-hit effects once per target.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "ActiveDamageThatCanCrit",
-        "count": 1
+        "count": 1,
+        "canCrit": true,
+        "appliesOnHit": true
       }
     ]
   },
+  "_noteTypeW": "(2026-10-19, M45 loop 9) Type set to Physical from the tooltip - Ultrashock Laser: 'physical damage'.",
+  "_noteWallW": "(2026-10-19, M45 loop 12) A pulse that hits terrain becomes the laser that crits for WallDamage - HitsWall condition.",
   "W": {
     "hits": [
       {
-        "type": "Magic",
+        "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "conditionType": "HitsWall",
+        "metCalc": "WallDamage"
       }
     ]
   },

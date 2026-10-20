@@ -32,46 +32,48 @@ internal sealed class GameReviewCard : Border
         var all = _store.LoadAll();
         if (all.Count == 0)
         {
-            Visibility = Visibility.Collapsed;
+            // (design pass) An empty state instead of no card: hidden until the first recorded
+            // game, new users never learned the review existed.
+            _content.Children.Add(Line("지난 게임", "CardTitle"));
+            _content.Children.Add(Line("게임을 한 판 하면 여기에 지난 게임 리뷰(사망·킬 돌아보기)가 나와요.", "HintText", top: 4));
             return;
         }
-        Visibility = Visibility.Visible;
         var r = all[0];
 
         _content.Children.Add(Line(
             $"지난 게임 · {Localization.ChampionName(r.Champion)} · {ResultText(r.Result)} · "
             + $"{r.Kills}/{r.Deaths}/{r.Assists} · {Minutes(r.LengthSeconds)}",
-            "Text", 15, bold: true));
+            "CardTitle"));
 
         if (r.DeathEntries.Count > 0)
             _content.Children.Add(Line(
                 $"사망 {r.DeathEntries.Count}번 중 {r.DeathsInDanger}번은 상대 풀콤 위험선 아래에서 "
-                + $"(위험선 아래로 내려간 횟수 {r.DangerWindows.Count}번)", "Text", 13, top: 8));
+                + $"(위험선 아래로 내려간 횟수 {r.DangerWindows.Count}번)", "BodyText", top: 8));
         else if (r.DangerWindows.Count > 0)
-            _content.Children.Add(Line($"위험선 아래로 {r.DangerWindows.Count}번 내려갔지만 죽지 않음", "Text", 13, top: 8));
+            _content.Children.Add(Line($"위험선 아래로 {r.DangerWindows.Count}번 내려갔지만 죽지 않음", "BodyText", top: 8));
         if (r.KillEntries.Count > 0)
             _content.Children.Add(Line(
-                $"킬 {r.KillEntries.Count}번 중 {r.CheckedKills}번은 콤보 확인(단축키) 후 {KillReviewRecorder.CheckWindowSeconds:0}초 안에",
-                "Text", 13, top: 4));
+                $"킬 {r.KillEntries.Count}번 중 {r.CheckedKills}번은 킬 전 {KillReviewRecorder.CheckWindowSeconds:0}초 안에 콤보 단축키로 데미지를 확인함",
+                "BodyText", top: 4));
 
         foreach (var d in r.DeathEntries.Take(6))
             _content.Children.Add(Line(
                 $"  {Clock(d.Time)}  {(d.KillerChampion.Length > 0 ? Localization.ChampionName(d.KillerChampion) : "?")}에게 사망"
-                + (d.InDanger ? " — 위험선 아래" : ""), "TextDim", 12, top: 2));
+                + (d.InDanger ? " — 위험선 아래" : ""), "HintText", top: 2));
 
         if (all.Count > 1)
         {
-            _content.Children.Add(Line("최근 게임", "TextDim", 12, top: 10));
+            _content.Children.Add(Line("최근 게임", "CaptionText", top: 12));
             foreach (var g in all.Skip(1).Take(RecentShown))
                 _content.Children.Add(Line(
                     $"  {g.StartedAt.ToString("MM/dd HH:mm", CultureInfo.InvariantCulture)}  "
                     + $"{Localization.ChampionName(g.Champion)}  {ResultText(g.Result)}  {g.Kills}/{g.Deaths}/{g.Assists}"
                     + (g.DeathEntries.Count > 0 ? $"  · 위험선 사망 {g.DeathsInDanger}/{g.DeathEntries.Count}" : ""),
-                    "TextDim", 12, top: 2));
+                    "HintText", top: 2));
         }
 
-        _content.Children.Add(Line("위험선 = 상대 풀콤 추정치(모든 스킬 준비 기준). 기록은 이 PC에만 저장됩니다.",
-            "TextDim", 11, top: 8));
+        _content.Children.Add(Line("위험선 = 상대가 모든 스킬로 한 번에 줄 수 있는 피해(추정). 내 체력이 이보다 낮으면 위험합니다. 기록은 이 PC에만 저장됩니다.",
+            "HintText", top: 8));
     }
 
     private static string ResultText(string result) => result switch
@@ -86,17 +88,16 @@ internal sealed class GameReviewCard : Border
     private static string Clock(double seconds)
         => $"{(int)(seconds / 60)}:{((int)seconds % 60).ToString("00", CultureInfo.InvariantCulture)}";
 
-    private static TextBlock Line(string text, string brushKey, double size, double top = 0, bool bold = false)
+    /// <param name="styleKey">A Theme.xaml text style (CardTitle / BodyText / HintText / CaptionText).</param>
+    private static TextBlock Line(string text, string styleKey, double top = 0)
     {
         var block = new TextBlock
         {
             Text = text,
-            FontSize = size,
             Margin = new Thickness(0, top, 0, 0),
             TextWrapping = TextWrapping.Wrap,
-            FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
         };
-        block.SetResourceReference(TextBlock.ForegroundProperty, brushKey);
+        block.SetResourceReference(StyleProperty, styleKey);
         return block;
     }
 }

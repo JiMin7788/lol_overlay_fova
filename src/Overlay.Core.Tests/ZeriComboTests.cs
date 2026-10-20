@@ -15,9 +15,9 @@ namespace Overlay.Core.Tests;
 /// actual ComboEngine/ComboEditor/ComboRunner via the EventBus (same harness as
 /// <see cref="GoldenKsanteTests"/>/<see cref="AbilitySlotOnHitGatingTests"/>).
 ///
-/// Zeri.json deliberately has NO "P" block (Living Battery is a genuine two-state conditional plus
-/// an execute mechanic this schema can't express — see the file's own _noteP) — that is a documented
-/// gap, not a bug, so this file covers only Q/W/E/R plus a full rotation, per the task brief.
+/// (M45 loop 18) Zeri.json now has a "P" block: Living Battery is her basic attack (attackShape) - an
+/// uncharged magic attack (ZeriQ MinDamage), the fully charged one on the Upgraded box. The minion
+/// execute is still not modeled.
 ///
 /// Q/W/E/R are each a single plain <c>calc</c> hit (no bonusEffects, no conditional/percent/per-attack
 /// shape) — the simplest of the 4 new champions' kits. Q ("ActiveDamageThatCanCrit", a basic-attack
@@ -155,17 +155,18 @@ public class ZeriComboTests : IDisposable
     private const int Level = 11; // arbitrary champion level; none of Q/W/E/R's terms are ByCharLevel*
     private static ActivePlayerStats Stats() => new() { AttackDamage = Ad, AbilityPower = Ap, AbilityQ = 5, AbilityW = 5, AbilityE = 5, AbilityR = 3 };
 
-    // ── 1. base AA alone (the floor): Zeri has no P, so a bare auto is pure AD ──────────────────
+    // ── 1. base AA alone: Zeri's attack is Living Battery's uncharged shot, not total AD ─────────
 
     [Fact]
-    public void Zeri_AaAlone_IsPureAd_NoPassive()
+    public void Zeri_AaAlone_IsTheUnchargedLivingBatteryShot()
     {
         var zeri = LoadChampionFromBin("Zeri");
         ChampionRepository.Initialize(new[] { zeri });
 
         var result = RunCombo("Zeri", new[] { "AA" }, Snapshot("Zeri", Stats(), Level));
 
-        Assert.Equal(100.0, result.TotalDamage, precision: 2);
+        // MinDamage = 10 -> 25 along the stat-growth curve (level 11: 10/17 x ... = 0.5162) + 3% AP (0)
+        Assert.Equal(10 + 15 * (10 * (0.7025 + 0.0175 * 10) / 17.0), result.TotalDamage, precision: 2);
         Assert.Single(result.NodeBreakdown);
     }
 

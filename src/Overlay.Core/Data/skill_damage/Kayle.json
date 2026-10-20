@@ -3,12 +3,15 @@
   "_noteP": "P (Divine Ascent wave splash, unchanged from prior curation): KaylePassive.mSpellCalculations 'PassiveWaveDamage' = ByCharLevelBreakpointsCalculationPart(Level1Value=20, breakpoint @12->rate3) + AP 0.25 ratio + bonusAD 0.10 ratio. Curated as a P bonusEffect trigger onHit (the small-AoE wave her upgraded ranged attacks send to nearby enemies at level 11+/Aflame).",
   "_noteE": "E (Starfire Spellblade, KayleEAbility) restructured. Its PASSIVE half (EPassiveTotalDamage = PassiveDamage flat + 0.2 AP + 0.10 bonusAD, magic) is an always-on on-hit proc with no consumption/gating -- curated as a bonusEffect trigger onHit (safe to auto-apply every AA, matches real behavior). Its ACTIVE half (empowers the NEXT single basic attack within 6s) is a %MISSING-HEALTH magic proc: ActiveTotalExecuteDamage is a GameCalculation whose evaluated result IS the percent fraction itself (ActiveExecutePercent*0.01 + 0.015*AP-coefficient, mDisplayAsPercent), matching this schema's hpPercentCalc mechanism (hpBasis Missing, per the wiki's 'of target's missing health'). Since it is a single-charge consumable (only the next AA), it is curated as a DIRECT hit on E's own node (not an auto-fired onHit bonus, which would incorrectly apply it to every future AA in the combo) -- a documented one-time collapse of 'cast E, then land the empowered AA' onto E's own cast.",
   "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveWaveDamage", "count": 1 } ] } ] },
+  "_noteShredQ": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Radiant Blast reduces armor and MR by ShredPercent; later nodes of the combo hit the reduced resistance.",
   "Q": {
     "tags": ["ArmorShred", "MagicResistShred"],
-    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1, "armorShredDataValue": "ShredPercent", "mrShredDataValue": "ShredPercent" } ]
   },
+  "_noteAttackE": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
+  "_noteOnHitE": "(2026-10-20, M45 loop 47) Starfire Spellblade applies on-hit and spell effects - once, on the empowered attack.",
   "E": {
-    "hits": [ { "type": "Magic", "hpPercentCalc": "ActiveTotalExecuteDamage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"] } ],
+    "hits": [ { "type": "Physical", "basicAttack": true, "count": 1 }, { "isAttack": true, "type": "Magic", "hpPercentCalc": "ActiveTotalExecuteDamage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"], "appliesOnHit": true } ],
     "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "hits": [ { "type": "Magic", "calc": "EPassiveTotalDamage", "count": 1 } ] } ]
   },
   "R": {

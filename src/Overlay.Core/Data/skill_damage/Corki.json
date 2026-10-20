@@ -1,7 +1,13 @@
 {
   "_note": "TYPE CORRECTION: auto-gen tagged Q/W/E/R Physical, but all four of Corki's damaging abilities deal MAGIC damage in-game despite scaling off (bonus) AD ratios -- a well-documented Corki quirk. Q (Phosphorus Bomb) TotalDamage = BaseDamage + 1.25 bonusAD + 1.0 AP. W (Carpet Bomb) MaximumDamage = BaseDamage + 1.5 AP + 2.0 bonusAD (highest base+ratio sum in the kit, tagged BurstCeiling). E (Gatling Gun) TotalDamage = BaseDamage + 2.4 bonusAD; its ShredMax/ShredCap/ShredDuration DataValues confirm a real per-tick Armor-reduction debuff on struck targets (tagged ArmorShred). R (Missile Barrage) RSmallMissileDamage = BaseDamage + 0.85 bonusAD curated as the conservative single-missile hit; RBigMissileDamage (=2x, every 4th shot) exists but R is an ammo-based repeated-press skill rather than a discrete recast-combo (unlike Ahri R), so the smaller/typical value is kept rather than assuming the 4th-shot proc. P (Hextech Munitions/RapidReload) converts 20% of Corki's EXISTING basic-attack damage from physical to true (BasicAttackTOOLTIP = bonus AD * 0.2) rather than adding extra damage -- bonusEffects is strictly additive, so curating this as an onHit bonus would double-count the AA's own damage; left uncurated (no P entry).",
+  "_noteMunitionsP": "(2026-10-19, M45 loop 14) Hextech Munitions: Corki's attacks deal BasicAttackTOOLTIP (AttackConversion x AD) bonus TRUE damage on hit - was uncurated (its crit value and spellblade share are not modeled).",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "True", "calc": "BasicAttackTOOLTIP", "count": 1 } ] } ] },
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "MaximumDamage", "count": 1 } ], "tags": ["BurstCeiling"] },
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["ArmorShred"] },
-  "R": { "hits": [ { "type": "Magic", "calc": "RSmallMissileDamage", "count": 1 } ], "tags": ["AoeUltimate"] }
+  "_noteShredE": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Gatling Gun shreds up to ShredMax armor and MR (flat; the full stack is applied after the spray); later nodes of the combo hit the reduced resistance.",
+  "_noteTypeE": "(2026-10-19, M45 loop 4) Physical, not Magic: the BIN TotalDamage scales on bonus AD only and the 16.20 tooltip says physical damage; it had been mitigated by magic resist.",
+  "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1, "armorShredFlatDataValue": "ShredMax", "mrShredFlatDataValue": "ShredMax" } ], "tags": ["ArmorShred"] },
+  "_noteTypeR": "(2026-10-19, M45 loop 9) Type set to Physical from the tooltip - Missile Barrage: 'physical damage'.",
+  "_noteBigR": "(2026-10-19, M45 loop 9) Every third missile is the Big One (RBigMissileDamage) instead - Upgraded condition.",
+  "R": { "hits": [ { "type": "Physical", "calc": "RSmallMissileDamage", "count": 1, "conditionType": "Upgraded", "metCalc": "RBigMissileDamage" } ], "tags": ["AoeUltimate"] }
 }

@@ -201,7 +201,9 @@ public class SkillDamageTests : IDisposable
         //
         // mFormulaParts[0] ByCharLevelBreakpointsCalculationPart(Level1Value=5,
         //   InitialBonusPerLevel=5, breakpoint @level12 AdditionalBonusAtThisLevel=5):
-        //   at level 12 = 5 + 5*10 (levels 2-11) + (5 bump + 5 rate at level 12) = 65.
+        //   at level 12 = 5 + 5*10 (levels 2-11) + 5 bump = 60. (M45 loop 23) The breakpoint carries no
+        //   mBonusPerLevelAtAndAfter, which is the BIN omitting a 0: the growth stops there (the wiki's
+        //   5-60). This read 65, the rate kept, which reached 95 at level 18.
         // mFormulaParts[1] StatByCoefficientCalculationPart(mStat=12, mStatFormula=2, coeff=0.04)
         //   = 0.04 * bonusHp.
         // mFormulaParts[2] StatBySubPartCalculationPart — the BIN part has NO mStat, so the outer
@@ -210,7 +212,7 @@ public class SkillDamageTests : IDisposable
         //   "APRatioPer100BonusHP"=0.0125), Number(0.01)) = (bonusHp * 0.0125) * 0.01, which is an
         //   AP RATIO (~0.17625 at 1410 bonusHp), NOT flat damage. So part[2] = AP * (bonusHp *
         //   0.000125) — it only contributes when the caster has AP (the data value's own name says
-        //   "APRatio"). Total = 65 + 0.04*bonusHp + AP*(bonusHp*0.000125).
+        //   "APRatio"). Total = 60 + 0.04*bonusHp + AP*(bonusHp*0.000125).
         var loaded = LoadChampionFromBin("TahmKench");
         var tahmKench = new ChampionData
         {
@@ -231,7 +233,7 @@ public class SkillDamageTests : IDisposable
         double baseHp = LevelGrowth.Stat(600, 90, 12);   // 1486.05
         double bonusHp = 3000 - baseHp;                  // 1513.95
         double apRatio = bonusHp * 0.0125 * 0.01;      // ~0.18924
-        double expected = 65.0 + bonusHp * 0.04 + 100.0 * apRatio; // 65 + 60.558 + 18.924 = 144.482
+        double expected = 60.0 + bonusHp * 0.04 + 100.0 * apRatio; // 60 + 60.558 + 18.924 = 139.482
         Assert.Equal(expected, damage!.Value, precision: 3);
         // Guard: before this session's mStat=12 mapping, this calc threw KeyNotFoundException
         // (caught by ComputeCalcDamage) and returned null — never a phantom 0 or the wrong

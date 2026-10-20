@@ -6,13 +6,16 @@
   "_noteE": "E (Eye of the Storm): EyeOfTheStormAbility/EyeOfTheStorm's only calcs are TotalShield and TotalAD (a shield + bonus-AD buff, spellTags = ['PositiveEffect_Boon','Trait_Shield'], no Trait_DamageAbility). Confirmed genuinely no direct damage. Slot correctly absent.",
   "_noteR": "R (Monsoon): ReapTheWhirlwindAbility/ReapTheWhirlwind's only calcs are HealPerSecond and TotalHeal (heal + knockback CC, spellTags include Trait_ActiveHeal, no Trait_DamageAbility). Confirmed genuinely no direct damage. Slot correctly absent.",
   "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "BonusDamage", "count": 1 } ] } ] },
+  "_noteChargeQ": "(2026-10-19, M45 loop 17) Was MaxDamage (full charge) always; Howling Gale deals MinimumDamage plus ExtraDamagePerSecondCharged per second charged, up to MaxDamage - a [min, max] range on the charge knob, the minimum anchor (P2). The BurstCeiling tag still reads the max end.",
   "Q": {
     "tags": ["BurstCeiling"],
     "_tagNote": "BurstCeiling: fully-charged Howling Gale (MaxDamage, up to 195+90 base +60%AP total) is the single largest number in Janna's modeled kit.",
     "hits": [
       {
         "type": "Magic",
-        "calc": "MaxDamage",
+        "calc": "MinimumDamage",
+        "minCalc": "MinimumDamage",
+        "maxCalc": "MaxDamage",
         "count": 1
       }
     ]

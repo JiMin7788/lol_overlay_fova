@@ -110,6 +110,57 @@ public static class GameCfgReader
         }
     }
 
+    /// <summary><c>[General] WindowMode</c> value for exclusive fullscreen. The others are 1 =
+    /// windowed and 2 = borderless; the overlay only draws over those two.</summary>
+    public const int WindowModeFullscreen = 0;
+
+    /// <summary>League's display mode from <c>[General] WindowMode</c> (0 fullscreen, 1 windowed,
+    /// 2 borderless), or null when the section/key is missing or not an integer. Same tolerant INI
+    /// walk as <see cref="Parse"/>; the last occurrence wins.</summary>
+    public static int? ParseWindowMode(string? cfgText)
+    {
+        if (string.IsNullOrEmpty(cfgText)) return null;
+
+        int? mode = null;
+        bool inGeneral = false;
+        foreach (var rawLine in cfgText.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (line.Length == 0 || line[0] is ';' or '#') continue;
+
+            if (line[0] == '[')
+            {
+                int close = line.IndexOf(']');
+                if (close > 1)
+                    inGeneral = string.Equals(line.Substring(1, close - 1).Trim(), "General", StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+            if (!inGeneral) continue;
+
+            int eq = line.IndexOf('=');
+            if (eq <= 0 || !string.Equals(line.Substring(0, eq).Trim(), "WindowMode", StringComparison.OrdinalIgnoreCase))
+                continue;
+            mode = int.TryParse(line.Substring(eq + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int m)
+                ? m : null;
+        }
+        return mode;
+    }
+
+    /// <summary><see cref="ParseWindowMode"/> over the file at <paramref name="path"/>; null on
+    /// any I/O failure. Never throws.</summary>
+    public static int? ReadWindowMode(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            return ParseWindowMode(File.ReadAllText(path));
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     private static double? TryParseDouble(string value)
         => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)
             ? d

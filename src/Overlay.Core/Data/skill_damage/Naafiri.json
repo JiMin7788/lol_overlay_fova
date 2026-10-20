@@ -1,7 +1,8 @@
 {
   "_note": "Curated (loop 39). P kept from prior session (_noteP). IMPORTANT slot-mapping note: Naafiri's BIN internal ability names do NOT match live slot letters 1:1 -- spellNames[] is positionally Q/W/E/R per the client (ChampionBinParser reads it that way, which is authoritative), but the internal path at the W position is 'NaafiriRAbility/NaafiriR' and the internal path at the R position is 'NaafiriWAbility/NaafiriW' (note also a real casing mismatch in the BIN's own spellNames pointer -- 'Naafiriw' vs the actual key 'NaafiriW', resolved via case-insensitive lookup). Cross-checked against a live wiki fetch (wiki.leagueoflegends.com/en-us/Naafiri) to confirm: Q='Darkin Daggers', W='The Call of the Pack' (buff/summon only, zero damage calcs -- correctly has no hits), E='Eviscerate', R='Hounds' Pursuit'. Q 'Darkin Daggers': curated the guaranteed first-cast hits only (TotalDamageFirstCast initial + TotalBleedDamage full bleed) -- the RECAST finisher against an already-bleeding target (calcs 'TotalMinDamageSecondCast'/'TotalMaxDamageSecondCast', missing-HP-scaled up to 240% bonus AD) is conditional/branchy (requires the target already bleeding) and NOT curated, to avoid double-counting with the base bleed or fabricating which branch fires. E 'Eviscerate': two guaranteed hits, dash (TotalDamageFirstSlash) + arrival flurry (TotalDamageSecondSlash), matches the wiki's combined 'Total Physical Damage'. R 'Hounds' Pursuit': curated Naafiri's own hit only (TotalDamage, 150/225/300+120%bonusAD); the packmate follow-up hits (calc 'PackmateDamage') are NOT curated since packmate count varies with level/buffs and isn't guaranteed at any fixed value. A BIN calc 'ArmorShred' exists on this same ability but is NOT corroborated by any text in the live wiki fetch (no armor-reduction effect is mentioned for Hounds' Pursuit) -- left uncited/uncurated rather than fabricated. Tagged BurstCeiling: R is Naafiri's single highest guaranteed-hit burst tool.",
   "_noteP": "P (Hound's Pursuit): Naafiri's summoned packmates deal bonus PHYSICAL damage (NaafiriP.mSpellCalculations 'PackmateTotalDamage' = level-interpolated base 10->20 + 0.04x bonus AD). Curated as a standalone P hit (packmate damage, not Naafiri's own action) — add a Passive node per packmate hit.",
-  "P": { "hits": [ { "type": "Physical", "calc": "PackmateTotalDamage", "count": 1 } ] },
+  "_notePackP": "(2026-10-20, M45 loop 29) Packmates are pets: their attacks on the count knob (unset = 0, P2; no ceiling - PackmateCap and their attack rate are not a count the tooltip gives). One attack per P node was assumed. The Frenzy (x PackmateFrenzyDamageMult after an ability) is not modeled.",
+  "P": { "hits": [ { "type": "Physical", "perAttackCalc": "PackmateTotalDamage", "count": 1 } ] },
   "_noteQ2_rename": "SLOT RENAMED QSecond -> Q2 (loop 478, user request for one naming convention). Every other numbered recast in the curation is Q2/Q3, and the palette now renders a numeric qualifier as Q2 rather than Q (2). NOTE: the slot key appears in saved combo node ids, so a combo saved with the old QSecond node loses that node and must be rebuilt.",
   "Q": {
     "hits": [
@@ -15,10 +16,12 @@
       { "type": "Physical", "calc": "TotalDamageSecondSlash", "count": 1 }
     ]
   },
+  "_notePackR": "(2026-10-19, M45 loop 7) Each Packmate dashing alongside deals PackmateDamage - the hit-count knob is the packmate count (PackmateCap is level-based, so uncapped here).",
   "R": {
     "_noteR_regression": "SILENT-ZERO REGRESSION fixed 2026-07-26 (slot-shell sweep + guard pin): the BIN's spellNames R-slot entry is the lowercase object 'Naafiriw' (mid-scope leftover shell with no damage calcs); the real 'TotalDamage' lives on the capital-W object 'NaafiriW'. The parser is case-sensitive, so the slot resolved the empty shell and the hit evaluated null->0. Routed via binSpell to the object that carries the calc.",
     "hits": [
-      { "type": "Physical", "calc": "TotalDamage", "binSpell": "NaafiriW", "count": 1, "tags": ["BurstCeiling"] }
+      { "type": "Physical", "calc": "TotalDamage", "binSpell": "NaafiriW", "count": 1, "tags": ["BurstCeiling"] },
+      { "type": "Physical", "perAttackCalc": "PackmateDamage", "binSpell": "NaafiriW", "count": 1 }
     ]
   },
   "Q2": { "hits": [ { "type": "Physical", "calc": "TotalMinDamageSecondCast", "minCalc": "TotalMinDamageSecondCast", "maxCalc": "TotalMaxDamageSecondCast", "binSpell": "Q", "count": 1 } ] },

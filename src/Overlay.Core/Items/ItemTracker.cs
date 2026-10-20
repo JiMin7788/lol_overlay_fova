@@ -45,8 +45,19 @@ public sealed class ItemTracker : IDisposable
     private string? _itemSubId;
     private string? _goldSubId;
 
+    /// <summary>(2026-10-19) When set, completions are announced for the ACTIVE player only. The
+    /// item events cover all ten players, so every ally's and enemy's boots and legendaries used to
+    /// raise a toast — and an enemy legendary came up twice, here and in the enemy-item card.</summary>
+    private readonly Func<GameSnapshot?>? _snapshot;
+
     /// <param name="clock">Time source for alert timestamps (defaults to the system clock).</param>
-    public ItemTracker(IClock? clock = null) => _clock = clock ?? new SystemClock();
+    /// <param name="snapshot">Latest snapshot, to find the active player. Null = every player (the
+    /// original M07 behaviour, kept for the module's own tests).</param>
+    public ItemTracker(IClock? clock = null, Func<GameSnapshot?>? snapshot = null)
+    {
+        _clock = clock ?? new SystemClock();
+        _snapshot = snapshot;
+    }
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -105,6 +116,7 @@ public sealed class ItemTracker : IDisposable
     private void OnItemChangedEvent(Event evt)
     {
         if (evt.Payload is not ItemChangedPayload payload) return;
+        if (_snapshot is not null && !IsActivePlayer(payload.ChampionName)) return;
 
         var currentIds = new int[payload.Items.Length];
         for (int i = 0; i < payload.Items.Length; i++) currentIds[i] = payload.Items[i].ItemId;
@@ -125,8 +137,24 @@ public sealed class ItemTracker : IDisposable
         {
             var item = ItemRepository.Get(id.ToString());
             if (item is null || !IsCompleted(item)) continue;
-            RaiseAlert(new ItemAlert(ItemAlertType.ItemCompleted, $"{item.Name} completed", _clock.NowMs));
+            string name = string.IsNullOrEmpty(item.NameKo) ? item.Name : item.NameKo!;
+            RaiseAlert(new ItemAlert(ItemAlertType.ItemCompleted, $"{name} 완성", _clock.NowMs));
         }
+    }
+
+    /// <summary>True when <paramref name="championName"/> is the active player's scoreboard row
+    /// (matched by summoner name or Riot id, as the rest of the client does).</summary>
+    private bool IsActivePlayer(string championName)
+    {
+        if (_snapshot!() is not { HasData: true } snap) return false;
+        for (int i = 0; i < snap.PlayerCount; i++)
+        {
+            var p = snap.Players[i];
+            bool me = (p.SummonerName.Length > 0 && p.SummonerName == snap.ActivePlayerSummonerName)
+                      || (p.RiotId.Length > 0 && p.RiotId == snap.ActivePlayerRiotId);
+            if (me) return string.Equals(p.ChampionName, championName, StringComparison.Ordinal);
+        }
+        return false;
     }
 
     /// <summary>Completion rule: built from components AND nothing further builds from it.</summary>

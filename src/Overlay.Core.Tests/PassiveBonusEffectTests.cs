@@ -167,10 +167,11 @@ public class PassiveBonusEffectTests : IDisposable
         // The parser now emits a "P" slot from the BIN's mCharacterPassiveSpell.
         Assert.True(darius.Skills.ContainsKey("P"), "passive spell was not extracted as slot P");
 
-        // Curated: Darius P = Hemorrhage bleed, one physical hit via BleedDamagePerStack.
+        // Curated: Darius P = Hemorrhage bleed, one physical hit via BleedDamagePerStack (M45 loop 21: plus
+        // further stacks on the count knob).
         var hits = SkillDamageDb.GetHits("Darius", "P");
         Assert.NotNull(hits);
-        var hit = Assert.Single(hits!);
+        var hit = hits![0];
         Assert.Equal(HitDamageType.Physical, hit.Type);
         Assert.Equal("BleedDamagePerStack", hit.Calc);
 
@@ -272,7 +273,10 @@ public class PassiveBonusEffectTests : IDisposable
 
         var bonus = SkillDamageDb.GetBonusEffects("Kaisa", "P");
         Assert.NotNull(bonus);
-        var hit = Assert.Single(Assert.Single(bonus!).Hits);
+        // (M45 loop 8) the Plasma pop rides as a second effect (procEvery 5, %missing health)
+        Assert.Equal(2, bonus!.Count());
+        Assert.Equal("PExecutePercentage", Assert.Single(bonus!.ElementAt(1).Hits).HpPercentCalc);
+        var hit = Assert.Single(bonus!.ElementAt(0).Hits);
         Assert.Equal(HitDamageType.Magic, hit.Type);
         Assert.Equal("PBaseDamage", hit.Calc);
 
@@ -291,8 +295,11 @@ public class PassiveBonusEffectTests : IDisposable
 
         var bonus = SkillDamageDb.GetBonusEffects("Senna", "P");
         Assert.NotNull(bonus);
-        Assert.Equal(BonusTrigger.OnHit, Assert.Single(bonus!).Trigger);
-        var hit = Assert.Single(Assert.Single(bonus!).Hits);
+        // (M45 loop 25) the second effect is the Mist siphon (the second hit on a marked champion)
+        Assert.Equal(2, bonus!.Length);
+        Assert.Equal(BonusTrigger.OnHit, bonus[0].Trigger);
+        Assert.Equal(2, bonus[1].ProcEvery);
+        var hit = Assert.Single(bonus[0].Hits);
         Assert.Equal(HitDamageType.Physical, hit.Type);
         Assert.Equal("BonusOnHitDamage", hit.Calc);
 
@@ -540,8 +547,11 @@ public class PassiveBonusEffectTests : IDisposable
 
         var bonus = SkillDamageDb.GetBonusEffects("Sona", "P");
         Assert.NotNull(bonus);
-        Assert.Equal(BonusTrigger.OnHit, Assert.Single(bonus!).Trigger);
-        var hit = Assert.Single(Assert.Single(bonus!).Hits);
+        // (M45 loop 29) the second effect is the Staccato chord (Q last), the first the plain one
+        Assert.Equal(2, bonus!.Length);
+        Assert.Equal(BonusTrigger.OnHit, bonus[0].Trigger);
+        Assert.Equal(new[] { "Q" }, bonus[1].LastArmingCast);
+        var hit = Assert.Single(bonus[0].Hits);
         Assert.Equal(HitDamageType.Magic, hit.Type);
         Assert.Equal("PowerChordDamage", hit.Calc);
 
@@ -646,8 +656,11 @@ public class PassiveBonusEffectTests : IDisposable
 
         var bonus = SkillDamageDb.GetBonusEffects("Braum", "P");
         Assert.NotNull(bonus);
-        Assert.Equal(BonusTrigger.OnHit, Assert.Single(bonus!).Trigger);
-        var hit = Assert.Single(Assert.Single(bonus!).Hits);
+        // (M45 loop 7) a second effect follows: OnHitDamage on the attacks after the stun (procFrom 5)
+        Assert.Equal(2, bonus!.Count());
+        Assert.All(bonus!, b => Assert.Equal(BonusTrigger.OnHit, b.Trigger));
+        Assert.Equal("OnHitDamage", Assert.Single(bonus!.ElementAt(1).Hits).Calc);
+        var hit = Assert.Single(bonus!.ElementAt(0).Hits);
         Assert.Equal(HitDamageType.Magic, hit.Type);
         Assert.Equal("TotalDamage", hit.Calc);
 

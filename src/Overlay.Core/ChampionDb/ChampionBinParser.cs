@@ -354,6 +354,8 @@ public static class ChampionBinParser
                     PartKind = CalculationPart.Kind.ByCharLevelInterpolation,
                     InterpolationStart = GetDouble(part, "mStartValue"),
                     InterpolationEnd = GetDouble(part, "mEndValue"),
+                    InterpolationByStatProgression = part.TryGetProperty("mScaleByStatProgressionMultiplier", out var prog)
+                        && prog.ValueKind == JsonValueKind.True,
                 };
             // (§16 P-round) K'Sante mark %HP: an unlabeled-hash part that linearly interpolates two
             // NAMED DataValues by champion level (min → max) — the DataValue-sourced sibling of

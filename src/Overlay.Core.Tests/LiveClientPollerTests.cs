@@ -213,6 +213,58 @@ public class LiveClientPollerTests
         Assert.Equal(0.18, snap.Stats.MagicPenetrationPercent, precision: 6);
     }
 
+    /// <summary>(M45 loop 49) championStats.physicalLethality - items, runes and buffs as the game counts them (seen
+    /// live: 10 with The Collector) - reaches the snapshot; item lethality alone missed the runes.</summary>
+    [Fact]
+    public void Parse_PhysicalLethality_IsRead()
+    {
+        var json = """
+        {
+          "activePlayer": {
+            "summonerName": "Me",
+            "currentGold": 500,
+            "level": 1,
+            "championStats": { "attackDamage": 238.29, "armorPenetrationFlat": 0.0, "physicalLethality": 10.0 }
+          },
+          "allPlayers": [],
+          "events": { "Events": [] },
+          "gameData": { "gameTime": 60 }
+        }
+        """;
+        var snap = new GameSnapshot();
+
+        Assert.True(LiveDataParser.Parse(Encoding.UTF8.GetBytes(json), snap));
+        Assert.Equal(10.0, snap.Stats.PhysicalLethality, precision: 6);
+        Assert.Equal(0.0, snap.Stats.ArmorPenetrationFlat, precision: 6);
+    }
+
+    /// <summary>(2026-10-19, user report: Garen's combo maximum went wild after buying Phantom
+    /// Dancer.) A live game reports <c>critDamage</c> in PERCENT — 200.0, not 2.0 — and the engine's
+    /// guaranteed-crit Max track used it as the multiplier: every crit-capable hit ×200 once crit
+    /// chance was above 0. The parser converts to the total multiplier the snapshot documents.</summary>
+    [Fact]
+    public void Parse_CritDamage_ConvertsPercent_ToTotalMultiplier()
+    {
+        var json = """
+        {
+          "activePlayer": {
+            "summonerName": "Me",
+            "currentGold": 500,
+            "level": 10,
+            "championStats": { "attackDamage": 149.23, "critChance": 0.25, "critDamage": 200.0 }
+          },
+          "allPlayers": [],
+          "events": { "Events": [] },
+          "gameData": { "gameTime": 900 }
+        }
+        """;
+        var snap = new GameSnapshot();
+
+        Assert.True(LiveDataParser.Parse(Encoding.UTF8.GetBytes(json), snap));
+        Assert.Equal(0.25, snap.Stats.CritChance, precision: 6);
+        Assert.Equal(2.0, snap.Stats.CritDamage, precision: 6);
+    }
+
     /// <summary>Loop-38 continuation 19: activePlayer.fullRunes.keystone.id + generalRunes[].id ->
     /// GameSnapshot.Stats.EquippedRuneIds, the source ComboRunner's rune auto-load now prefers over
     /// the M04 manual picker. keystone repeats as generalRunes[0] in real payloads (deduplicated

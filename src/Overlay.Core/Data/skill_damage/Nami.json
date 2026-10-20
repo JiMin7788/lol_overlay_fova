@@ -7,6 +7,7 @@
   "_noteR": "Tidal Wave: TotalDamage=BaseDamage+StatByCoefficient(0.6, AP default). WebSearch confirms 'magic damage' with '(+60% of ability power)', matches BIN coefficient exactly. One hit per target swept.",
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTT", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
-  "E": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "_noteRidesE": "(2026-10-20, M45 loop 43) Tidecaller's Blessing: the next HitCount (3) Attacks and Abilities - three attacks (maxProcs 3; the audit checks it against HitCount); an ability spending one is not counted, a floor. It rode every attack after E.",
+  "E": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 3, "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
   "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] }
 }

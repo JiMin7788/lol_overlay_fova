@@ -6,14 +6,12 @@
   "_noteW": "W (Subject: Serenity) is the muse selector -- HweiW holds only Tooltip_W* display calcs. Its two boons deal no damage at all and its third is an on-hit empowerment, so nothing belongs on the W slot itself.",
   "_noteE": "E (Subject: Torment) is the muse selector -- HweiE holds only Tooltip_E*Damage display calcs. All three casts share IDENTICAL DataValues (BaseDamage 30->270) and formula (NamedDataValue + 0.65 AP), verified by direct comparison, so EQ/EW/EE resolve to the same number and differ only in crowd control. They are still three slots: the palette should show what Hwei can actually cast, and identical damage is a fact about this patch, not a reason to hide two of them.",
   "P": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteStuckR": "(2026-10-20, M45 loop 42) The vision sticks to the champion it hits for Duration seconds (tooltip; the wiki: an aura on that champion), so for the combo target its DoT is not escapable: DamageOverTime per second for a guaranteed 3 s (guaranteedSeconds, the Nidalee W / Twitch P debuff pattern), then the shatter Damage. The two sum to TotalMaxDamage (0.8 + 0.05 x 3 = 0.95 AP), so the clean-room golden rows read the same total; the exposure knob can still lower it (a spell shield blocks the first stack).",
   "R": {
     "tags": ["Zone", "BurstCeiling", "AoeUltimate"],
     "hits": [
-      {
-        "type": "Magic",
-        "calc": "TotalMaxDamage",
-        "count": 1
-      }
+      { "type": "Magic", "perSecondCalc": "DamageOverTime", "maxDurationSeconds": 3.0, "maxDurationDataValue": "Duration", "guaranteedSeconds": 3.0, "count": 1, "tags": ["Zone"] },
+      { "type": "Magic", "calc": "Damage", "count": 1 }
     ]
   },
   "_noteR": "R (Spiraling Despair): re-verified and upgraded from the prior floor-only 'Damage' pick (RBaseDamage(75->825)+0.8xAP, the initial attach hit) to 'TotalMaxDamage' = SumOfSubParts(RBaseDamage + ProductOfSubParts(BaseDamageOverTime(0->60) x Duration(3s))) + StatByCoefficient(0.95, default AP) -- both ProductOfSubParts and SumOfSubParts are supported calc kinds. This closely matches the BIN's own MaxDamageHelper tooltip DataValue (e.g. rank2: 200+10x3=230 vs MaxDamageHelper[1]=230, confirmed), representing the full burst+DoT-tick+final-shatter total if the target remains in the expanding zone for its whole 3s duration, matching the wiki description ('expanding zone that inflicts magic damage and a stacking slow... shatters for a final burst of magic damage'). Tagged Zone (real ground/aura DoT the target can walk out of) and BurstCeiling (largest modeled number in Hwei's kit by a wide margin). Confirmed directly by GOLDEN #13's clean-room rows at AP 18 and AP 83.",
@@ -25,10 +23,12 @@
     ]
   },
   "_noteQQ": "Devastating Fire. Damage = BaseDamage(20->200) + 0.8 AP, PLUS the target's maximum health, curated loop 480 after the user supplied the namu.wiki entry (both wikis agree: +대상 최대 체력의 3/4/5/6/7%, with the 250 cap applying to monsters only). The BIN DataValue is BonusDamage, 2/3/4/5/6/7/8 by rank index, read through hpPercentDataValue which divides a >=1 value by 100. WHAT MADE THIS LOOK LIKE A CONFLICT, AND WHY IT WAS NOT: GOLDEN #13's QQ row measured 62, and the loop-39-era file reconciled that only by assuming Q was at RANK 2 -- which is where the goldens note about forcing the rankSlot threading came from. Rank 2 flat-only is 80 + 0.8x9 = 87.2. Rank 1 WITH the health ratio is 50 + 7.2 + 3% of 1000 = 87.2. The same number, to the decimal. Every other row of that same session reconciles at rank 1 (E 54.6 vs 54, QW 45.1 vs 45, WE rider 15.4 vs 15, AA 48.2 vs 48), so an all-rank-1 session with the health ratio present is the reading that needs no special pleading, and the rank-2 inference was an artifact of the missing hit. The golden row keeps its measured 62 and now evaluates at rank 1; see GoldenHweiTests.",
+  "_noteIsolatedQW": "(2026-10-20, M45 loop 26) Severing Bolt's missing-health growth applies only to isolated or immobilized enemies (the tooltip) - it grew against everyone. A VsIsolated box; the full-health golden is unaffected.",
+  "_noteTooltipQW": "(2026-10-20, M45 loop 40) Severing Bolt reads HweiQ's tooltip calcs: Tooltip_QWDamage, growing up to Tooltip_QWBonusDamage (the extra at no health left) - equal to HweiQW Damage x BonusDamageMult at every audit profile, and now the number the tooltip itself shows.",
   "QW": {
     "icon": "assets/characters/hwei/hud/icons2d/hweiqw.png",
     "hits": [
-      { "type": "Magic", "calc": "Damage", "binSpell": "HweiQW", "missingHpBonusDataValue": "BonusDamageMult", "count": 1, "tags": ["PercentMissingHp"] }
+      { "type": "Magic", "calc": "Tooltip_QWDamage", "binSpell": "Q", "missingHpBonusCalc": "Tooltip_QWBonusDamage", "count": 1, "tags": ["PercentMissingHp"], "conditionType": "VsIsolated", "missingHpBonusWhenMet": true }
     ]
   },
   "_noteQW": "Severing Bolt. Damage = BaseDamage(35->185) + 0.3 AP, wiki 60/85/110/135/160 (+30% AP). THE AMPLIFICATION IS NOW CURATED (loop 480) -- it was the file's largest disclosed gap and the reason GOLDEN #13 had to re-measure QW on a full-health dummy. BIN BonusDamage is GameCalculationModified(Damage x BonusDamageMult), and BonusDamageMult by rank is 2.0/2.375/2.75/3.125/3.5, exactly the wiki's 'increased by up to 200/237.5/275/312.5/350% based on the targets missing health'. That is a base-times-missing-fraction shape, NOT a fraction of the targets absolute missing health, so it is curated through the new missingHpBonusDataValue field into ComboExecuteType.BaseWithMissingHpBonus -- the same machinery Kraken Slayers Bring It Down has always used, which re-reads the targets health where the hit lands instead of freezing a pre-combo fraction. Against a full-health target it resolves to exactly the old number, which is why the golden row still holds.",

@@ -40,11 +40,9 @@ public class ReopenedStructuralBlocksTests
     {
         var heim = Champion("Heimerdinger");
 
+        // (M45 loop 23) QUlt's charged beam and EUlt's later discharges are count-knob hits of their own
         foreach (var slot in new[] { "QUlt", "WUlt", "EUlt" })
-        {
-            var hit = Assert.Single(SkillDamageDb.GetHits("Heimerdinger", slot)!);
-            Assert.Equal("R", hit.BinSpell);
-        }
+            Assert.All(SkillDamageDb.GetHits("Heimerdinger", slot)!, hit => Assert.Equal("R", hit.BinSpell));
 
         // CH-3X Lightning Grenade: 100/200/300 (+60% AP) a bounce. At R rank 3 and 300 AP that is
         // 300 + 180 = 480 — the wiki number, resolved from the BIN rather than typed in.

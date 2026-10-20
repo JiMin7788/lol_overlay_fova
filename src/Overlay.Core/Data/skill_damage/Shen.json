@@ -6,10 +6,12 @@
   "_noteE": "Shadow Dash: TauntDamage=BaseDamage+BonusHPRatio(0.11 bonus health). WebSearch confirms 'physical damage based on his bonus health' and explicitly that Shadow Dash was reworked OFF magic damage -- type corrected Magic->Physical. One hit.",
   "_noteR": "Stand United has only shield-value calcs, zero damage. No hits.",
   "_noteQ_sweep2": "STAGE-4 AUDIT (loop 438, 2026-07-27): sweep tier-A flags QBaseOnHitDamage(10 flat)/QPerLevelOnHitDamage(6 flat) are FALSE POSITIVES - script-side mirrors of the same 10-40 level scaling that the curated BaseFlatDamage calc encodes in its ByCharLevelBreakpoints tree (base 10 + 6-per-breakpoint; wiki 10-40 matches). Tier-B EnhancedPercentDamage(4.5->7.5% +2%/100AP, calc EmpPercentHealth) is REAL: the enhanced Q variant when the blade passes through an enemy - a conditional %maxHP upgrade the current schema cannot express (IsConditional/MetCalc selects flat calcs only, not hpPercentCalc fractions). DISCLOSED-OMITTED, conservative baseline BasePercentHealth kept (P2: base 1.5-4.5% never overstates). QTowerDamageModifier(1.0) is structure-only. Rank mapping re-confirmed: wiki rank1 %=2.0 = BIN index1 (the established index1=rank1 rule). NO CALC CHANGES.",
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
+  "_noteEmpQ": "(2026-10-19, M45 loop 11) A Spirit Blade that passed through an enemy champion raises the % to EmpPercentHealth - Upgraded condition.",
   "Q": {
     "hits": [
-      { "type": "Magic", "calc": "BaseFlatDamage", "count": 3 },
-      { "type": "Magic", "hpPercentCalc": "BasePercentHealth", "hpBasis": "Max", "count": 3, "tags": ["PercentMaxHp"] }
+      { "isAttack": true, "type": "Magic", "calc": "BaseFlatDamage", "count": 3 },
+      { "isAttack": true, "type": "Magic", "hpPercentCalc": "BasePercentHealth", "hpBasis": "Max", "count": 3, "tags": ["PercentMaxHp"], "conditionType": "Upgraded", "metHpPercentCalc": "EmpPercentHealth" }
     ]
   },
   "E": { "hits": [ { "type": "Physical", "calc": "TauntDamage", "count": 1 } ] }

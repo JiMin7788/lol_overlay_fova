@@ -109,8 +109,33 @@ public class ItemTrackerTests : IDisposable
 
         var alert = Assert.Single(alerts);
         Assert.Equal(ItemAlertType.ItemCompleted, alert.Type);
-        Assert.Equal("Rabadon's Deathcap completed", alert.Message);
+        Assert.Equal("Rabadon's Deathcap 완성", alert.Message);
         Assert.Equal(42, alert.Timestamp);
+    }
+
+    /// <summary>(2026-10-19) With a snapshot, only the ACTIVE player's completions alert — the item
+    /// events cover all ten players, and an enemy's legendary already has its own card.</summary>
+    [Fact]
+    public void ItemCompleted_WithSnapshot_OnlyForTheActivePlayer()
+    {
+        var snap = new GameSnapshot { HasData = true, ActivePlayerSummonerName = "me", PlayerCount = 2 };
+        snap.Players[0].SummonerName = "me";
+        snap.Players[0].ChampionName = "Syndra";
+        snap.Players[1].SummonerName = "enemy";
+        snap.Players[1].ChampionName = "Zed";
+
+        using var tracker = new ItemTracker(snapshot: () => snap);
+        var alerts = new List<ItemAlert>();
+        tracker.OnItemChanged(alerts.Add);
+        tracker.Start();
+
+        EventBus.EventBus.Publish("GAME.ITEM_CHANGED", Items("Zed", 1058, 1058), "test");
+        EventBus.EventBus.Publish("GAME.ITEM_CHANGED", Items("Zed", 3089), "test");
+        Assert.Empty(alerts);
+
+        EventBus.EventBus.Publish("GAME.ITEM_CHANGED", Items("Syndra", 1058, 1058), "test");
+        EventBus.EventBus.Publish("GAME.ITEM_CHANGED", Items("Syndra", 3089), "test");
+        Assert.Single(alerts);
     }
 
     [Fact]
@@ -170,7 +195,7 @@ public class ItemTrackerTests : IDisposable
         EventBus.EventBus.Publish("GAME.ITEM_CHANGED", Items("Syndra", 3089), "test");
 
         Assert.True(delivered.Wait(TimeSpan.FromSeconds(2)), "UI.ITEM_ALERT was not delivered");
-        Assert.Equal("Rabadon's Deathcap completed", hudPayload);
+        Assert.Equal("Rabadon's Deathcap 완성", hudPayload);
     }
 
     // ── No enemy / cross-player inference (P1/P2) ────────────────────────────────

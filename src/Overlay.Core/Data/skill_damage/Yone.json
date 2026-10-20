@@ -1,11 +1,18 @@
 {
   "_note": "Curated (T2c). W (Spirit Cleave) deals MAGIC damage (auto-picker wrongly tagged Physical). Q is physical. R (Fate Sealed) deals half physical + half magic from a single 'Damage' calc that cannot be split, so it is approximated as Physical.",
+  "_noteCritQ": "(2026-10-19, user: skills crit only when the tooltip says so, each for its own amount) Mortal Steel: tooltip can critically strike for @TotalDamageCrit@. BIN TotalDamageCrit = BaseDamage + AD x (critDamage x ADRatio): the crit multiplies the AD part only. Source: CommunityDragon lol.stringtable (latest, 2026-10-19) tooltip + the cached BIN calc.",
+  "_noteOnHitQ": "(2026-10-19, M45 loop 20) Mortal Steel acts like an attack and applies on-hit effects (appliesOnHit).",
+  "_noteSplitP": "(2026-10-20, M45 loop 32) Steel and Spirit: every second attack deals MagicDamageSplit (50%) of itself as MAGIC damage (an attack-shape P hit: the swing at total AD, the share converted on the combo's 2nd, 4th... attack). The doubled crit chance / reduced crit damage of Way of the Hunter is not modeled.",
+  "P": { "hits": [ { "type": "Physical", "basicAttack": true, "attackShape": true, "canCrit": true, "trueShareDataValue": "MagicDamageSplit", "shareType": "Magic", "shareEveryNthAttack": 2, "count": 1 } ] },
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "QDamage",
-        "count": 1
+        "count": 1,
+        "canCrit": true,
+        "critCalc": "TotalDamageCrit",
+        "appliesOnHit": true
       }
     ]
   },
@@ -30,6 +37,7 @@
       }
     ]
   },
+  "_noteSplitR": "(2026-10-19, M45 loop 9) Fate Sealed deals TooltipDamage (= Damage x 0.5) physical AND TooltipDamage magic: the one Damage hit is split half and half (splitType), it was all physical.",
   "R": {
     "tags": [
       "BurstCeiling",
@@ -39,7 +47,8 @@
       {
         "type": "Physical",
         "calc": "Damage",
-        "count": 1
+        "count": 1,
+        "splitType": "Magic"
       }
     ]
   },

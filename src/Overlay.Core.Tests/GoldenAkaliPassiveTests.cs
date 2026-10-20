@@ -67,17 +67,20 @@ public class GoldenAkaliPassiveTests : IDisposable
     [Fact]
     public void UnrestrictedOnAbilityPassive_StillAttaches_ToEveryAbility()
     {
-        // Vel'Koz's passive is an on-ability effect with NO appliesTo restriction, so it must still
-        // ride every ability cast — the fix filters only the explicitly-restricted riders.
+        // Vel'Koz's passive is an on-ability effect with NO appliesTo restriction, so the appliesTo
+        // filter must not drop it — the fix filters only the explicitly-restricted riders. (M45 loop 5)
+        // It detonates on the 3rd stack (procEvery 3), so one Q does not proc and Q-W-E does, on E.
         ChampionRepository.Initialize(new[] { LoadChampionFromBin("Velkoz") });
 
         var q = RunCombo("Velkoz", "Q");
-        Assert.Contains(q.NodeIds, id => id.Contains("#bonus"));
+        Assert.DoesNotContain(q.NodeIds, id => id.Contains("#bonus"));
+        var qwe = RunCombo("Velkoz", "Q", "W", "E");
+        Assert.Contains(qwe.NodeIds, id => id.StartsWith("E_") && id.Contains("#bonus"));
     }
 
     // ── harness ──────────────────────────────────────────────────────────────────
 
-    private (double Total, System.Collections.Generic.List<string> NodeIds) RunCombo(string champ, string slot)
+    private (double Total, System.Collections.Generic.List<string> NodeIds) RunCombo(string champ, params string[] slots)
     {
         var snap = new GameSnapshot { HasData = true, ActivePlayerSummonerName = "Me", Level = 6, PlayerCount = 1, Stats = Stats() };
         snap.Players[0].SummonerName = "Me";
@@ -89,8 +92,9 @@ public class GoldenAkaliPassiveTests : IDisposable
         var engine = new ComboEngine(new DamageEngine(), new RuneEngine());
         var editor = new ComboEditor(engine, config);
         var draft = editor.CreateCombo(champ, "c");
-        editor.AddNode(draft.Id, new ComboNode(slot + "_" + Guid.NewGuid().ToString("N"), ComboNodeType.Skill, slot,
-            0, 0, 0, ComboDamageType.Magic, 1.0, 0, 0, 0, 0, 0));
+        foreach (var slot in slots)
+            editor.AddNode(draft.Id, new ComboNode(slot + "_" + Guid.NewGuid().ToString("N"), ComboNodeType.Skill, slot,
+                0, 0, 0, ComboDamageType.Magic, 1.0, 0, 0, 0, 0, 0));
         editor.SaveCombo(draft.Id);
 
         using var runner = new ComboRunner(engine, config, () => snap);

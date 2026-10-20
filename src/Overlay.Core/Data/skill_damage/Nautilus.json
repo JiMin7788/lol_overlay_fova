@@ -5,7 +5,8 @@
   "_noteW": "Titan's Wrath (NautilusPiercingGazeAbility): DotDamageCalc = DotDamageBase + 0.4*AP -- the bonus magic damage pulse dealt on each of the next 3 basic attacks while the shield (ShieldCalc, not damage) is active. Curated as a single representative pulse (count 1); the up-to-3-attacks repetition is on-hit-gated and not modeled as a guaranteed multi-hit (conservative, P2).",
   "_noteE": "Riptide (NautilusSplashZoneAbility): DamageCalc = DamageBase + 0.5*AP. Single pulse hit; MonsterBonusCalc is a monster-only (jungle-clear) bonus, not applicable to a champion target -- omitted.",
   "_noteR": "Depth Charge (NautilusGrandLineAbility): PrimaryTargetDamage = PrimaryDamage + 0.8*AP, the direct hit on Nautilus's chosen target. SecondaryTargetDamage (0.4*AP) is dealt to OTHER enemies caught in the wake as the rock travels past the primary target -- not applicable to the primary target itself, omitted.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "TotalDamageTooltip", "count": 1 } ] } ] },
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Staggering Blow: Nautilus' first Attack against a target - once on the combo target (maxProcs 1); it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Physical", "calc": "TotalDamageTooltip", "count": 1 } ] } ] },
   "Q": {
     "hits": [
       {
@@ -15,22 +16,26 @@
       }
     ]
   },
+  "_noteAttackW": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
   "W": {
     "hits": [
       {
-        "type": "Magic",
+        "isAttack": true, "type": "Magic",
         "calc": "DotDamageCalc",
         "count": 1
       }
     ]
   },
+  "_noteMultiE": "(2026-10-19, M45 loop 6) Riptide: waves after the first deal ExtraWavePenalty (50%) less to the same enemy - extra waves ride the hit-count knob (up to 2).",
+  "_noteCapE": "(2026-10-19, M45 loop 7) Repeat waves capped at 2 (the tooltip creates three).",
   "E": {
     "hits": [
       {
         "type": "Magic",
         "calc": "DamageCalc",
         "count": 1
-      }
+      },
+      { "type": "Magic", "perAttackCalc": "DamageCalc", "damagePenaltyDataValue": "ExtraWavePenalty", "count": 1, "maxAttackCount": 2 }
     ]
   },
   "R": {

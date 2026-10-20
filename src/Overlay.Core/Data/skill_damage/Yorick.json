@@ -13,10 +13,12 @@
       }
     ]
   },
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
   "Q": {
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "calc": "BonusDamage",
         "count": 1
       }
@@ -32,6 +34,7 @@
       }
     ]
   },
+  "_noteMarkR": "(2026-10-19, M45 loop 8) Yorick's own attacks on the Maiden's target deal RMarkDamagePercent max health (the R node assumes she fights the combo target).",
   "R": {
     "hits": [
       {
@@ -39,7 +42,8 @@
         "calc": "YorickBigGhoulDamage",
         "count": 1
       }
-    ]
+    ],
+    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "hpPercentDataValue": "RMarkDamagePercent", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] } ]
   },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): P MeleeAttackDamageModifier(2.0)/ProcDamageModifier(0.5) are GHOUL attack modifiers and R RMarkDamagePercent/RMarkMaxDamage(1.5->4.5%, cap 30) is the Maiden's mark rider - all pet-actor terms (ghoul/Maiden output is summon-uptime state; the summon knob pattern covers pets that are curated). Documented."
 }

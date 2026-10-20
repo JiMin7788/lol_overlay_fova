@@ -60,7 +60,8 @@ public class HotkeyRegistryTests
     [InlineData("   ")]
     [InlineData("ALT")]          // no non-modifier key
     [InlineData("ALT+")]         // empty component
-    [InlineData("ALT+1+2")]      // two non-modifier keys
+    [InlineData("Q+W+E+R")]      // (M46) four non-modifier keys - at most three
+    [InlineData("ALT+Q+Q")]      // (M46) one key twice
     public void Parse_MalformedInput_Throws(string input)
     {
         Assert.Throws<FormatException>(() => HotkeyCombo.Parse(input));

@@ -6,6 +6,9 @@
       { "type": "Magic", "calc": "TotalExplosionDamage", "count": 1 }
     ]
   },
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
-  "R": { "tags": ["AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamagePerSecond", "count": 1, "tags": ["Zone"] } ] }
+  "_noteChillE": "(2026-10-19, M45 loop 7) Frostbite deals EmpoweredDamage (x2) instead against Chilled enemies (Q / R chill) - VsDebuffed condition, unmet = the plain hit.",
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1, "conditionType": "VsDebuffed", "metCalc": "EmpoweredDamage" } ] },
+  "_noteRateR": "(2026-10-19, M45 loop 2) The tooltip states a per-second rate; one hit of it counted exactly one second, chosen by nothing. Now a duration-scaled hit: rate x the exposure set on the node (knob), up to 5 s - a toggle has no game cap, so the knob ceiling is an app convention, not game data; unset = 0 s (M24).",
+  "_noteFormedR": "(2026-10-19, M45 loop 7) Once fully formed (GrowthTime) the storm deals EmpoweredDamagePerSecond (x3) instead - Upgraded condition: met = that rate over the same exposure seconds.",
+  "R": { "tags": ["AoeUltimate"], "hits": [ { "type": "Magic", "perSecondCalc": "TotalDamagePerSecond", "maxDurationSeconds": 5.0, "count": 1, "tags": ["Zone"], "conditionType": "Upgraded", "metCalc": "EmpoweredDamagePerSecondTooltipOnly" } ] }
 }

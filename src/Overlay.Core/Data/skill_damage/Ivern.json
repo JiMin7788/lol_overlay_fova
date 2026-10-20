@@ -39,10 +39,12 @@
       }
     ]
   },
+  "_noteShockwaveR": "(2026-10-20, M45 loop 42) Daisy's 3rd consecutive attack on the same champion launches TotalShockwaveDamage: once, on the node's 3rd Daisy attack (landsOnNthAttack), behind a Consecutive box - Daisy picks her own targets and no API reports them, so unticked counts none (3 attacks = 3 x one, the golden row). A second shockwave is not counted (P2 floor): ShockwaveCD 3 s against Daisy's attack speed (wiki 0.975 / 1.088 / 1.2, not in the data) decides whether the 6th or the 7th attack launches it.",
   "R": {
     "tags": ["AoeUltimate"],
     "hits": [
-      { "type": "Physical", "perAttackCalc": "TotalDaisyAD", "count": 1 }
+      { "type": "Physical", "perAttackCalc": "TotalDaisyAD", "count": 1 },
+      { "type": "Magic", "perAttackCalc": "TotalShockwaveDamage", "landsOnNthAttack": 3, "conditionType": "Consecutive", "count": 1 }
     ]
   },
   "_noteRDaisy": "R (Daisy!) summon cast deals ZERO direct damage; the modeled damage is Daisy's basic attacks as a per-attack SUMMON hit (M22 Phase 3): perAttackCalc='TotalDaisyAD' (IvernR.mSpellCalculations, Daisy's attack value, resolves live from the BIN) x the node's user-entered UserAttackCount ('몇 대'). Unset/0 -> 0, honest default (Daisy's total is autonomous/uptime-dependent). TYPE CAVEAT: modeled Physical because TotalDaisyAD is an AD-based value and Daisy's every-3rd 'Smash' proc (TotalShockwaveDamage) is wiki-confirmed Physical (see _noteR); Daisy's plain basic-attack type was not independently wiki-verified this pass -- flag for recheck. NOT added: the Smash proc itself (every-3rd-attack, would need attack-count modulo logic) -- TotalShockwaveDamage available for a future hit.",

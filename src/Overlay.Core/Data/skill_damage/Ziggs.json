@@ -5,10 +5,12 @@
   "_noteW": "Satchel Charge: TotalDamage = NamedDataValue(BaseDamage, 35-245) + StatByCoefficient(0.5 AP). Magic.",
   "_noteE": "Hexplosive Minefield: TotalDamage = NamedDataValue(DamagePerMine, -10 to 230) + StatByNamedDataValue(APRatioPerMine 0.2-0.5). Magic. 'ReducedDamage' (=TotalDamage x0.4 SubsequentMineDamageMod) exists for a second mine hitting the same target within the mine field but is conditional on stacking multiple mines, so only a single mine's TotalDamage is curated.",
   "_noteR": "Mega Inferno Bomb: EmpoweredDamage = NamedDataValue(BaseDamage, 100-1300) + StatByNamedDataValue(APRatio=1.0 AP) -- the center-of-blast max hit. 'BlastDamage' (=EmpoweredDamage x0.65 OuterRingModifier) is the reduced outer-ring hit, not curated (guaranteed-best-case convention). Magic. Tagged BurstCeiling: Ziggs' global-range mega-nuke is the game's textbook single-target burst-ceiling ability.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Short Fuse: every Cooldown seconds Ziggs' next Attack - once in a burst (maxProcs 1; his abilities shorten the cooldown, so a long combo can see a second: a floor); it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteMinesE": "(2026-10-19, M45 loop 7) Mines beyond the first on the same enemy deal ReducedDamage - the hit-count knob (uncapped: the mine count is not a BIN value).",
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 }, { "type": "Magic", "perAttackCalc": "ReducedDamage", "count": 1 } ] },
   "R": {
     "hits": [ { "type": "Magic", "calc": "EmpoweredDamage", "count": 1 } ],
     "tags": ["BurstCeiling", "AoeUltimate"]

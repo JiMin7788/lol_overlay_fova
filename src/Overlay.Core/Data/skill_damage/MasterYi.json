@@ -1,22 +1,27 @@
 {
   "_note": "Curated (T3.x passive pass). P (Double Strike): periodically Master Yi's attack strikes twice, the second instance dealing bonus PHYSICAL damage (TotalDamage = 0.5x total AD, MasterYiPassive.mSpellCalculations — flat AD coefficient, no interpolation). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than only the periodic double-strike (documented; this likely OVER-counts relative to the real every-4th-hit proc, same caveat style as other on-hit passives). Q/E kept as the auto first-pass physical picks.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "_noteDoubleP": "(2026-10-19, M45 loop 22) Double Strike: every AttackCount (4) th attack strikes twice - it rode EVERY attack. procEvery 4 (prior stacks unknown: the ceiling assumes 3).",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "procEvery": 4, "hits": [ { "isAttack": true, "type": "Physical", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "_noteCritQ": "(2026-10-19, user: skills crit only when the tooltip says so, each for its own amount) Alpha Strike: tooltip Can critically strike for an additional @CritBonus@. BIN CritBonus = TotalDamage x BonusCritDamageRatio x (critDamage - 1), added on a crit (critBonusCalc). Source: CommunityDragon lol.stringtable (latest, 2026-10-19) tooltip + the cached BIN calc.",
+  "_noteRepeatQ": "(2026-10-19, M45 loop 22) With no other targets Alpha Strike hits the same enemy again for SubesquentDamage (25%) - the count knob, up to 3 (SingleTotalDamage at the cap).",
+  "_noteShareQ": "(2026-10-20, M45 loop 24) The repeats are TotalDamage x SubsequentHitMultiplier (25%) - the same number as SubesquentDamage, the share now explicit.",
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Alpha Strike applies On-Hit effects at BaseOnHitMultiplier (75%); subsequent hits on the same target at SubsequentHitMultiplier of that (the rules text), so the counted strikes carry the product.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
-      }
+        "count": 1,
+        "canCrit": true,
+        "critBonusCalc": "CritBonus",
+        "appliesOnHit": true,
+        "onHitEffectivenessDataValue": "BaseOnHitMultiplier"
+      },
+      { "type": "Physical", "perAttackCalc": "TotalDamage", "damageMultiplierDataValue": "SubsequentHitMultiplier", "maxAttackCount": 3, "count": 1, "appliesOnHit": true, "onHitEffectivenessDataValue": "BaseOnHitMultiplier*SubsequentHitMultiplier" }
     ]
   },
+  "_noteWujuE": "(2026-10-19, M45 loop 9) Wuju Style: for Duration seconds Master Yi's attacks deal an additional TotalDamage TRUE damage. Was one physical hit on the E node; now an on-hit rider on the attacks after E.",
   "E": {
-    "hits": [
-      {
-        "type": "Physical",
-        "calc": "TotalDamage",
-        "count": 1
-      }
-    ]
+    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "True", "calc": "TotalDamage", "count": 1 } ] } ]
   }
 }

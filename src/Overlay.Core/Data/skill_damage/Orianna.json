@@ -1,5 +1,6 @@
 {
   "_note": "Re-verified this session (loop 336). MAJOR FIX: Q (Command: Attack) and E (Command: Protect) were ENTIRELY MISSING from curation -- both deal real, guaranteed magic damage confirmed via BIN CharacterRecord.spellNames (authoritative Q/W/E/R -> spell-object mapping: [OrianaIzunaCommandAbility/OrianaIzunaCommand, OrianaDissonanceCommandAbility/OrianaDissonanceCommand, OrianaRedactCommandAbility/OrianaRedactCommand, OrianaDetonateCommandAbility/OrianaDetonateCommand]) and wiki-verified (wiki.leagueoflegends.com/en-us/Orianna). Q = OrianaIzunaCommand.TotalDamageTooltip (BaseDamage 60/90/120/150/180 + 55% AP) -- the auto-picker skipped it purely because of the substring \"Tooltip\" in the calc name (the calc has no tooltipOnly:true flag, same false-positive class documented in AurelionSol.json this session). E = OrianaRedactCommand.TotalDamageTooltip (BaseDamage 60/90/120/150/180 + 30% AP, ball-transit damage) -- same false-positive skip; its TotalShieldTooltip (ally shield, 55/90/125/160/195 + 45% AP) is correctly left uncurated (non-damage). P (Clockwork Windup): unchanged, still bonusEffect onHit approximation. W (Command: Dissonance, OrianaDissonanceCommand.TotalDamage) and R (Command: Shockwave, OrianaDetonateCommand.TotalDamage) re-confirmed correct against BIN + wiki (W 70/110/150/190/230 + 80% AP; R 225/350/475 + 110% AP) -- unchanged.",
+  "_noteStackP": "(2026-10-19, M45 loop 7) Subsequent attacks on the same target add StackDamage per stack, 2 stacks (StackDamageMax): the 2nd attack +1, the 3rd on +2 (procFrom 2 and 3, consecutive attacks within StackDuration).",
   "P": {
     "bonusEffects": [
       {
@@ -11,7 +12,9 @@
             "count": 1
           }
         ]
-      }
+      },
+      { "trigger": "onHit", "procFrom": 2, "hits": [ { "type": "Magic", "calc": "StackDamage", "count": 1 } ] },
+      { "trigger": "onHit", "procFrom": 3, "hits": [ { "type": "Magic", "calc": "StackDamage", "count": 1 } ] }
     ]
   },
   "Q": {

@@ -5,8 +5,9 @@
   "Q": { "hits": [ { "type": "Physical", "basicAttack": true, "count": 1 }, { "type": "Physical", "calc": "QBonusDamage", "conditionType": "ResourceGte", "conditionValue": 4, "metCalc": "{d4a43abe}", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "conditionType": "ResourceGte", "conditionValue": 4, "metCalc": "TotalDamageEmpowered", "count": 1 } ] },
   "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "conditionType": "ResourceGte", "conditionValue": 4, "metCalc": "TotalEmpoweredDamage", "count": 1 } ] },
+  "_noteShredR": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Thrill of the Hunt leap shreds ArmorShred armor (flat); later nodes of the combo hit the reduced resistance.",
   "R": {
-    "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Physical", "calc": "BonusDamage", "count": 1 } ] } ],
+    "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Physical", "calc": "BonusDamage", "count": 1, "armorShredFlatDataValue": "ArmorShred" } ] } ],
     "tags": ["BurstCeiling", "ArmorShred"]
   },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W DamagePercentageHealed(50) is a HEALING ratio (grey-health), not damage. Benign."

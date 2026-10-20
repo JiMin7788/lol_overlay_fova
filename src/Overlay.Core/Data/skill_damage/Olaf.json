@@ -5,5 +5,6 @@
   "_noteE": "Reckless Swing (OlafRecklessStrikeAbility): TotalDamage = BaseDamage + 0.5x TOTAL AD (mStat 2, no mStatFormula). Also costs Olaf his own health (HealthCostCalc, a self-cost not target damage) -- irrelevant to combo output, not curated.",
   "_noteR": "Ragnarok (OlafRagnarokAbility): pure self-buff (tenacity + flat/percent AD gain, AD calc scales Olaf's OWN attack damage) -- no damage dealt to a target, correctly omitted.",
   "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1, "tags": ["ArmorShred"] } ] },
-  "E": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] }
+  "_noteTypeE": "(2026-10-19, M45 loop 9) Type set to True from the tooltip - Reckless Swing: 'true damage'.",
+  "E": { "hits": [ { "type": "True", "calc": "TotalDamage", "count": 1 } ] }
 }

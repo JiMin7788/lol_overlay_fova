@@ -45,6 +45,8 @@ public sealed class ChampionStatsPerLevel
     public double AttackSpeed { get; init; }
     public double HpRegen { get; init; }
     public double MpRegen { get; init; }
+    // (M45 loop 50) Mana growth: bonus mana = the live max mana minus base + this along the growth curve.
+    public double Mp { get; init; }
 }
 
 /// <summary>

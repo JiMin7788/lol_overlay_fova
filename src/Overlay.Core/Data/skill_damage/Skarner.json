@@ -12,15 +12,17 @@
       }
     ]
   },
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
+  "_noteRidesQ": "(2026-10-20, M45 loop 43) Shattered Earth: the next 3 Attacks each deal AbilityDamage (the final one adds MaxHPPercent, count 1) - count 3; it counted one.",
   "Q": {
     "hits": [
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "calc": "AbilityDamage",
-        "count": 1
+        "count": 3
       },
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "hpPercentDataValue": "MaxHPPercent",
         "hpBasis": "Max",
         "count": 1,

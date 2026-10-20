@@ -14,6 +14,7 @@
       }
     ]
   },
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Jaws of the Beast applies On-Hit and On-Attack effects.",
   "Q": {
     "tags": [
       "PercentMaxHp"
@@ -22,7 +23,8 @@
       {
         "type": "Magic",
         "calc": "BaseBiteDamage",
-        "count": 1
+        "count": 1,
+        "appliesOnHit": true
       },
       {
         "type": "Magic",
@@ -35,15 +37,19 @@
       }
     ]
   },
+  "_noteTypeR": "(2026-10-19, M45 loop 9) Type set to Magic from the tooltip - Infinite Duress: 'magic damage'.",
+  "_noteOnHitR": "(2026-10-20, M45 loop 47) Infinite Duress applies On-Hit and On-Attack effects 3 distinct times over its duration (the rules text literal).",
   "R": {
     "tags": [
       "BurstCeiling"
     ],
     "hits": [
       {
-        "type": "Physical",
+        "type": "Magic",
         "calc": "DamageCumulative",
-        "count": 1
+        "count": 1,
+        "appliesOnHit": true,
+        "onHitStrikes": 3
       }
     ]
   },

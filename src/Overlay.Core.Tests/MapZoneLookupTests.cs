@@ -39,6 +39,26 @@ public class MapZoneLookupTests
         Assert.Equal("미드", lookup.ZoneName(0.50, 0.50));       // mid-lane diagonal crossing
     }
 
+    /// <summary>(2026-10-19, user request) Lanes follow the minion paths. The v1 grid's straight
+    /// y&lt;0.20 / y&gt;0.80 bands called the vertical half of each side lane "jungle" and both Krug
+    /// camps "lane"; these pin the corrected shape (points from jungle_camps.json).</summary>
+    [Theory]
+    [InlineData(0.095, 0.45, "top_lane")]            // top lane, vertical part along the left edge
+    [InlineData(0.45, 0.10, "top_lane")]             // top lane, horizontal part along the top edge
+    [InlineData(0.03, 0.30, "top_lane")]             // between the top lane and the map edge
+    [InlineData(0.90, 0.55, "bot_lane")]             // bot lane, vertical part along the right edge
+    [InlineData(0.55, 0.905, "bot_lane")]            // bot lane, bottom edge
+    [InlineData(0.4341, 0.1732, "enemy_jungle_top")] // enemy Krugs — was "top_lane"
+    [InlineData(0.5701, 0.8226, "our_jungle_bottom")] // ally Krugs — was "bot_lane"
+    [InlineData(0.1455, 0.4378, "our_jungle_top")]   // ally Gromp, the camp nearest a side lane
+    [InlineData(0.8481, 0.5626, "enemy_jungle_bottom")] // enemy Gromp
+    public void Lanes_FollowTheMinionPath(double x, double y, string expectedKey)
+    {
+        var lookup = MapZoneLookup.LoadFile(DataFilePath());
+        Assert.NotNull(lookup);
+        Assert.Equal(expectedKey, lookup!.ZoneKeyLabel(x, y).Key);
+    }
+
     [Fact]
     public void OutOfRangeCoordinates_AreClampedIntoTheGrid()
     {

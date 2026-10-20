@@ -3,6 +3,8 @@
   "_noteP": "P (More Sparkles!): every few spell casts empowers Zoe's next basic attack to deal bonus magic damage (ZoePassive.mSpellCalculations 'PassiveDamage' = ByCharLevelBreakpointsCalculationPart(Level1=16, +4/lvl, breakpoints @7->+6, @12->+8, @15->+10) + StatByNamedDataValueCalculationPart(APRatio)). Both CalculationPart kinds are fully supported by FormulaInterpreter.EvaluatePart (ByCharLevelBreakpoints and StatByNamedDataValue), so PassiveDamage resolves live -- unlike several other champions' passives this pass found blocked by ByCharLevelFormulaCalculationPart (a different, unsupported kind; see Leona/Khazix/Lux P notes). Modeled as a P bonusEffect trigger onHit (same conditional-proc style as Sejuani/Volibear/Nocturne P; the every-Nth-cast gating is not modeled, approximated as firing on every attack).",
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "MissileDamageTooltip", "count": 1 } ] },
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 } ] },
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] } ] }
+  "_noteBreakE": "(2026-10-20, M45 loop 23) The hit that wakes a sleeping target deals double: bonus true damage up to BreakDamageTooltip. A VsDebuffed box (ticked = the sleep landed and the waking hit dealt at least the cap).",
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamageTooltip", "count": 1 }, { "type": "True", "conditionType": "VsDebuffed", "metCalc": "BreakDamageTooltip", "count": 1 } ] },
+  "_noteRidesP": "(2026-10-20, M45 loop 43) More Sparkles!: after using an Ability, Zoe's next Attack (afterAnyAbility) - it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "afterAnyAbility": true, "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] } ] }
 }

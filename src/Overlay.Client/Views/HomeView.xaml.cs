@@ -76,8 +76,15 @@ public partial class HomeView : UserControl
         return string.IsNullOrEmpty(snapshot.ActivePlayerSummonerName) ? "-" : snapshot.ActivePlayerSummonerName;
     }
 
+    /// <summary>Deleting a combo writes null under its id (ConfigManager keeps the key), so only
+    /// non-empty entries count — counting keys showed deleted combos too (48 vs 29 real ones),
+    /// which also disagreed with the Combos tab.</summary>
     private int CountSavedCombos()
     {
-        return _composition?.Config.Get("combos.saved") is IDictionary<string, object?> saved ? saved.Count : 0;
+        if (_composition?.Config.Get("combos.saved") is not IDictionary<string, object?> saved) return 0;
+        int n = 0;
+        foreach (var value in saved.Values)
+            if (!string.IsNullOrWhiteSpace(value?.ToString())) n++;
+        return n;
     }
 }

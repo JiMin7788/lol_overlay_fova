@@ -37,6 +37,7 @@ public class ComboRangeAttributionTests : IDisposable
         ChampionRepository.ResetForTests();
         ChampionSummary.ResetForTests();
         SkillDamageDb.ResetForTests();
+        SkillDamageDb.LoadForTests("Malzahar", NullZoneFixture.Json); // (M45 loop 15) the pre-rework W zone
         _dir = Path.Combine(Path.GetTempPath(), "ComboRangeAttributionTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
         _configPath = Path.Combine(_dir, "user_config.json");

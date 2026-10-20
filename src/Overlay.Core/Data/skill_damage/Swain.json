@@ -4,7 +4,8 @@
   "_noteQ_sweep2": "STAGE-4 AUDIT upgrade (loop 440, 2026-07-27): Q fires 5 bolts, additional bolts hit the SAME target at close range up to double total damage (BIN MaxDamage MODIFIES InitialDamage; MaxDamageMultiTOOLTIP=2.0 is the tooltip mirror the sweep flagged). Upgraded to the Fizz-R DistanceScaled pattern: anchor InitialDamage (one bolt, conservative far poke), range [InitialDamage, MaxDamage] via UserDistanceFraction (closer = more bolts).",
   "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
   "E": { "hits": [ { "type": "Magic", "calc": "SecondaryDamage", "count": 1 } ] },
-  "R": { "hits": [ { "type": "Magic", "calc": "DamageCalc", "count": 1 } ], "tags": ["Zone", "AoeUltimate"] },
+  "_noteRateR": "(2026-10-19, M45 loop 22) The demon's drain deals DamageCalc PER SECOND to nearby enemies (it was one second): the exposure knob capped at 5 s - an app convention for a combo window (R lasts much longer); unset = 0 s.",
+  "R": { "hits": [ { "type": "Magic", "perSecondCalc": "DamageCalc", "maxDurationSeconds": 5.0, "count": 1 } ], "tags": ["Zone", "AoeUltimate"] },
   "_noteR_sweep2": "STAGE-4 AUDIT (loop 440, 2026-07-27): curated DamageCalc = ONE drain tick (conservative floor of an uptime-dependent aura; wiki 7.5/12.5/17.5 +2%AP per 0.5s). Sweep [A] MinDamage is an empty/derived tooltip calc. The Demonflare RECAST burst (tier-B DemonflareDamageBase/Ratio) was previously unrepresented - added as the RDemonflare extra slot below (a real selectable cast; wiki 150/250/350 +40%AP matches BIN DemonflareDamageTotal exactly).",
   "RDemonflare": { "icon": "assets/characters/swain/hud/icons2d/swain_r2.png", "tags": ["AoeUltimate"], "hits": [ { "type": "Magic", "calc": "DemonflareDamageTotal", "binSpell": "R", "count": 1 } ] }
 }

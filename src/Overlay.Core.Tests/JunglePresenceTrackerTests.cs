@@ -25,7 +25,8 @@ namespace Overlay.Core.Tests;
 /// Zone text assertions use real, known coordinates against the shipped
 /// <c>data/map_regions.json</c> (via <see cref="MapZoneLookup.Default"/>) rather than a stub
 /// lookup, since (0.05,0.05) → "탑" and (0.95,0.95) → "봇" are stable for this grid (see
-/// <c>tools/validate_map_regions.py</c>'s classify() rule: y&lt;0.20 → top_lane, y&gt;0.80 → bot_lane).
+/// <c>tools/validate_map_regions.py</c>'s classify(): the strip between a side lane and the map
+/// corner it bends round is that lane).
 /// </summary>
 public class JunglePresenceTrackerTests : IDisposable
 {
@@ -198,7 +199,7 @@ public class JunglePresenceTrackerTests : IDisposable
         int Appears()
         {
             lock (ui)
-                return ui.Count(e => (e.Payload as HUDPayload)?.Id?.Contains("Appear") == true);
+                return ui.Count(e => (e.Payload as HUDPayload)?.Content is EnemyPresenceHud { Kind: EnemyAlertKind.Appear });
         }
 
         // Champion goes LOST, then is re-sighted within the 8s appear cooldown.
@@ -293,10 +294,32 @@ public class JunglePresenceTrackerTests : IDisposable
         WaitForUiCount(ui, 4);   // 1 appear (jungler) + 3 disappears
         List<Event> disappears;
         lock (ui)
-            disappears = ui.Where(e => (e.Payload as HUDPayload)?.Id?.Contains("Disappear") == true).ToList();
+            disappears = ui.Where(e => (e.Payload as HUDPayload)?.Content is EnemyPresenceHud { Kind: EnemyAlertKind.Disappear }).ToList();
         Assert.Equal(3, disappears.Count);
     }
 
+
+    /// <summary>(2026-10-19) One card per enemy: the disappear REPLACES that champion's appear card
+    /// (same HUD id) instead of sitting beside it.</summary>
+    [Fact]
+    public void AppearThenDisappear_SameChampion_ShareOneCardId()
+    {
+        var snap = SnapshotWithJungler("Kayn");
+        var (ui, _) = Subscribe();
+        var clock = new FakeClock { NowMs = 1000 };
+        var tracker = new JunglePresenceTracker(() => snap, clock: clock);
+        tracker.Start();
+
+        See(tracker, Sighting("Kayn"));
+        clock.NowMs += (long)JunglePresenceTracker.DefaultLostDebounceMs + 500;
+        tracker.Tick(clock.NowMs);
+
+        WaitForUiCount(ui, 2);
+        List<string?> ids;
+        lock (ui) ids = ui.Select(e => (e.Payload as HUDPayload)?.Id).ToList();
+        Assert.Equal(2, ids.Count);
+        Assert.Equal(ids[0], ids[1]);
+    }
 
     [Fact]
     public void DisappearAlert_WithinCooldown_Suppressed()

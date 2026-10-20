@@ -348,8 +348,9 @@ public class ItemEffectTests : IDisposable
         var snap = Snapshot("KrakenMeleeAttackerLv", stats, level: level, enemyChampion: "KrakenDummyLv", enemyLevel: 6,
             activeItems: new[] { 6672 });
         var result = RunCombo("KrakenMeleeAttackerLv", AaSequence(3), snap);
-        // Proc after AA3 at 300/5000 missing: base x 1.045.
-        Assert.Equal(expectedBase * 1.045, result.NodeBreakdown[3].Damage, precision: 2);
+        // (M45 loop 45) The proc reads the health before AA3 (the Practice Tool, GoldenOnHitItemsTests) and lands ahead of
+        // it: 200/5000 missing, base x 1.03.
+        Assert.Equal(expectedBase * 1.03, result.NodeBreakdown[2].Damage, precision: 2);
     }
 
     // ── (a) on-hit item adds a magic hit to an AA, mitigated by MR (not the AA's armor) ─
@@ -483,30 +484,29 @@ public class ItemEffectTests : IDisposable
 
         var result = RunCombo("MeleeAttacker", new[] { AaNode() with { Id = "AA_0" }, AaNode() with { Id = "AA_1" } }, snap);
 
-        // 4 breakdown entries: AA1, BOTK-proc-1, AA2, BOTK-proc-2.
+        // 4 breakdown entries: BOTK-proc-1, AA1, BOTK-proc-2, AA2. (M45 loop 45) The proc reads the target's health
+        // BEFORE the attack it rides (the Practice Tool: Ezreal 165 = 105 + 6% x 1000, GoldenOnHitItemsTests), so it
+        // lands ahead of its attack.
         Assert.Equal(4, result.NodeBreakdown.Count);
 
-        // AA1: 100 AD physical vs 100 armor -> mitigated 100*100/(100+100) = 50.00. remainingHp: 1000 -> 950.
-        Assert.Equal(50.0, result.NodeBreakdown[0].Damage, precision: 2);
-        // BOTK proc 1: 9% melee of the target's CURRENT hp (950, not the pre-combo 1000) = 85.5 raw,
-        // mitigated by armor 100 (independently, but armor is the same 100 here) = 85.5*100/200 = 42.75.
-        // remainingHp: 950 -> 907.25.
-        Assert.Equal(42.75, result.NodeBreakdown[1].Damage, precision: 2);
-
-        // AA2: another 100 AD physical, mitigated 50.00. remainingHp: 907.25 -> 857.25.
-        Assert.Equal(50.0, result.NodeBreakdown[2].Damage, precision: 2);
-        // BOTK proc 2: 9% melee of the NEW current hp (857.25) = 77.1525 raw, mitigated
-        // 77.1525*100/200 = 38.57625 -> displayed rounded to 38.58. THIS MUST DIFFER FROM
-        // proc 1 (42.75) — the whole point (internal Simulate math is full-precision, only the
-        // final displayed breakdown value is rounded to 2dp — see DamageEngine.Calculate).
-        Assert.Equal(38.58, result.NodeBreakdown[3].Damage, precision: 2);
+        // BOTK proc 1: 9% melee of the CURRENT hp 1000 = 90 raw, mitigated by armor 100 = 90*100/200 = 45.00.
+        // remainingHp: 1000 -> 955.
+        Assert.Equal(45.0, result.NodeBreakdown[0].Damage, precision: 2);
+        // AA1: 100 AD physical vs 100 armor -> mitigated 100*100/(100+100) = 50.00. remainingHp: 955 -> 905.
+        Assert.Equal(50.0, result.NodeBreakdown[1].Damage, precision: 2);
+        // BOTK proc 2: 9% melee of the NEW current hp (905) = 81.45 raw, mitigated 81.45*100/200 = 40.725.
+        // THIS MUST DIFFER FROM proc 1 (45.00) — the whole point (internal Simulate math is full-precision,
+        // only the final displayed breakdown value is rounded to 2dp — see DamageEngine.Calculate).
+        Assert.Equal(40.725, result.NodeBreakdown[2].Damage, precision: 1);
+        // AA2: another 100 AD physical, mitigated 50.00.
+        Assert.Equal(50.0, result.NodeBreakdown[3].Damage, precision: 2);
 
         // The critical correctness property, stated directly: two BOTK procs in the same combo
         // against a target whose HP dropped between them are NOT equal (a frozen/snapshot
-        // implementation would incorrectly compute 9%*1000 = 90 raw -> 45.00 mitigated, TWICE).
-        Assert.NotEqual(result.NodeBreakdown[1].Damage, result.NodeBreakdown[3].Damage);
+        // implementation would compute 9%*1000 = 90 raw -> 45.00 mitigated, TWICE).
+        Assert.NotEqual(result.NodeBreakdown[0].Damage, result.NodeBreakdown[2].Damage);
 
-        Assert.Equal(181.33, result.TotalDamage, precision: 2);
+        Assert.Equal(185.725, result.TotalDamage, precision: 1);
     }
 
     // ── Titanic Hydra (3748): melee vs ranged split, scaled off the CASTER's own max HP (no ──
@@ -614,15 +614,15 @@ public class ItemEffectTests : IDisposable
 
         // 3 AAs + exactly ONE Kraken Slayer proc (on the 3rd AA, which reaches 2 stacks).
         Assert.Equal(4, result.NodeBreakdown.Count);
-        // AA1, AA2, AA3: 100 physical each, unmitigated (0 armor) -> remainingHP = 5000-300 = 4700
-        // by the time the Kraken proc (appended right after AA3) evaluates. Melee base at level 1
-        // = 150, scaled by missing-health: missingFrac = 300/5000 = 0.06, multiplier = 1+0.75*0.06
-        // = 1.045 -> proc = 150*1.045 = 156.75, unmitigated.
+        // AA1, AA2: 100 physical each, unmitigated (0 armor) -> remainingHP = 5000-200 = 4800 when the
+        // Kraken proc evaluates: (M45 loop 45) it reads the health before AA3 and lands ahead of it (the
+        // Practice Tool, GoldenOnHitItemsTests). Melee base at level 1 = 150, missingFrac = 200/5000 = 0.04,
+        // multiplier = 1+0.75*0.04 = 1.03 -> proc = 150*1.03 = 154.5, unmitigated.
         Assert.Equal(100.0, result.NodeBreakdown[0].Damage, precision: 2);
         Assert.Equal(100.0, result.NodeBreakdown[1].Damage, precision: 2);
-        Assert.Equal(100.0, result.NodeBreakdown[2].Damage, precision: 2);
-        Assert.Equal(156.75, result.NodeBreakdown[3].Damage, precision: 2);
-        Assert.Equal(3 * 100.0 + 156.75, result.TotalDamage, precision: 2);
+        Assert.Equal(154.5, result.NodeBreakdown[2].Damage, precision: 2);
+        Assert.Equal(100.0, result.NodeBreakdown[3].Damage, precision: 2);
+        Assert.Equal(3 * 100.0 + 154.5, result.TotalDamage, precision: 2);
     }
 
     [Fact]
@@ -644,18 +644,19 @@ public class ItemEffectTests : IDisposable
         // missing-health scaling term grows across the combo since the FIRST proc itself deals
         // extra damage that counts toward the second proc's missing-HP fraction (dynamic live
         // re-evaluation, same convention CurrentHp/MissingHp already use):
-        //   proc1 (after AA3): remainingHP=5000-300=4700, missingFrac=0.06 -> 150*1.045=156.75
-        //   proc2 (after AA6): remainingHP=4700-156.75-300=4243.25, missingFrac=756.75/5000=
-        //     0.15135 -> 150*(1+0.75*0.15135)=150*1.1135125=167.026875 (rounds to 167.03)
+        // (M45 loop 45) each proc reads the health before its attack and lands ahead of it:
+        //   proc1 (before AA3): remainingHP=5000-200=4800, missingFrac=0.04 -> 150*1.03=154.5
+        //   proc2 (before AA6): remainingHP=4800-154.5-300=4345.5, missingFrac=654.5/5000=
+        //     0.1309 -> 150*(1+0.75*0.1309)=150*1.098175=164.72625 (rounds to 164.73)
         Assert.Equal(8, result.NodeBreakdown.Count);
-        Assert.Equal(923.78, result.TotalDamage, precision: 2);
+        Assert.Equal(919.23, result.TotalDamage, precision: 2);
 
-        // Pinpoint exactly which breakdown entries are the Kraken procs: index 3 (right after
-        // AA3) and index 7 (right after AA6).
-        Assert.Equal(156.75, result.NodeBreakdown[3].Damage, precision: 2);
-        Assert.Equal(167.03, result.NodeBreakdown[7].Damage, precision: 2);
+        // Pinpoint exactly which breakdown entries are the Kraken procs: index 2 (ahead of AA3)
+        // and index 6 (ahead of AA6).
+        Assert.Equal(154.5, result.NodeBreakdown[2].Damage, precision: 2);
+        Assert.Equal(164.73, result.NodeBreakdown[6].Damage, precision: 2);
         // Every other entry is a plain 100-damage AA.
-        foreach (int i in new[] { 0, 1, 2, 4, 5, 6 })
+        foreach (int i in new[] { 0, 1, 3, 4, 5, 7 })
             Assert.Equal(100.0, result.NodeBreakdown[i].Damage, precision: 2);
     }
 
@@ -668,9 +669,9 @@ public class ItemEffectTests : IDisposable
         ChampionRepository.Initialize(new[]
         {
             AttackerChampion("KrakenMeleeAttacker4", attackRange: 175),
-            // hp=310: 3 AAs of 100 each leave exactly 10 HP remaining by the time the Kraken
-            // proc lands, i.e. the target is nearly dead (missingFrac ~= 0.968).
-            Dummy("KrakenDummy6", hp: 310, armor: 0, mr: 0),
+            // hp=210: the 2 AAs before the third (100 each) leave exactly 10 HP when the Kraken proc
+            // reads it, ahead of AA3 (M45 loop 45), i.e. the target is nearly dead (missingFrac ~= 0.952).
+            Dummy("KrakenDummy6", hp: 210, armor: 0, mr: 0),
         });
         var stats = new ActivePlayerStats { AttackDamage = 100 };
         var snap = Snapshot("KrakenMeleeAttacker4", stats, level: 1, enemyChampion: "KrakenDummy6", enemyLevel: 6,
@@ -678,11 +679,11 @@ public class ItemEffectTests : IDisposable
 
         var result = RunCombo("KrakenMeleeAttacker4", AaSequence(3), snap);
 
-        // remainingHP before the proc = 310-300 = 10; missingFrac = 300/310 = 0.9677419...;
-        // multiplier = 1+0.75*0.9677419... = 1.7258064...; proc = 150*1.7258064... = 258.8709...
+        // remainingHP before the proc = 210-200 = 10; missingFrac = 200/210 = 0.952381...;
+        // multiplier = 1+0.75*0.952381... = 1.714286...; proc = 150*1.714286... = 257.142857...
         // — close to, but never exceeding, the theoretical 100%-missing cap of 150*1.75=262.5.
-        Assert.Equal(258.87, result.NodeBreakdown[3].Damage, precision: 2);
-        Assert.True(result.NodeBreakdown[3].Damage < 150.0 * 1.75);
+        Assert.Equal(257.14, result.NodeBreakdown[2].Damage, precision: 2);
+        Assert.True(result.NodeBreakdown[2].Damage < 150.0 * 1.75);
     }
 
     // ── Kraken Slayer's ranged base damage: confirms the melee/ranged split (like Titanic ────
@@ -704,9 +705,10 @@ public class ItemEffectTests : IDisposable
 
         Assert.Equal(4, result.NodeBreakdown.Count);
         // Ranged base at level 1 = 120 (vs melee's 150), same missing-health scaling as the melee
-        // test (remainingHP=4700/5000, missingFrac=0.06, multiplier=1.045): 120*1.045=125.4.
-        Assert.Equal(125.4, result.NodeBreakdown[3].Damage, precision: 2);
-        Assert.Equal(3 * 100.0 + 125.4, result.TotalDamage, precision: 2);
+        // test (read before AA3, M45 loop 45: remainingHP=4800/5000, missingFrac=0.04, multiplier=1.03):
+        // 120*1.03=123.6.
+        Assert.Equal(123.6, result.NodeBreakdown[2].Damage, precision: 2);
+        Assert.Equal(3 * 100.0 + 123.6, result.TotalDamage, precision: 2);
     }
 
     // ── Backward-compat: a build with Kraken Slayer alone (no other proc item) must not change
@@ -805,8 +807,9 @@ public class ItemEffectTests : IDisposable
         => Assert.Equal(added, ChipDamage(level, new[] { item }), precision: 1);
 
     [Fact]
-    public void ItemsChip_VoltaicTakesTheTargetsCurrentHealth()
-        // After one 100 auto the 5000 HP dummy has 4900: 9% (melee) = 441.
+    public void ItemsChip_VoltaicChargedByMoving_TakesTheTargetsCurrentHealth()
+        // After one 100 auto the 5000 HP dummy has 4900: 9% (melee) = 441. (M45 loop 49) The chip is Voltaic's energized
+        // attack charged by moving; the one an ability readies is the attack after the cast (M45Loop48ItemEffectsTests).
         => Assert.Equal(441.0, ChipDamage(1, new[] { 6699 }), precision: 1);
 
     [Fact]
@@ -865,8 +868,8 @@ public class ItemEffectTests : IDisposable
 
     [Fact]
     public void SunderedSky_TheFirstAttackCritsFor80PercentOfTheBonus()
-        // 100 x (1 + 0.8 x 0.75) = 160, then a plain 100.
-        => Assert.Equal(260.0, Total(new[] { AaNode(), AaNode() with { Id = "AA_1" } }, new[] { 6610 }), precision: 1);
+        // 100 x (1 + 0.8 x (2.0 - 1)) = 180 at the 200% base crit, then a plain 100.
+        => Assert.Equal(280.0, Total(new[] { AaNode(), AaNode() with { Id = "AA_1" } }, new[] { 6610 }), precision: 1);
 
     [Fact]
     public void ItemsChip_UmbralGlaiveDeals50Plus150PercentLethalityAsTrueDamage()

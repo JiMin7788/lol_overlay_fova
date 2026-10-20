@@ -5,10 +5,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600">
     <ScrollViewer Style="{StaticResource HiddenScroll}">
-        <StackPanel Margin="4">
+        <StackPanel Margin="0,0,0,24">
             <!-- M33 champ-select assistant lives at the TOP of the Home dashboard content
                  (2026-07-26: moved out of the fixed shell row so it scrolls with the page). -->
-            <ContentControl x:Name="ChampSelectHomeSlot" Margin="0,0,0,12" />
+            <ContentControl x:Name="ChampSelectHomeSlot" />
 
             <!-- No page title or game-state card: the window header already shows "홈" and the
                  status pill already shows the game state. -->
@@ -16,17 +16,17 @@
             <!-- Not in game: one line on what happens next, with the saved-combo count. -->
             <Border x:Name="EmptyState" Style="{StaticResource Card}" Margin="0,0,0,16">
                 <DockPanel>
-                    <TextBlock Text="&#xE7FC;" FontFamily="Segoe MDL2 Assets" FontSize="24" DockPanel.Dock="Left"
+                    <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontDisplay}" DockPanel.Dock="Left"
                                Foreground="{StaticResource TextDim}" VerticalAlignment="Center" Margin="0,0,16,0" />
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock x:Name="EmptyStateLabel" Style="{StaticResource BodyText}" Foreground="{StaticResource Text}" TextWrapping="Wrap" />
-                        <TextBlock x:Name="SavedCombosLine" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}" Margin="0,4,0,0" />
+                        <TextBlock x:Name="SavedCombosLine" Style="{StaticResource HintText}" Margin="0,4,0,0" />
                     </StackPanel>
                 </DockPanel>
             </Border>
 
             <!-- (M42) Last game's review + recent games. -->
-            <ContentControl x:Name="ReviewHomeSlot" Margin="0,0,0,12" />
+            <ContentControl x:Name="ReviewHomeSlot" Margin="0,0,0,16" />
 
             <!-- In-game player cards -->
             <WrapPanel x:Name="InGamePanel" Orientation="Horizontal" Visibility="Collapsed">

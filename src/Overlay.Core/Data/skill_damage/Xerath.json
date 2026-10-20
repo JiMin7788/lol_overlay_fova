@@ -8,8 +8,9 @@
   "Q": { "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ] },
   "W": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "conditionType": "SweetSpot", "metCalc": "SweetSpotTotalDamage", "count": 1 } ] },
   "E": { "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ] },
+  "_noteShotsR": "(2026-10-20, M45 loop 27) Rite of the Arcane fires up to NumberOfShots (4/5/6) missiles: the first, plus the rest on the count knob; each missile that hits a champion adds RampDamageCalc to the FOLLOWING ones (wiki: Arcane Perfection, only later casts benefit) - repeat j carries j stacks. It counted one missile.",
   "R": {
-    "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 } ],
+    "hits": [ { "type": "Magic", "calc": "TooltipTotalDamage", "count": 1 }, { "type": "Magic", "perAttackCalc": "TooltipTotalDamage", "rampPerCountCalc": "RampDamageCalc", "maxAttackCountDataValue": "NumberOfShots", "maxAttackCountOffset": -1, "count": 1 } ],
     "tags": ["BurstCeiling", "AoeUltimate"]
   }
 }

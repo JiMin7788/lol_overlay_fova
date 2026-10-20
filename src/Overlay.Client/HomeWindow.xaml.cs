@@ -176,7 +176,10 @@ public partial class HomeWindow : Window
 
             // First-run Flash-key question: ONCE at app start, never again while the setting
             // holds a value (2026-07-25 request; replaces the old in-champ-select prompt).
-            if (_composition.Config.Get("champSelect.flashKey") is not string { Length: > 0 })
+            // (design pass) Not on a first run, where the getting-started guide comes first and
+            // three stacked banners were too much to read at once; it shows from the next launch.
+            if (_composition.Config.Get("champSelect.flashKey") is not string { Length: > 0 }
+                && _composition.Config.Get("general.firstRunGuideShown") is true)
             {
                 FlashKeyBanner.Visibility = Visibility.Visible;
                 FlashKeyD.Click += (_, _) => { _composition.Config.Set("champSelect.flashKey", "D"); FlashKeyBanner.Visibility = Visibility.Collapsed; };
@@ -188,23 +191,13 @@ public partial class HomeWindow : Window
             _ = System.Threading.Tasks.Task.Run(Overlay.Client.ChampSelect.RunePageView.PrefetchIconsAsync);
         }
 
-        // First-run guide: the three things a new user needs, with the hotkeys they actually have.
+        // First-run guide: the things a new user needs (window mode, combos, target, toggle key),
+        // with the hotkey they actually have. Help's [시작 가이드 다시 보기] brings it back.
+        FirstRunDismiss.Click += (_, _) => DismissFirstRunGuide();
+        FirstRunOpenCombo.Click += (_, _) => { DismissFirstRunGuide(); NavCombo.IsChecked = true; };
+        _helpView.ShowGuideRequested += () => { NavHome.IsChecked = true; ShowFirstRunGuide(); };
         if (_composition.Config.Get("general.firstRunGuideShown") is not true)
-        {
-            string toggle = _composition.Config.Get("overlay.toggleHotkey") as string is { Length: > 0 } t ? t : "SHIFT+TAB";
-            FirstRunGuideText.Text =
-                "① 콤보설정에서 챔피언을 고르고 [추천 콤보]를 추가하거나 직접 만드세요.\n" +
-                "② 게임 중 콤보 단축키(추천 콤보는 ALT+1부터)를 누르면 예상 데미지가 뜨고, 적 초상화를 눌러 대상을 바꿉니다.\n" +
-                $"③ 오버레이 표시 키 {toggle}는 롤 점수판 키와 겹칠 수 있어요. 설정 > 오버레이 > 단축키에서 바꿀 수 있습니다.";
-            FirstRunGuide.Visibility = Visibility.Visible;
-            void Dismiss()
-            {
-                _composition.Config.Set("general.firstRunGuideShown", true);
-                FirstRunGuide.Visibility = Visibility.Collapsed;
-            }
-            FirstRunDismiss.Click += (_, _) => Dismiss();
-            FirstRunOpenCombo.Click += (_, _) => { Dismiss(); NavCombo.IsChecked = true; };
-        }
+            ShowFirstRunGuide();
 
         // M39 one-time telemetry disclosure: only while something would actually be sent
         // (configured + enabled) and never again once acknowledged. "보내지 않기" both opts out
@@ -231,6 +224,13 @@ public partial class HomeWindow : Window
         Localization.LanguageChanged += ApplyLanguage;
         ApplyLanguage();
 
+        // Fullscreen check: League's own game.cfg, re-read every few seconds (a cheap file read)
+        // so the warning appears before the game starts and leaves once the mode is changed.
+        _windowModeTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _windowModeTimer.Tick += (_, _) => CheckLeagueWindowMode();
+        _windowModeTimer.Start();
+        CheckLeagueWindowMode();
+
         _connSub = EventBus.Subscribe("GAME.CONNECTED", _ => Dispatcher.Invoke(OnGameConnected));
         _discSub = EventBus.Subscribe("GAME.DISCONNECTED", _ => Dispatcher.Invoke(OnGameDisconnected));
 
@@ -251,7 +251,14 @@ public partial class HomeWindow : Window
             if (_tray is null || _exiting) return;
             e.Cancel = true;
             Hide();
+            // Once: closing that does not exit is a surprise the first time it happens.
+            if (_composition.Config.Get("general.trayNoticeShown") is not true)
+            {
+                _tray.Notify(Localization.L("tray.hiddenTitle"), Localization.L("tray.hiddenBody"));
+                _composition.Config.Set("general.trayNoticeShown", true);
+            }
         };
+        SourceInitialized += (_, _) => DarkTitleBar.Apply(this);
         // A second launch (shortcut while waiting in the tray) brings this window up instead.
         SingleInstance.ListenForShow(() => Dispatcher.BeginInvoke(() => ShowDashboard(activate: true)));
     }
@@ -344,6 +351,7 @@ public partial class HomeWindow : Window
         NavHomeLabel.Text = Localization.L("nav.home");
         NavSearchLabel.Text = Localization.L("nav.search");
         NavComboLabel.Text = Localization.L("nav.combo");
+        NavStatsLabel.Text = Localization.L("nav.stats");
         NavSettingsLabel.Text = Localization.L("nav.settings");
         NavHelpLabel.Text = Localization.L("nav.help");
 
@@ -351,6 +359,73 @@ public partial class HomeWindow : Window
         StatusText.Text = "● " + Localization.L(_statusKey);
         StatusText.Foreground = (Brush)Application.Current.FindResource(_statusBrush);
         UpdatePreviewButton();
+
+        FlashKeyBannerText.Text = Localization.L("flash.banner");
+        FlashKeyD.Content = Localization.L("settings.flashKey.d");
+        FlashKeyF.Content = Localization.L("settings.flashKey.f");
+        FirstRunGuideTitle.Text = Localization.L("guide.title");
+        FirstRunGuideText.Text = Localization.F("guide.body",
+            _composition.Config.Get("overlay.toggleHotkey") as string is { Length: > 0 } t ? t : "SHIFT+TAB");
+        FirstRunOpenCombo.Content = Localization.L("guide.openCombo");
+        FirstRunDismiss.Content = Localization.L("guide.dismiss");
+        FullscreenWarningTitle.Text = Localization.L("fullscreen.title");
+        FullscreenWarningText.Text = Localization.L("fullscreen.body");
+        TelemetryNoticeText.Text = Localization.L("telemetry.notice");
+        TelemetryOk.Content = Localization.L("telemetry.ok");
+        TelemetryOptOut.Content = Localization.L("telemetry.optOut");
+    }
+
+    // ── League window mode ──────────────────────────────────────────────────
+
+    private readonly System.Windows.Threading.DispatcherTimer _windowModeTimer;
+
+    /// <summary>Path of League's game.cfg once found; kept so the check still works after the
+    /// client closes, and so the process is only probed until the first hit.</summary>
+    private string? _gameCfgPath;
+
+    /// <summary>Shows <see cref="FullscreenWarning"/> while League is set to exclusive fullscreen
+    /// (<c>[General] WindowMode=0</c> in <c>(install)\Config\game.cfg</c>), where the overlay
+    /// window cannot draw over the game. Reads a settings FILE the game wrote — no process memory.</summary>
+    private void CheckLeagueWindowMode()
+    {
+        if (_gameCfgPath is null || !System.IO.File.Exists(_gameCfgPath))
+            _gameCfgPath = FindLeagueGameCfg();
+        int? mode = Overlay.Core.Vision.GameCfgReader.ReadWindowMode(_gameCfgPath);
+        FullscreenWarning.Visibility = mode == Overlay.Core.Vision.GameCfgReader.WindowModeFullscreen
+            ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary><c>Config\game.cfg</c> beside the running League client's executable (the install
+    /// root, same discovery as the LCU lockfile), or null when the client is not running.</summary>
+    private static string? FindLeagueGameCfg()
+    {
+        foreach (var p in System.Diagnostics.Process.GetProcessesByName("LeagueClientUx"))
+        {
+            try
+            {
+                if (p.MainModule?.FileName is { } exe
+                    && System.IO.Path.Combine(System.IO.Path.GetDirectoryName(exe)!, "Config", "game.cfg") is var cfg
+                    && System.IO.File.Exists(cfg))
+                    return cfg;
+            }
+            catch { /* access denied / exited mid-probe — try again next tick */ }
+            finally { p.Dispose(); }
+        }
+        return null;
+    }
+
+    // ── First-run guide ─────────────────────────────────────────────────────
+
+    private void ShowFirstRunGuide()
+    {
+        ApplyLanguage(); // the toggle key may have been rebound since the text was last built
+        FirstRunGuide.Visibility = Visibility.Visible;
+    }
+
+    private void DismissFirstRunGuide()
+    {
+        _composition.Config.Set("general.firstRunGuideShown", true);
+        FirstRunGuide.Visibility = Visibility.Collapsed;
     }
 
     // ── Navigation ──────────────────────────────────────────────────────────
@@ -412,6 +487,8 @@ public partial class HomeWindow : Window
     private void OnGameConnected()
     {
         SetStatus("status.detected", "Success");
+        if (_composition.PreviewActive) _overlay?.ClearComboCard(); // the preview's card is not this game's
+        _composition.ResetScoreboard(); // a new game starts with League's scoreboard closed
         ShowOverlay();
         _homeView.Refresh();
     }
@@ -429,6 +506,7 @@ public partial class HomeWindow : Window
         _statusBrush = brushKey;
         StatusText.Text = "● " + Localization.L(statusKey);
         StatusText.Foreground = (Brush)Application.Current.FindResource(brushKey);
+        UpdatePreviewButton();
     }
 
     // ── Overlay show/hide ──────────────────────────────────────────────────
@@ -448,6 +526,9 @@ public partial class HomeWindow : Window
 
     private void ShowOverlay()
     {
+        // (2026-10-19) No game: this is the preview — the overlay, a combo hotkey and the threat /
+        // next-item cards then run on the sample game (AppComposition.PreviewSnapshot).
+        _composition.PreviewActive = _composition.LatestSnapshot is not { HasData: true };
         try
         {
             if (_overlay is null)
@@ -494,6 +575,11 @@ public partial class HomeWindow : Window
 
     private void HideOverlay()
     {
+        if (_composition.PreviewActive)
+        {
+            _overlay?.ClearComboCard();
+            _composition.PreviewActive = false;
+        }
         _overlay?.Hide();
         UpdatePreviewButton();
     }
@@ -501,22 +587,36 @@ public partial class HomeWindow : Window
     /// <summary>Keep the header overlay toggle label + colour in sync with the overlay's real
     /// visibility. Called from every path that shows/hides the overlay (ShowOverlay/HideOverlay,
     /// which are in turn reached from OnGameConnected/OnGameDisconnected, PreviewToggle_Click, and
-    /// the SHIFT+TAB toggle hotkey), so the button always reflects reality. UI text is Korean.</summary>
+    /// the SHIFT+TAB toggle hotkey), so the button always reflects reality.
+    /// (design pass) The label names the action, not the state: "ON/OFF" read as a status, and
+    /// "OFF" outside a game made new users think the overlay was broken. Outside a game the action
+    /// is a preview with sample cards, so it says so.</summary>
     private void UpdatePreviewButton()
     {
         bool on = _overlay is { IsVisible: true };
-        PreviewToggle.Content = on ? "오버레이 · ON" : "오버레이 · OFF";
-        PreviewToggle.Foreground = (Brush)Application.Current.FindResource(on ? "Success" : "TextDim");
+        bool inGame = _statusKey == "status.detected";
+        PreviewToggle.Content = Localization.L(on ? "header.previewHide"
+            : inGame ? "header.overlayShow" : "header.previewShow");
+        PreviewToggle.Foreground = (Brush)Application.Current.FindResource("Text");
     }
 
-    /// <summary>Preview-sample mode: when the overlay is shown with NO game connected (manual toggle
-    /// for testing), publish one SAMPLE of each event-driven HUD type through the normal EventBus →
-    /// coordinator → card path so the user can see and position every HUD style. Samples auto-hide
-    /// after their display duration (re-toggle to see them again). Text is prefixed with "[미리보기]"
-    /// so it is never mistaken for real data. No-op when a real game IS connected.</summary>
+    /// <summary>Preview-sample mode: when the overlay is shown with NO game connected, put a combo
+    /// card up — the preview champion's saved combo computed on the sample game, or a fixed sample when
+    /// that champion has none. Every other element comes from the sample game or is drawn by the
+    /// overlay itself while <see cref="AppComposition.PreviewActive"/>. No-op when a real game IS
+    /// connected.</summary>
     private void PublishOverlaySamples()
     {
         if (_composition.LatestSnapshot?.HasData == true) return; // real game running → not a preview
+
+        // (2026-10-19) A real card first: the preview champion's own saved combo, computed by the
+        // engine on the preview's sample game exactly as a hotkey press would. The alert cards are
+        // drawn (and held) by the overlay itself in preview, so they are no longer published here.
+        if (_composition.FirstSavedComboId(_composition.PreviewChampionId) is { } comboId)
+        {
+            EventBus.Publish("COMBO.TRIGGER", comboId, source: "HomeWindow.Preview");
+            return;
+        }
 
         var combo = new Overlay.Core.Combo.ComboResult(
             TotalDamage: 1234, TotalMana: 0, ManaSufficient: true, KillThresholdHP: 1500,
@@ -539,8 +639,34 @@ public partial class HomeWindow : Window
             Sequence: sequence, CasterChampion: "Zed", ComboName: "미리보기");
 
         EventBus.Publish("UI.COMBO_RESULT", comboHud, source: "HomeWindow.Preview");
-        EventBus.Publish("UI.ITEM_ALERT", "[미리보기] 루덴스 완성", source: "HomeWindow.Preview");
-        EventBus.Publish("UI.RECALL_TIMER", "[미리보기] 예시: 리스폰 12.3초", source: "HomeWindow.Preview");
+    }
+
+    /// <summary>(design pass) The dark app sat under a white system title bar. DWM's immersive dark
+    /// mode darkens the caption (Windows 10 20H1+, attribute 20; 19 on earlier builds), and on
+    /// Windows 11 the caption takes the theme's Bg color so the bar and the page read as one surface.
+    /// Unsupported attributes just return an error HRESULT, which is ignored.</summary>
+    private static class DarkTitleBar
+    {
+        [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        private const int UseImmersiveDarkMode = 20;
+        private const int UseImmersiveDarkModeLegacy = 19;
+        private const int CaptionColor = 35;
+
+        public static void Apply(Window window)
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            int on = 1;
+            if (DwmSetWindowAttribute(hwnd, UseImmersiveDarkMode, ref on, sizeof(int)) != 0)
+                DwmSetWindowAttribute(hwnd, UseImmersiveDarkModeLegacy, ref on, sizeof(int));
+            if (Application.Current.TryFindResource("BgColor") is Color bg)
+            {
+                int colorRef = bg.R | (bg.G << 8) | (bg.B << 16); // COLORREF is 0x00BBGGRR
+                DwmSetWindowAttribute(hwnd, CaptionColor, ref colorRef, sizeof(int));
+            }
+        }
     }
 
     // ── Teardown ───────────────────────────────────────────────────────────
@@ -548,6 +674,7 @@ public partial class HomeWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         _tray?.Dispose();
+        _windowModeTimer.Stop();
         EventBus.Unsubscribe(_autostartSub);
         _adBanner?.Shutdown();
         Localization.LanguageChanged -= ApplyLanguage;

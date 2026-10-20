@@ -10,19 +10,15 @@
         <Style x:Key="SettingsCard" TargetType="Border" BasedOn="{StaticResource Card}">
             <Setter Property="Width" Value="620" />
             <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="Margin" Value="0,0,0,14" />
-        </Style>
-        <Style x:Key="GroupCaption" TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
-            <Setter Property="Foreground" Value="{StaticResource TextDim}" />
-            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
     </UserControl.Resources>
     <ScrollViewer Style="{StaticResource HiddenScroll}">
-        <StackPanel Margin="4">
+        <StackPanel Margin="0,0,0,24">
             <!-- The page title lives in the window header; no second one here. -->
 
             <!-- Sub-navigation: 기본 / 오버레이 (language moved into 기본) -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                 <RadioButton x:Name="PillGeneral" Style="{StaticResource SubNavPill}" GroupName="settingsNav"
                              IsChecked="True" Checked="Pill_Checked" />
                 <RadioButton x:Name="PillOverlay" Style="{StaticResource SubNavPill}" GroupName="settingsNav"
@@ -42,8 +38,8 @@
                             <ComboBoxItem Content="English" Tag="en" />
                         </ComboBox>
                             <StackPanel>
-                                <TextBlock x:Name="LanguageCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="LanguageDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                <TextBlock x:Name="LanguageCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="LanguageDesc" Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
@@ -53,10 +49,10 @@
                                           Checked="AutostartToggle_Changed" Unchecked="AutostartToggle_Changed" />
                             <StackPanel>
                                 <TextBlock x:Name="AutostartToggleCaption" Text="롤 실행 시 자동 실행"
-                                           Style="{StaticResource CaptionText}" />
+                                           Style="{StaticResource FieldLabel}" />
                                 <TextBlock x:Name="AutostartToggleDesc"
                                            Text="Windows 시작 시 트레이에서 대기하다가 롤 클라이언트가 켜지면 Fova 창을 띄웁니다. 켜 두면 창을 닫아도 트레이에 남고, 트레이 아이콘 메뉴의 [종료]로 끕니다."
-                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
@@ -73,17 +69,17 @@
                                           Checked="RuneAutoApplyToggle_Changed" Unchecked="RuneAutoApplyToggle_Changed" />
                             <StackPanel>
                                 <TextBlock x:Name="RuneAutoApplyCaption" Text="장착 룬 자동적용"
-                                           Style="{StaticResource CaptionText}" />
+                                           Style="{StaticResource FieldLabel}" />
                                 <TextBlock x:Name="RuneAutoApplyDesc"
                                            Text="게임 시작 시 실제 장착한 룬을 감지해 조건에 맞으면 콤보 데미지에 자동 반영합니다. 끄면 콤보 스킬에 직접 부착한 룬만 적용됩니다."
-                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
                         <StackPanel Margin="0,16,0,0">
-                        <TextBlock x:Name="FlashKeyCaption" Text="점멸 키" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
+                        <TextBlock x:Name="FlashKeyCaption" Text="점멸 키" Style="{StaticResource FieldLabel}" />
                         <TextBlock x:Name="FlashKeyDesc" Text="프리셋 적용 시 점멸을 이 키로 정렬합니다"
-                                   Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                   Style="{StaticResource HintText}"
                                    Margin="0,4,12,0" TextWrapping="Wrap" />
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                             <RadioButton x:Name="FlashKeyDRadio" GroupName="flashKey" Content="D 점멸"
@@ -105,10 +101,10 @@
                                           Checked="TelemetryToggle_Changed" Unchecked="TelemetryToggle_Changed" />
                             <StackPanel>
                                 <TextBlock x:Name="TelemetryToggleCaption" Text="익명 사용 통계·오류 리포트"
-                                           Style="{StaticResource CaptionText}" />
+                                           Style="{StaticResource FieldLabel}" />
                                 <TextBlock x:Name="TelemetryToggleDesc"
                                            Text="익명 설치 ID·앱 버전·OS 버전, 그리고 오류 발생 시 오류 내용을 보냅니다. 게임/계정 정보는 절대 포함되지 않습니다."
-                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
@@ -118,6 +114,11 @@
 
             <!-- ── 오버레이 (Overlay) ─────────────────────────────────── -->
             <StackPanel x:Name="OverlayPanel" Visibility="Collapsed">
+                <!-- (2026-10-19) Window-mode requirement, where the overlay settings are. -->
+                <Border Style="{StaticResource CardInset}" Width="620" HorizontalAlignment="Left" Margin="0,0,0,16"
+                        BorderBrush="{StaticResource Warning}">
+                    <TextBlock x:Name="WindowModeNote" Style="{StaticResource BodyText}" />
+                </Border>
 
                 <!-- Display: opacity / size / movable / preview monitor -->
                 <Border Style="{StaticResource SettingsCard}">
@@ -127,22 +128,22 @@
                         <DockPanel Margin="0,0,0,4">
                             <TextBlock x:Name="OpacityValue" DockPanel.Dock="Right"
                                        Style="{StaticResource CaptionText}" Foreground="{StaticResource Accent}" />
-                            <TextBlock x:Name="OpacityCaption" Style="{StaticResource CaptionText}" />
+                            <TextBlock x:Name="OpacityCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <Slider x:Name="OpacitySlider" Style="{StaticResource ThemedSlider}"
                                 Minimum="0.2" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                SmallChange="0.05" LargeChange="0.1" Margin="0,0,0,18"
+                                SmallChange="0.05" LargeChange="0.1" Margin="0,0,0,16"
                                 ValueChanged="OpacitySlider_ValueChanged" />
 
                         <!-- Size -->
                         <DockPanel Margin="0,0,0,4">
                             <TextBlock x:Name="ScaleValue" DockPanel.Dock="Right"
                                        Style="{StaticResource CaptionText}" Foreground="{StaticResource Accent}" />
-                            <TextBlock x:Name="ScaleCaption" Style="{StaticResource CaptionText}" />
+                            <TextBlock x:Name="ScaleCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <Slider x:Name="ScaleSlider" Style="{StaticResource ThemedSlider}"
-                                Minimum="0.75" Maximum="1.5" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                SmallChange="0.05" LargeChange="0.1" Margin="0,0,0,18"
+                                Minimum="0.3" Maximum="3.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                SmallChange="0.05" LargeChange="0.1" Margin="0,0,0,16"
                                 ValueChanged="ScaleSlider_ValueChanged" />
                         <!-- Movable -->
                         <DockPanel Margin="0,0,0,16">
@@ -150,9 +151,8 @@
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="MovableToggle_Changed" Unchecked="MovableToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="MovableCaption" Style="{StaticResource CaptionText}" />
-                                <TextBlock x:Name="MovableDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
+                                <TextBlock x:Name="MovableCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="MovableDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
                             </StackPanel>
                         </DockPanel>
                         <DockPanel>
@@ -161,8 +161,8 @@
                                      PreviewTextInput="MonitorBox_PreviewTextInput"
                                      LostFocus="MonitorBox_LostFocus" />
                             <StackPanel>
-                                <TextBlock x:Name="MonitorLabel" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="MonitorHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                <TextBlock x:Name="MonitorLabel" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="MonitorHint" Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
@@ -176,33 +176,70 @@
                         <DockPanel Margin="0,0,0,0">
                             <Button x:Name="HotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
                                     VerticalAlignment="Center" MinWidth="110" Focusable="True"
-                                    Click="HotkeyButton_Click" PreviewKeyDown="HotkeyButton_PreviewKeyDown" LostFocus="HotkeyButton_LostFocus" />
+                                    Click="HotkeyButton_Click" PreviewKeyDown="HotkeyButton_PreviewKeyDown" PreviewKeyUp="HotkeyButton_PreviewKeyUp" LostFocus="HotkeyButton_LostFocus" />
                             <StackPanel>
-                                <TextBlock x:Name="HotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="HotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                <TextBlock x:Name="HotkeyCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="HotkeyDesc" Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="HotkeyWarn" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}"
+                                           Margin="0,4,12,0" Visibility="Collapsed" />
                             </StackPanel>
                         </DockPanel>
-                        <DockPanel Margin="0,14,0,0">
+                        <DockPanel Margin="0,16,0,0">
                             <Button x:Name="ComboHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
                                     VerticalAlignment="Center" MinWidth="110" Focusable="True"
-                                    Click="ComboHotkeyButton_Click" PreviewKeyDown="ComboHotkeyButton_PreviewKeyDown" LostFocus="ComboHotkeyButton_LostFocus" />
+                                    Click="ComboHotkeyButton_Click" PreviewKeyDown="ComboHotkeyButton_PreviewKeyDown" PreviewKeyUp="ComboHotkeyButton_PreviewKeyUp" LostFocus="ComboHotkeyButton_LostFocus" />
                             <StackPanel>
-                                <TextBlock x:Name="ComboHotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="ComboHotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                <TextBlock x:Name="ComboHotkeyCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="ComboHotkeyDesc" Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="ComboHotkeyWarn" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}"
+                                           Margin="0,4,12,0" Visibility="Collapsed" />
                             </StackPanel>
                         </DockPanel>
-                        <DockPanel Margin="0,14,0,0">
+                        <DockPanel Margin="0,16,0,0">
                             <Button x:Name="SkillHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
                                     VerticalAlignment="Center" MinWidth="110" Focusable="True"
-                                    Click="SkillHotkeyButton_Click" PreviewKeyDown="SkillHotkeyButton_PreviewKeyDown" LostFocus="SkillHotkeyButton_LostFocus" />
+                                    Click="SkillHotkeyButton_Click" PreviewKeyDown="SkillHotkeyButton_PreviewKeyDown" PreviewKeyUp="SkillHotkeyButton_PreviewKeyUp" LostFocus="SkillHotkeyButton_LostFocus" />
                             <StackPanel>
-                                <TextBlock x:Name="SkillHotkeyCaption" Style="{StaticResource CaptionText}" Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="SkillHotkeyDesc" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                <TextBlock x:Name="SkillHotkeyCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="SkillHotkeyDesc" Style="{StaticResource HintText}"
                                            Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="SkillHotkeyWarn" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}"
+                                           Margin="0,4,12,0" Visibility="Collapsed" />
                             </StackPanel>
                         </DockPanel>
+                        <!-- (2026-10-20, user request) Global gold panel key; TAB = follow the scoreboard. -->
+                        <DockPanel Margin="0,16,0,0">
+                            <Button x:Name="GoldHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
+                                    VerticalAlignment="Center" MinWidth="110" Focusable="True"
+                                    Click="GoldHotkeyButton_Click" PreviewKeyDown="GoldHotkeyButton_PreviewKeyDown" PreviewKeyUp="GoldHotkeyButton_PreviewKeyUp" LostFocus="GoldHotkeyButton_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="GoldHotkeyCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="GoldHotkeyDesc" Style="{StaticResource HintText}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="GoldHotkeyWarn" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}"
+                                           Margin="0,4,12,0" Visibility="Collapsed" />
+                            </StackPanel>
+                        </DockPanel>
+                        <!-- (M46, user request) Next-item card key; default P, League's shop key. -->
+                        <DockPanel Margin="0,16,0,0">
+                            <Button x:Name="NextItemHotkeyButton" Style="{StaticResource GhostButton}" DockPanel.Dock="Right"
+                                    VerticalAlignment="Center" MinWidth="110" Focusable="True"
+                                    Click="NextItemHotkeyButton_Click" PreviewKeyDown="NextItemHotkeyButton_PreviewKeyDown" PreviewKeyUp="NextItemHotkeyButton_PreviewKeyUp" LostFocus="NextItemHotkeyButton_LostFocus" />
+                            <StackPanel>
+                                <TextBlock x:Name="NextItemHotkeyCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="NextItemHotkeyDesc" Style="{StaticResource HintText}"
+                                           Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="NextItemHotkeyWarn" Style="{StaticResource HintText}" Foreground="{StaticResource Warning}"
+                                           Margin="0,4,12,0" Visibility="Collapsed" />
+                            </StackPanel>
+                        </DockPanel>
+                        <!-- (2026-10-19) Fixed target keys — shown so they can be found, not rebound here. -->
+                        <StackPanel Margin="0,16,0,0">
+                            <TextBlock x:Name="TargetKeysCaption" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="TargetKeysDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -210,52 +247,64 @@
                 <Border Style="{StaticResource SettingsCard}">
                     <StackPanel>
                         <TextBlock x:Name="ItemsCaption" Style="{StaticResource GroupCaption}" Margin="0,0,0,4" />
-                        <TextBlock x:Name="ItemsDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        <TextBlock x:Name="ItemsDesc" Style="{StaticResource HintText}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        <!-- (2026-10-19) 간단히 보기: compact combo/skill cards. -->
+                        <DockPanel Margin="0,0,0,16">
+                            <ToggleButton x:Name="CompactCardsToggle" Style="{StaticResource ToggleSwitch}"
+                                          DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Checked="CompactCardsToggle_Changed" Unchecked="CompactCardsToggle_Changed" />
+                            <StackPanel>
+                                <TextBlock x:Name="CompactCardsCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="CompactCardsDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
+                            </StackPanel>
+                        </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="ComboResultToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="ComboResultToggle_Changed" Unchecked="ComboResultToggle_Changed" />
-                            <TextBlock x:Name="ComboResultCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="ComboResultCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="StatusCardToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="StatusCardToggle_Changed" Unchecked="StatusCardToggle_Changed" />
-                            <TextBlock x:Name="StatusCardCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="StatusCardCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="ThreatCardToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="ThreatCardToggle_Changed" Unchecked="ThreatCardToggle_Changed" />
-                            <TextBlock x:Name="ThreatCardCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="ThreatCardCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="NextItemCardToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="NextItemCardToggle_Changed" Unchecked="NextItemCardToggle_Changed" />
-                            <TextBlock x:Name="NextItemCardCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="NextItemCardCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
+                        <!-- (M46, user request) What the next-item card ranks by: my combo's damage, or surviving the enemies'. -->
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock x:Name="NextItemModeCaption" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="NextItemModeDesc" Style="{StaticResource HintText}" Margin="0,4,0,6" TextWrapping="Wrap" />
+                            <ComboBox x:Name="NextItemModeCombo" Style="{StaticResource ThemedComboBox}" Width="220"
+                                      HorizontalAlignment="Left" SelectionChanged="NextItemModeCombo_SelectionChanged">
+                                <ComboBoxItem Content="딜 (내 콤보 데미지)" Tag="damage" />
+                                <ComboBoxItem Content="탱커 (적 콤보 버티기)" Tag="tank" />
+                            </ComboBox>
+                        </StackPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="ItemAlertToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="ItemAlertToggle_Changed" Unchecked="ItemAlertToggle_Changed" />
-                            <TextBlock x:Name="ItemAlertCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="ItemAlertCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,12">
                             <ToggleButton x:Name="InhibToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="InhibToggle_Changed" Unchecked="InhibToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="InhibCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="InhibDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
+                                <TextBlock x:Name="InhibCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="InhibDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
                             </StackPanel>
                         </DockPanel>
 
@@ -264,10 +313,8 @@
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="GoldToggle_Changed" Unchecked="GoldToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="GoldCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="GoldDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
+                                <TextBlock x:Name="GoldCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="GoldDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
                             </StackPanel>
                         </DockPanel>
                         <!-- (user request) Timer display format: seconds (default) vs 분:초 (M:SS). Applies to
@@ -277,37 +324,25 @@
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="TimerMmSsToggle_Changed" Unchecked="TimerMmSsToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="TimerMmSsCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="TimerMmSsDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="TimerMmSsCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="TimerMmSsDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
-                        <!-- Hidden while the remote flag keeps the recall timer off. -->
-                        <DockPanel x:Name="RecallTimerRow" Margin="0,0,0,12">
-                            <ToggleButton x:Name="RecallTimerToggle" Style="{StaticResource ToggleSwitch}"
-                                          DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Checked="RecallTimerToggle_Changed" Unchecked="RecallTimerToggle_Changed" />
-                            <TextBlock x:Name="RecallTimerCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                        </DockPanel>
+                        <!-- (2026-10-19) The "귀환 타이머" switch is gone with the death toast it gated. -->
                         <!-- Minimap-vision notifications: full build only. -->
                         <DockPanel x:Name="NotificationRow" Margin="0,0,0,12">
                             <ToggleButton x:Name="NotificationToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="NotificationToggle_Changed" Unchecked="NotificationToggle_Changed" />
-                            <TextBlock x:Name="NotificationCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
+                            <TextBlock x:Name="NotificationCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <!-- Hidden while the remote flag keeps the lane-return timer off. -->
                         <StackPanel x:Name="LaneReturnSection">
                         <!-- (loop 130) My lane, for the same-lane enemy return timer's travel distance
                              (the Live Client omits positions in most games). -->
                         <StackPanel Margin="0,0,0,12">
-                            <TextBlock x:Name="LaneReturnLaneCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                            <TextBlock x:Name="LaneReturnLaneDesc" Style="{StaticResource BodyText}"
-                                       Foreground="{StaticResource TextDim}" Margin="0,4,0,6" />
+                            <TextBlock x:Name="LaneReturnLaneCaption" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="LaneReturnLaneDesc" Style="{StaticResource HintText}" Margin="0,4,0,6" />
                             <ComboBox x:Name="LaneReturnLaneCombo" Style="{StaticResource ThemedComboBox}" Width="220"
                                       HorizontalAlignment="Left" SelectionChanged="LaneReturnLaneCombo_SelectionChanged">
                                 <ComboBoxItem Content="자동 (랭크 포지션)" Tag="auto" />
@@ -320,10 +355,8 @@
 
                         <!-- (loop 141) Which enemy deaths get a return timer. -->
                         <StackPanel Margin="0,0,0,12">
-                            <TextBlock x:Name="LaneReturnModeCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                            <TextBlock x:Name="LaneReturnModeDesc" Style="{StaticResource BodyText}"
-                                       Foreground="{StaticResource TextDim}" Margin="0,4,0,6" />
+                            <TextBlock x:Name="LaneReturnModeCaption" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="LaneReturnModeDesc" Style="{StaticResource HintText}" Margin="0,4,0,6" />
                             <ComboBox x:Name="LaneReturnModeCombo" Style="{StaticResource ThemedComboBox}" Width="220"
                                       HorizontalAlignment="Left" SelectionChanged="LaneReturnModeCombo_SelectionChanged">
                                 <ComboBoxItem Content="모든 적" Tag="all" />
@@ -338,9 +371,8 @@
                 <!-- (M31 §B/§C) Enemy presence: full build only (minimap capture). -->
                 <Border x:Name="EnemyPresenceCard" Style="{StaticResource SettingsCard}">
                     <StackPanel>
-                        <TextBlock x:Name="EnemyPresenceCaption" Style="{StaticResource CaptionText}" />
-                        <TextBlock x:Name="EnemyPresenceDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,14" TextWrapping="Wrap" />
+                        <TextBlock x:Name="EnemyPresenceCaption" Style="{StaticResource GroupCaption}" Margin="0,0,0,4" />
+                        <TextBlock x:Name="EnemyPresenceDesc" Style="{StaticResource HintText}" Margin="0,4,0,14" TextWrapping="Wrap" />
 
                         <!-- Voice master switch. Only on/off: the schema's "tts" pack value silences
                              just like "off" (EnemyVoicePlayer only plays the prerecorded pack), so
@@ -350,19 +382,15 @@
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="EnemyVoiceToggle_Changed" Unchecked="EnemyVoiceToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="EnemyVoiceCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="EnemyVoiceDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="EnemyVoiceCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="EnemyVoiceDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
 
                         <!-- Location granularity. -->
-                        <StackPanel Margin="0,14,0,0">
-                            <TextBlock x:Name="EnemyVoiceDetailCaption" Style="{StaticResource CaptionText}"
-                                       Foreground="{StaticResource Text}" />
-                            <TextBlock x:Name="EnemyVoiceDetailDesc" Style="{StaticResource BodyText}"
-                                       Foreground="{StaticResource TextDim}" Margin="0,4,0,6" TextWrapping="Wrap" />
+                        <StackPanel Margin="0,16,0,0">
+                            <TextBlock x:Name="EnemyVoiceDetailCaption" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="EnemyVoiceDetailDesc" Style="{StaticResource HintText}" Margin="0,4,0,6" TextWrapping="Wrap" />
                             <ComboBox x:Name="EnemyVoiceDetailCombo" Style="{StaticResource ThemedComboBox}" Width="220"
                                       HorizontalAlignment="Left" SelectionChanged="EnemyVoiceDetailCombo_SelectionChanged">
                                 <ComboBoxItem x:Name="EnemyVoiceDetailSimpleItem" Tag="simple" />
@@ -372,10 +400,10 @@
 
                         <!-- Voice volume. SoundPlayer has no volume control, so this is a gain on
                              the spliced PCM (see VoiceConfig.EnemyVoiceVolume). -->
-                        <DockPanel Margin="0,14,0,4">
+                        <DockPanel Margin="0,16,0,4">
                             <TextBlock x:Name="EnemyVoiceVolumeValue" DockPanel.Dock="Right"
                                        Style="{StaticResource CaptionText}" Foreground="{StaticResource Accent}" />
-                            <TextBlock x:Name="EnemyVoiceVolumeCaption" Style="{StaticResource CaptionText}" />
+                            <TextBlock x:Name="EnemyVoiceVolumeCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <Slider x:Name="EnemyVoiceVolumeSlider" Style="{StaticResource ThemedSlider}"
                                 Minimum="0.0" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
@@ -383,24 +411,22 @@
                                 ValueChanged="EnemyVoiceVolumeSlider_ValueChanged" />
 
                         <!-- Afterimage master switch. -->
-                        <DockPanel Margin="0,18,0,0">
+                        <DockPanel Margin="0,16,0,0">
                             <ToggleButton x:Name="AfterimageToggle" Style="{StaticResource ToggleSwitch}"
                                           DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Checked="AfterimageToggle_Changed" Unchecked="AfterimageToggle_Changed" />
                             <StackPanel>
-                                <TextBlock x:Name="AfterimageCaption" Style="{StaticResource CaptionText}"
-                                           Foreground="{StaticResource Text}" />
-                                <TextBlock x:Name="AfterimageDesc" Style="{StaticResource BodyText}"
-                                           Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
+                                <TextBlock x:Name="AfterimageCaption" Style="{StaticResource FieldLabel}" />
+                                <TextBlock x:Name="AfterimageDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </DockPanel>
 
                         <!-- Opacity. Range matches OverlayHost.AfterimageOpacity's 0.1-0.9 clamp, so the
                              slider cannot express a value the renderer would silently rewrite. -->
-                        <DockPanel Margin="0,14,0,4">
+                        <DockPanel Margin="0,16,0,4">
                             <TextBlock x:Name="AfterimageOpacityValue" DockPanel.Dock="Right"
                                        Style="{StaticResource CaptionText}" Foreground="{StaticResource Accent}" />
-                            <TextBlock x:Name="AfterimageOpacityCaption" Style="{StaticResource CaptionText}" />
+                            <TextBlock x:Name="AfterimageOpacityCaption" Style="{StaticResource FieldLabel}" />
                         </DockPanel>
                         <Slider x:Name="AfterimageOpacitySlider" Style="{StaticResource ThemedSlider}"
                                 Minimum="0.1" Maximum="0.9" TickFrequency="0.05" IsSnapToTickEnabled="True"
@@ -408,10 +434,8 @@
                                 ValueChanged="AfterimageOpacitySlider_ValueChanged" />
 
                         <!-- Per-role gates. -->
-                        <TextBlock x:Name="AfterimageRolesCaption" Style="{StaticResource CaptionText}"
-                                   Foreground="{StaticResource Text}" Margin="0,18,0,0" />
-                        <TextBlock x:Name="AfterimageRolesDesc" Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,8" TextWrapping="Wrap" />
+                        <TextBlock x:Name="AfterimageRolesCaption" Style="{StaticResource FieldLabel}" Margin="0,16,0,0" />
+                        <TextBlock x:Name="AfterimageRolesDesc" Style="{StaticResource HintText}" Margin="0,4,0,8" TextWrapping="Wrap" />
                         <WrapPanel x:Name="AfterimageRolesPanel" Orientation="Horizontal" />
                     </StackPanel>
                 </Border>
@@ -432,23 +456,19 @@
                                               DockPanel.Dock="Right" VerticalAlignment="Center"
                                               Checked="MinimapCalibrateToggle_Changed" Unchecked="MinimapCalibrateToggle_Changed" />
                                 <StackPanel>
-                                    <TextBlock x:Name="MinimapCalibrateCaption" Style="{StaticResource CaptionText}"
-                                               Foreground="{StaticResource Text}" />
-                                    <TextBlock x:Name="MinimapCalibrateDesc" Style="{StaticResource BodyText}"
-                                               Foreground="{StaticResource TextDim}" Margin="0,4,12,0" />
+                                    <TextBlock x:Name="MinimapCalibrateCaption" Style="{StaticResource FieldLabel}" />
+                                    <TextBlock x:Name="MinimapCalibrateDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" />
                                 </StackPanel>
                             </DockPanel>
 
                             <!-- §43 detection-debug frame ring. Advanced/off by default: costs RAM. -->
-                            <DockPanel Margin="0,14,0,0">
+                            <DockPanel Margin="0,16,0,0">
                                 <ToggleButton x:Name="MinimapDebugToggle" Style="{StaticResource ToggleSwitch}"
                                               DockPanel.Dock="Right" VerticalAlignment="Center"
                                               Checked="MinimapDebugToggle_Changed" Unchecked="MinimapDebugToggle_Changed" />
                                 <StackPanel>
-                                    <TextBlock x:Name="MinimapDebugCaption" Style="{StaticResource CaptionText}"
-                                               Foreground="{StaticResource Text}" />
-                                    <TextBlock x:Name="MinimapDebugDesc" Style="{StaticResource BodyText}"
-                                               Foreground="{StaticResource TextDim}" Margin="0,4,12,0" TextWrapping="Wrap" />
+                                    <TextBlock x:Name="MinimapDebugCaption" Style="{StaticResource FieldLabel}" />
+                                    <TextBlock x:Name="MinimapDebugDesc" Style="{StaticResource HintText}" Margin="0,4,12,0" TextWrapping="Wrap" />
                                 </StackPanel>
                             </DockPanel>
                         </StackPanel>

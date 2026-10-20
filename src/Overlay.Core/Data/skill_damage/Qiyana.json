@@ -5,14 +5,17 @@
   "_noteW": "Terrashape: the active dash itself deals NO damage (gathers an Element, no damage calc tied to the cast) -- the file's prior auto-pick of 'CleaveDamage' as a direct W hit was WRONG (that calc name exists in the BIN object but doesn't correspond to any real tooltip line; Terrashape's own tooltip has no direct-damage figure at all). The REAL number is 'Bonus Magic Damage: 8/16/24/32/40 (+20% bonus AD)(+45% AP)', an always-on PASSIVE proc while holding any Element (on basic attacks AND basic abilities) -- matches BIN calc 'OnHitDamage' (BaseDamage + 0.45x AP + 0.2x bonus AD) exactly, Magic per wiki Sub-type. Curated as a W bonusEffect trigger onHit (conservative always-on approximation of the 'holding an Element' precondition, which is true for nearly all of a match after her first respawn).",
   "_noteE": "Audacity: Damage = BaseDamage + 0.5x bonus AD (ADRatio DataValue). Matches wiki 'Physical Damage: 50/90/130/170/210 (+50% bonus AD)' exactly.",
   "_noteR": "Supreme Display of Talent: TWO hits, both wiki-verified exact against 'Physical Damage: 100/200/300 (+125% bonus AD)(+10% of target's maximum health)'. (1) Damage (BaseDamage + 1.25x bonus AD) for the flat+ratio portion. (2) hpPercentDataValue 'PercentHPDamageBaseRock' (whole-percent encoding 10.0, auto-normalized /100) hpBasis Max for the %maxHP portion -- despite its misleading internal name ('...Rock', suggesting a Rock-element gate), the wiki confirms this 10% max-HP term is part of R's UNCONDITIONAL baseline tooltip, not a Terrain-only bonus, so it is curated as a guaranteed second hit (not gated). Tagged BurstCeiling: Qiyana's ultimate is her single highest realistic burst-damage contribution.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "FinalDamage", "count": 1 } ] } ] },
-  "Q": { "hits": [ { "type": "Physical", "calc": "EnchantedDamage", "count": 1 } ] },
+  "_noteRoyalP": "(2026-10-19, M45 loop 22) Royal Privilege has a 25 s per-target cooldown: once per combo (maxProcs 1) - it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Physical", "calc": "FinalDamage", "count": 1 } ] } ] },
+  "_noteTremorQ": "(2026-10-20, M45 loop 24) Rock Enchantment: an additional TremorDamage to targets below CritThreshold (50%) health - an HpBelow box.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "EnchantedDamage", "count": 1 }, { "type": "Physical", "conditionType": "HpBelow", "conditionValue": 0.5, "metCalc": "TremorDamage", "count": 1 } ] },
   "W": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "OnHitDamage", "count": 1 } ] } ] },
   "E": { "hits": [ { "type": "Physical", "calc": "Damage", "count": 1 } ] },
+  "_noteCalcR": "(2026-10-19, M45 loop 22) The %HP term is the tooltip calc MissingHealthDamageRock (= PercentHPDamageBaseRock) so it matches the clause by name.",
   "R": {
     "hits": [
       { "type": "Physical", "calc": "Damage", "count": 1 },
-      { "type": "Physical", "hpPercentDataValue": "PercentHPDamageBaseRock", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
+      { "type": "Physical", "hpPercentCalc": "MissingHealthDamageRock", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
     ],
     "tags": ["BurstCeiling", "AoeUltimate"]
   },

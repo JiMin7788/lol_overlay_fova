@@ -148,19 +148,17 @@ public sealed class ChampSelectPanel : UserControl
         var icon = new TextBlock
         {
             Text = "", // MDL2 "Repair" glyph — the rune/setup mark
-            FontFamily = new FontFamily("Segoe MDL2 Assets"),
-            FontSize = 15,
+            FontFamily = (FontFamily)Application.Current.FindResource("IconFont"),
+            FontSize = (double)Application.Current.FindResource("FontSubtitle"),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 10, 0),
+            Margin = new Thickness(0, 0, 8, 0),
             Foreground = (Brush)Application.Current.FindResource("Accent"),
         };
 
         _title = new TextBlock
         {
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 14,
+            Style = (Style)Application.Current.FindResource("CardTitle"),
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = (Brush)Application.Current.FindResource("Text"),
         };
         _presetBox = new ComboBox
         {
@@ -217,11 +215,10 @@ public sealed class ChampSelectPanel : UserControl
 
         _root = new Border
         {
-            Background = (Brush)Application.Current.FindResource("Surface"),
-            BorderBrush = (Brush)Application.Current.FindResource("Border"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(16, 10, 16, 10),
+            Style = (Style)Application.Current.FindResource("Card"),
+            // The gap to the next Home card lives here, not on the host slot, so a collapsed
+            // panel (outside champ select) leaves no empty band above them.
+            Margin = new Thickness(0, 0, 0, 16),
             Visibility = Visibility.Collapsed, // auto-height row: hidden = zero height
             Child = rows,
         };
@@ -296,7 +293,7 @@ public sealed class ChampSelectPanel : UserControl
         // P4 auto-apply: standing opt-in only, once per session, lock only, local presets only.
         if (_gate.OnSnapshot(snap, _autoApplyOptedIn(), _presets) is { } auto)
         {
-            _status.Text = $"자동 적용 중: {auto.Name}";
+            SetStatus($"자동 적용 중: {auto.Name}");
             _ = ApplyPresetAsync(auto, confirmOverwrite: false);
         }
     }
@@ -661,9 +658,9 @@ public sealed class ChampSelectPanel : UserControl
         return line;
     }
 
-    private static readonly Brush PhysBrush = new SolidColorBrush(Color.FromRgb(0xE8, 0x72, 0x2A));
-    private static readonly Brush MagicBrush = new SolidColorBrush(Color.FromRgb(0x4C, 0x8D, 0xFF));
-    private static readonly Brush TrueBrush = new SolidColorBrush(Color.FromRgb(0xE6, 0xE6, 0xE6));
+    private static readonly Brush PhysBrush = (Brush)Application.Current.FindResource("DmgPhysical");
+    private static readonly Brush MagicBrush = (Brush)Application.Current.FindResource("DmgMagic");
+    private static readonly Brush TrueBrush = (Brush)Application.Current.FindResource("DmgTrue");
 
     /// <summary>Stacked phys/magic/true tendency bar (2026-07-25 feedback: text percentages
     /// were hard to scan). Widths are proportional; the tooltip carries the exact split.</summary>
@@ -745,15 +742,23 @@ public sealed class ChampSelectPanel : UserControl
         if (src is not null) image.Source = src;
     }
 
+    /// <summary>(design pass) The status line carries its outcome colour — success, a slot
+    /// shortage that needs a second click, and a failure all used to read as the same dim grey.</summary>
+    private void SetStatus(string text, string brushKey = "TextDim")
+    {
+        _status.Text = text;
+        _status.Foreground = (Brush)Application.Current.FindResource(brushKey);
+    }
+
     /// <summary>Loads the client's CURRENT rune page into the editor (champ-select entry and
     /// the [현재 룬 불러오기] button share this) — edits then live-apply like any page.</summary>
     private async Task LoadCurrentPageIntoViewAsync()
     {
-        _status.Text = "현재 룬 읽는 중…";
+        SetStatus("현재 룬 읽는 중…");
         var page = await _lcu.GetCurrentRunePageAsync();
-        if (page is null) { _status.Text = "현재 룬 페이지를 읽지 못함"; return; }
+        if (page is null) { SetStatus("현재 룬 페이지를 읽지 못함", "Danger"); return; }
         _runeView.ShowPage(page);
-        _status.Text = "현재 룬 표시 중 — 클릭 수정 시 실시간 적용";
+        SetStatus("현재 룬 표시 중 — 클릭 수정 시 실시간 적용");
     }
 
     /// <summary>Debounced live apply for rune-view clicks: writes the edited page to the client
@@ -765,12 +770,13 @@ public sealed class ChampSelectPanel : UserControl
         var champ = ChampionSummary.GetByNumericKey(_snapshot.ChampionKey);
         var result = await _lcu.ApplyRunePageAsync(page, champ?.Name ?? _snapshot.ChampionKey.ToString(),
             confirmOverwriteCurrent: false);
-        _status.Text = result switch
+        switch (result)
         {
-            ApplyRunesResult.Applied => "룬 실시간 적용 ✓",
-            ApplyRunesResult.NeedsOverwriteConfirmation => "룬 페이지 슬롯 부족 — 추천 카드를 다시 클릭하면 현재 페이지를 덮어씀",
-            _ => "실시간 적용 실패 (클라이언트 상태 확인)",
-        };
+            case ApplyRunesResult.Applied: SetStatus("룬 실시간 적용 ✓", "Success"); break;
+            case ApplyRunesResult.NeedsOverwriteConfirmation:
+                SetStatus("룬 페이지 슬롯 부족 — 추천 카드를 다시 클릭하면 현재 페이지를 덮어씀", "Warning"); break;
+            default: SetStatus("실시간 적용 실패 (클라이언트 상태 확인)", "Danger"); break;
+        }
     }
 
     // ── Actions ─────────────────────────────────────────────────────────────────
@@ -789,7 +795,7 @@ public sealed class ChampSelectPanel : UserControl
     private async Task ApplyPresetAsync(RunePreset preset, bool confirmOverwrite)
     {
         _lastLocalActionUtc = DateTime.UtcNow;
-        _status.Text = "적용 중…";
+        SetStatus("적용 중…");
         var champ = ChampionSummary.GetByNumericKey(preset.ChampionKey);
         var result = await _lcu.ApplyRunePageAsync(preset.Page, champ?.Name ?? preset.ChampionKey.ToString(),
             confirmOverwrite);
@@ -804,14 +810,15 @@ public sealed class ChampSelectPanel : UserControl
             spellsOk = await _lcu.ApplySpellsAsync(n1, n2);
         }
 
-        _status.Text = result switch
+        switch (result)
         {
-            ApplyRunesResult.Applied when spellsOk => "적용 완료 ✓",
-            ApplyRunesResult.Applied => "룬 적용 완료 · 스펠 실패",
+            case ApplyRunesResult.Applied when spellsOk: SetStatus("적용 완료 ✓", "Success"); break;
+            case ApplyRunesResult.Applied: SetStatus("룬 적용 완료 · 스펠 실패", "Warning"); break;
             // D2: a user-built page is never overwritten silently — one explicit second click.
-            ApplyRunesResult.NeedsOverwriteConfirmation => "룬 페이지 슬롯 부족 — 같은 선택을 다시 클릭하면 현재 페이지를 덮어씀",
-            _ => "적용 실패 (클라이언트 상태 확인)",
-        };
+            case ApplyRunesResult.NeedsOverwriteConfirmation:
+                SetStatus("룬 페이지 슬롯 부족 — 같은 선택을 다시 클릭하면 현재 페이지를 덮어씀", "Warning"); break;
+            default: SetStatus("적용 실패 (클라이언트 상태 확인)", "Danger"); break;
+        }
         _confirmOverwriteArmed = result == ApplyRunesResult.NeedsOverwriteConfirmation;
         if (result == ApplyRunesResult.Applied) _ = RefreshSpellsAsync();
     }
@@ -896,7 +903,7 @@ public sealed class ChampSelectPanel : UserControl
         if (clientPage is not null && !SamePage(clientPage, _runeView.CurrentPage))
         {
             _runeView.ShowPage(clientPage);
-            _status.Text = "클라이언트 변경 동기화 ✓";
+            SetStatus("클라이언트 변경 동기화 ✓", "Success");
         }
 
         var clientSpells = await _lcu.GetMySpellsAsync();
@@ -924,9 +931,9 @@ public sealed class ChampSelectPanel : UserControl
     private async Task SwapSpellsAsync()
     {
         _lastLocalActionUtc = DateTime.UtcNow;
-        if (_spells is not { } s) { _status.Text = "스펠을 읽지 못함"; return; }
-        _status.Text = await _lcu.ApplySpellsAsync(s.Spell2, s.Spell1)
-            ? "스펠 위치 교체 ✓" : "스펠 교체 실패";
+        if (_spells is not { } s) { SetStatus("스펠을 읽지 못함", "Danger"); return; }
+        if (await _lcu.ApplySpellsAsync(s.Spell2, s.Spell1)) SetStatus("스펠 위치 교체 ✓", "Success");
+        else SetStatus("스펠 교체 실패", "Danger");
         await RefreshSpellsAsync();
     }
 
@@ -976,11 +983,12 @@ public sealed class ChampSelectPanel : UserControl
     private async Task SetSpellAsync(int slot, int spellId)
     {
         _lastLocalActionUtc = DateTime.UtcNow;
-        if (_spells is not { } s) { _status.Text = "스펠을 읽지 못함"; return; }
+        if (_spells is not { } s) { SetStatus("스펠을 읽지 못함", "Danger"); return; }
         (int n1, int n2) = slot == 1 ? (spellId, s.Spell2) : (s.Spell1, spellId);
         // Picking the other slot's spell = swap (the client rejects duplicate spells).
         if (n1 == n2) (n1, n2) = (s.Spell2, s.Spell1);
-        _status.Text = await _lcu.ApplySpellsAsync(n1, n2) ? "스펠 변경 ✓" : "스펠 변경 실패";
+        if (await _lcu.ApplySpellsAsync(n1, n2)) SetStatus("스펠 변경 ✓", "Success");
+        else SetStatus("스펠 변경 실패", "Danger");
         await RefreshSpellsAsync();
     }
 }

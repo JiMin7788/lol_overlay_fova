@@ -13,8 +13,10 @@
     ]
   },
   "E": { "hits": [ { "type": "Magic", "calc": "Damage", "count": 1 } ] },
+  "_noteMultiR": "(2026-10-19, M45 loop 6) Let's Bounce!: was MaxDamageTooltip (every bounce assumed). Now the first bounce plus subsequent bounces on the hit-count knob (unset = 0); the max-damage tooltip is their sum at full bounces.",
+  "_noteCapR": "(2026-10-19, M45 loop 7) Subsequent bounces capped at 3 (the tooltip bounces four times).",
   "R": {
-    "hits": [ { "type": "Magic", "calc": "MaxDamageTooltip", "count": 1 } ],
+    "hits": [ { "type": "Magic", "calc": "DamagePerBounce", "count": 1 }, { "type": "Magic", "perAttackCalc": "DamagePerSubsequentBounce", "count": 1, "maxAttackCount": 3 } ],
     "tags": ["BurstCeiling", "Stacking", "AoeUltimate"]
   },
   "_noteW_sweep2": "STAGE-4 AUDIT (loop 441, 2026-07-27), NO calc changes: tier-A BaseMaxHealthDamage/PercentHealthDamage are MIRROR DataValue families of the same 4-8% max-HP term the curated DisplayPercentDamage calc (HealthPercentTooltip + APRatioToPercentDamage) already resolves - wiki 4/5/6/7/8% (+AP scaling) matches the curated path at the established index1=rank1 mapping. False positives."

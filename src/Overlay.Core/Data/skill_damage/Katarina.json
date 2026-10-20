@@ -9,15 +9,20 @@
       }
     ]
   },
+  "_noteOnHitE": "(2026-10-20, M45 loop 47) The Shunpo strike applies On-Hit effects.",
   "E": {
     "hits": [
       {
         "type": "Magic",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "appliesOnHit": true
       }
     ]
   },
+  "_noteADR": "(2026-10-19, M45 loop 9) Each Death Lotus knife also deals ADDamageCalc physical damage - was missing.",
+  "_noteKnivesR": "(2026-10-19, M45 loop 9) Death Lotus is a channel of TicksPerSecond 6 x Duration 2.5 = 15 knife ticks: the first tick plus later ticks on the hit-count knob (cap 14); at the cap each type sums to TotalDamageCalc / TotalADDamageCalc (metric F checks both).",
+  "_noteOnHitR": "(2026-10-20, M45 loop 47) Death Lotus applies On-Hit and On-Attack effects at OnHitRatio (25/30/35% by rank) per dagger: the first dagger and each counted one (the physical half carries it, one per dagger).",
   "R": {
     "tags": [
       "BurstCeiling",
@@ -28,14 +33,18 @@
         "type": "Magic",
         "calc": "DamageCalc",
         "count": 1
-      }
+      },
+      { "type": "Physical", "calc": "ADDamageCalc", "count": 1, "appliesOnHit": true, "onHitEffectivenessDataValue": "OnHitRatio" },
+      { "type": "Physical", "perAttackCalc": "ADDamageCalc", "maxAttackCount": 14, "count": 1, "appliesOnHit": true, "onHitEffectivenessDataValue": "OnHitRatio" },
+      { "type": "Magic", "perAttackCalc": "DamageCalc", "maxAttackCount": 14, "count": 1 }
     ]
   },
   "_noteP": "Voracity (KatarinaPassiveAbility, child spell KatarinaDaggerPickupPBAoE) has TWO components: the cooldown-reset-on-takedown mechanic (no damage, not modeled) and a SEPARATE 'Dagger Slash' AoE proc -- confirmed via live source (mobafire Voracity page): 'When Katarina picks up a dagger, she performs an area slash dealing magic damage' with base damage scaling by level, 70-100% AP, +0.6 bonus AD. This matches the BIN exactly: 'TotalDamage' = ByCharLevelFormula(base 68.2->495.2 by champion level) + StatByNamedDataValue(mStat=2 bonus AD, BonusADRatio=0.6) + StatBySubPart(AP-scaled, subpart ByCharLevelBreakpoints 0.7->1.0 by level). Curated as a P bonusEffect trigger onAbility (approximated as firing whenever an ability is cast, since Katarina's combo routinely drops and picks daggers back up via Q/E -- not a strict guarantee on every single ability cast, same simplification style used elsewhere in this project for proc-based passives).",
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Voracity: the slash is dealt when Katarina PICKS UP a dagger - where a dagger lands and whether she reaches it is not the combo's to know, so it is the user's to attach ('+fx', manualOnly) to the node that picks one up. It rode every cast, R included.",
   "P": {
     "bonusEffects": [
       {
-        "trigger": "onAbility",
+        "trigger": "onAbility", "manualOnly": true,
         "hits": [
           {
             "type": "Magic",

@@ -149,6 +149,48 @@ public class GoldEstimateTests : IDisposable
             "the items estimate should have raised the ally total above the plain EARNED-only sum");
     }
 
+    /// <summary>(2026-10-19) Lanes pair by position, ally minus enemy, in scoreboard role order; a
+    /// role missing on either side is left out rather than paired with someone else (P2).</summary>
+    [Fact]
+    public void ByRole_PairsEachRoleAcrossTeams_SkipsUnpairedRoles()
+    {
+        var snap = PositionedSnapshot(
+            ("Ahri", "ORDER", "MIDDLE", 100),
+            ("Garen", "ORDER", "TOP", 50),
+            ("Zed", "CHAOS", "MIDDLE", 80),
+            ("Darius", "CHAOS", "TOP", 60),
+            ("LeeSin", "CHAOS", "JUNGLE", 40));
+
+        var lanes = GoldEstimate.ByRole(snap);
+
+        Assert.Equal(new[] { "TOP", "MIDDLE" }, lanes.Select(l => l.Role));
+        Assert.Equal(GoldEstimate.EstimatePlayerGold(50, 0, 0, 600), lanes[0].AllyGold, precision: 6);
+        Assert.Equal(GoldEstimate.EstimatePlayerGold(60, 0, 0, 600), lanes[0].EnemyGold, precision: 6);
+        Assert.Equal(20 * GoldEstimate.BlendedCsGoldPerCs, lanes[1].Diff, precision: 6);
+    }
+
+    [Fact]
+    public void ByRole_NoPositions_ReturnsNoLanes()
+    {
+        var snap = PositionedSnapshot(("Ahri", "ORDER", "", 100), ("Zed", "CHAOS", "", 80));
+        Assert.Empty(GoldEstimate.ByRole(snap));
+    }
+
+    /// <summary>The first row is the active player.</summary>
+    private static GameSnapshot PositionedSnapshot(params (string champion, string team, string position, int cs)[] rows)
+    {
+        var snap = new GameSnapshot { HasData = true, GameTime = 600, ActivePlayerRiotId = "P0#KR1", PlayerCount = rows.Length };
+        for (int i = 0; i < rows.Length; i++)
+        {
+            snap.Players[i].RiotId = $"P{i}#KR1";
+            snap.Players[i].ChampionName = rows[i].champion;
+            snap.Players[i].Team = rows[i].team;
+            snap.Players[i].Position = rows[i].position;
+            snap.Players[i].CreepScore = rows[i].cs;
+        }
+        return snap;
+    }
+
     private static string BuildPayload(double gameTime, int? activeItemId = null)
     {
         string activeItemsJson = activeItemId is null ? "[]" : $"[{{\"itemID\":{activeItemId},\"slot\":0}}]";

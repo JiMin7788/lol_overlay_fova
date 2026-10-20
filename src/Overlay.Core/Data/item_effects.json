@@ -1219,13 +1219,15 @@
       }
     },
     "6699": {
-      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6699 DataValues PercentCurrentHPMelee 9, PercentCurrentHPRanged 7: Firmament's energized attack deals that share of the target's CURRENT health as bonus physical damage (an ability hit can trigger it if Energized is ready). Fires at the user's item chip.",
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6699 DataValues PercentCurrentHPMelee 9, PercentCurrentHPRanged 7: Firmament's energized attack deals that share of the target's CURRENT health as bonus physical damage (an ability hit can trigger it if Energized is ready). Fires at the user's item chip. (2026-10-20, M45 loop 48) Galvanize: damaging a champion with an ability readies it, so the combo settles it - the first attack after each damaging cast (the user asked for it as the attack after an ability), then LethalityBonusModMelee 15 / Ranged 12 for LethalityBonusDuration 4 s on the hits after it.",
       "name": "Voltaic Cyclosword",
-      "trigger": "itemsNode",
+      "trigger": "energizedAfterAbility",
       "damageType": "Physical",
       "hpPercentBasis": "TargetCurrent",
       "meleeHpPercent": 0.09,
-      "rangedHpPercent": 0.07
+      "rangedHpPercent": 0.07,
+      "meleeLethalityAfter": 15,
+      "rangedLethalityAfter": 12
     },
     "3084": {
       "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/3084 DamageProcCalc = BaseDamage 70 + HPRatio 6% max health: Colossal Consumption's charged attack (needs a few seconds near the target first). Max-health gain not modelled. Fires at the user's item chip.",
@@ -1663,8 +1665,15 @@
       "giantSlayerBasis": "hpDifference",
       "giantSlayerCapHp": 3000
     },
+    "3047": {
+      "_note": "2026-10-19 (user report) Plated Steelcaps, a DEFENDER item: the holder takes 10% less damage from basic attacks (Data Dragon 16.13.1 item.ko_KR 3047: 기본 공격으로 받는 피해량이 10% 감소합니다). Applied to the combo target's attacks: AA nodes, empowered-attack skill hits (Garen Q, folded swings) and champion on-hit riders. Item on-hit procs are not reduced here.",
+      "name": "Plated Steelcaps",
+      "trigger": "incomingAttackReduction",
+      "damageType": "Physical",
+      "reductionPercent": 0.10
+    },
     "6610": {
-      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6610 CritModifier 0.8: Lightshield Strike, the first attack against a champion critically strikes with 80% of the normal crit bonus (patch 26.1 lowered it from 100%; 160% at the default 175% crit). Healing not modelled. Applied automatically to the combo's first attack.",
+      "_note": "2026-10-17 from CommunityDragon items.cdtb.bin.json Items/6610 CritModifier 0.8: Lightshield Strike, the first attack against a champion critically strikes with 80% of the normal crit bonus (patch 26.1 lowered it from 100%; 180% at the 200% base crit). Healing not modelled. Applied automatically to the combo's first attack.",
       "name": "Sundered Sky",
       "trigger": "firstAttackCrit",
       "damageType": "Physical",
@@ -1792,6 +1801,715 @@
               "__type": "NumberCalculationPart"
             },
             "__type": "{e9a3c91d}"
+          }
+        }
+      }
+    },
+    "2520": {
+      "_note": "2026-10-20 (M45 loop 48) from CommunityDragon items.cdtb.bin.json Items/2520 (16.20) AbilityDamageCalc = 50 + 1.5 x mStat 29 (Lethality), ranged x AbilityDamageRangeMod 0.5, Cooldown 20: Shaped Charge, ability damage to a champion deals that as bonus true damage - once per combo, on the first damaging ability. Sabotage (DamageCalc, after a takedown) is against epic monsters and turrets: not modeled.",
+      "name": "Bastionbreaker",
+      "trigger": "onFirstAbility",
+      "damageType": "True",
+      "calc": "AbilityDamageCalc",
+      "rangedMultiplier": 0.5,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "AbilityDamageRangeMod",
+            "values": [
+              0.5
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              20.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "AbilityDamageCalc": {
+            "mFormulaParts": [
+              {
+                "mNumber": 50.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mStat": 29,
+                "mCoefficient": 1.5,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3042": {
+      "_note": "2026-10-20 (M45 loop 48) from CommunityDragon items.cdtb.bin.json Items/3042 (16.20) OnHitDamage = 1.2% of max mana (AbilityResourceByCoefficient): Shock, attacks on champions deal that as bonus physical damage on-hit. The ability half is 3042#ability. Awe (2% max mana as AD) is in the live attack damage.",
+      "name": "Muramana",
+      "trigger": "onHit",
+      "damageType": "Physical",
+      "calc": "OnHitDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "OnHitManaRatioTOOLTIPONLY",
+            "values": [
+              0.012000000104308128
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "OnHitDamage": {
+            "mFormulaParts": [
+              {
+                "mCoefficient": 0.012000000104308128,
+                "__type": "AbilityResourceByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3042#ability": {
+      "_note": "2026-10-20 (M45 loop 48) Items/3042 MeleeItemCalcValue 4% / RangedItemCalcValue 3% of max mana: Shock, ability damage to a champion deals that as bonus physical damage, once per cast (PerCastIDLockout).",
+      "name": "Muramana (abilities)",
+      "trigger": "onEveryAbility",
+      "damageType": "Physical",
+      "calc": "MeleeItemCalcValue",
+      "rangedCalc": "RangedItemCalcValue",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "AbilityManaRatioMeleeTOOLTIPONLY",
+            "values": [
+              0.03999999910593033
+            ]
+          },
+          {
+            "name": "AbilityManaRatioRangedTOOLTIPONLY",
+            "values": [
+              0.029999999329447746
+            ]
+          },
+          {
+            "name": "PerCastIDLockout",
+            "values": [
+              6.5
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "MeleeItemCalcValue": {
+            "mFormulaParts": [
+              {
+                "mCoefficient": 0.03999999910593033,
+                "__type": "AbilityResourceByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "RangedItemCalcValue": {
+            "mFormulaParts": [
+              {
+                "mCoefficient": 0.029999999329447746,
+                "__type": "AbilityResourceByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3748#active": {
+      "_note": "2026-10-20 (M45 loop 48) from CommunityDragon items.cdtb.bin.json Items/3748 (16.20) ActivePrimaryTargetHPRatio 0.04 x RangedEffectiveness 0.5: Titanic Crescent, the next attack deals that share of the holder max health to the primary target (the splash, ActiveSplashHPRatio, hits others). The only hydra active that is not an area around the holder (the user). Fires at the user item chip.",
+      "name": "Titanic Hydra (active)",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "hpPercentBasis": "CasterMax",
+      "meleeHpPercent": 0.04,
+      "rangedHpPercent": 0.02
+    },
+    "6699#chip": {
+      "_note": "2026-10-20 (M45 loop 49) Items/6699: an energized attack charged by moving or attacking (no ability first) - the combo cannot settle it, so it fires at the user item chip like every other energized item (Stormrazor, Rapid Firecannon, Statikk Shiv). The ability-readied one is 6699 (energizedAfterAbility). (loop 50) Any energized attack grants the lethality (the item text), from that attack on: measured 250 against 30 armor = 263 x 100 / (100 + 30 - 10 - 15).",
+      "name": "Voltaic Cyclosword (charged by moving)",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "hpPercentBasis": "TargetCurrent",
+      "meleeHpPercent": 0.09,
+      "rangedHpPercent": 0.07,
+      "meleeLethalityAfter": 15.0,
+      "rangedLethalityAfter": 12.0
+    },
+    "3071": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3071 (16.20) ShredPerStack 0.06, MaxStacks 5: Carve, each physical damage instance on a champion stacks 6% armor reduction (6 s), up to 5.",
+      "name": "Black Cleaver",
+      "trigger": "stackingShred",
+      "damageType": "Physical",
+      "shredPerStack": 0.05999999865889549,
+      "maxStacks": 5.0
+    },
+    "8010": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/8010 (16.20) ShredPerStack 0.075, MaxStacks 4: Vile Decay, magic damage from abilities or passives stacks 7.5% magic resist reduction (6 s), up to 4 (its 0.3 s internal cooldown is not counted).",
+      "name": "Bloodletter's Curse",
+      "trigger": "stackingShred",
+      "damageType": "Magic",
+      "shredsMagicResist": true,
+      "shredPerStack": 0.07500000298023224,
+      "maxStacks": 4.0
+    },
+    "6676": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/6676 (16.20) ExecuteThreshold 0.05: Death, my damage executes champions below 5% health (the kill threshold reads it).",
+      "name": "The Collector",
+      "trigger": "executeBelow",
+      "damageType": "True",
+      "executeBelowPercent": 0.05000000074505806
+    },
+    "2512": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/2512 (16.20) NumberOfAttacks 3, CritModifier 0.8: Opening Barrage, after the ultimate the next 3 attacks crit for 80% of a crit; one that would crit anyway crits fully and deals BonusTrueDamage 15% more - the expected share 0.8 + 0.2 x crit chance. (loop 50) The 15% is modeled: the user measured a 347 crit with 52 true (0.150) in the Practice Tool, against 0 armor - of the damage after armor taken (the smaller reading until a row against armor).",
+      "name": "Fiendhunter Bolts",
+      "trigger": "ultimateCrits",
+      "damageType": "Physical",
+      "attacks": 3.0,
+      "critDamageScalar": 0.800000011920929,
+      "bonusTrueShare": 0.15000000596046448
+    },
+    "3168": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3168 (16.20) DamageMod 0.04: Now and Forever, 4% more damage while above half health (my live health).",
+      "name": "Immortal Path",
+      "trigger": "selfHealthAmp",
+      "damageType": "True",
+      "ampPercent": 0.03999999910593033,
+      "healthAbovePercent": 0.5
+    },
+    "3147": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3147 (16.20) DamageIncreaseMax 0.06: Madness, 2% per second in combat up to 6% - time in combat, so the item chip turns it on (as Liandry's Suffering).",
+      "name": "Haunting Guise",
+      "trigger": "itemsNodeAmp",
+      "damageType": "True",
+      "ampScope": "all",
+      "ampPercent": 0.05999999865889549
+    },
+    "2523": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/2523 (16.20) MaxDamageAmp 0.10 at MaxRange 500: Magnification, attacks up to 10% by distance - the distance is the user's, so the chip asserts the full amp.",
+      "name": "Hexoptics C44",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Physical",
+      "ampScope": "attack",
+      "ampPercent": 0.10000000149011612
+    },
+    "2522": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/2522 (16.20) ManaCalc = (15 + 0.5% bonus mana) / 100: Mana Made Real, an 8 s active of increased ability damage - the chip. (loop 50) ampCalc: the amp is the ManaCalc itself, bonus mana = the live max mana (items, runes, abilities) minus the base mana at my level; ampPercent 0.15 stays its floor.",
+      "name": "Actualizer",
+      "trigger": "itemsNodeAmp",
+      "damageType": "Magic",
+      "ampScope": "ability",
+      "ampPercent": 0.15,
+      "ampCalc": "ManaCalc",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Duration",
+            "values": [
+              8.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "ManaCalc": {
+            "mMultiplier": {
+              "mNumber": 0.009999999776482582,
+              "__type": "NumberCalculationPart"
+            },
+            "mFormulaParts": [
+              {
+                "mNumber": 15.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mCoefficient": 0.004999999888241291,
+                "mStatFormula": 2,
+                "__type": "AbilityResourceByCoefficientCalculationPart"
+              }
+            ],
+            "mDisplayAsPercent": true,
+            "mPrecision": 1,
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3077": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3077 (16.20) PrimaryDamage = ActiveADRatio 0.75 x AD: Crescent, the active around the holder (the cleave hits others).",
+      "name": "Tiamat",
+      "trigger": "itemsNode",
+      "damageType": "Physical",
+      "calc": "PrimaryDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "ActiveADRatio",
+            "values": [
+              0.75
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              10.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "PrimaryDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mDataValue": "ActiveADRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3068": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3068 (16.20) DPS = 20 + 1.5% bonus health per tick x TicksPerSecond, AuraDuration 3: Immolate around the holder - staying near is the user's, so the chip, its 3 s.",
+      "name": "Sunfire Aegis",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "DPS",
+      "multiplier": 3.0,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "TicksPerSecond",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "AuraDuration",
+            "values": [
+              3.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamagePerTick": {
+            "mFormulaParts": [
+              {
+                "mNumber": 20.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mStatFormula": 2,
+                "mCoefficient": 0.014999999664723873,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "DPS": {
+            "mMultiplier": {
+              "mDataValue": "TicksPerSecond",
+              "__type": "NamedDataValueCalculationPart"
+            },
+            "mModifiedGameCalculation": "DamagePerTick",
+            "__type": "GameCalculationModified"
+          }
+        }
+      }
+    },
+    "6664": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/6664 (16.20) DPS = 15 + 1% bonus health per tick, AuraDuration 3: Immolate, the chip, its 3 s (Desolate needs a kill).",
+      "name": "Hollow Radiance",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "DPS",
+      "multiplier": 3.0,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "TicksPerSecond",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "AuraDuration",
+            "values": [
+              3.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamagePerTick": {
+            "mFormulaParts": [
+              {
+                "mNumber": 15.0,
+                "__type": "NumberCalculationPart"
+              },
+              {
+                "mStat": 12,
+                "mStatFormula": 2,
+                "mCoefficient": 0.009999999776482582,
+                "__type": "StatByCoefficientCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "DPS": {
+            "mMultiplier": {
+              "mDataValue": "TicksPerSecond",
+              "__type": "NamedDataValueCalculationPart"
+            },
+            "mModifiedGameCalculation": "DamagePerTick",
+            "__type": "GameCalculationModified"
+          }
+        }
+      }
+    },
+    "6660": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/6660 (16.20) DPS = 15 per tick, AuraDuration 3: Immolate, the chip, its 3 s.",
+      "name": "Bami's Cinder",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "DPS",
+      "multiplier": 3.0,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "TicksPerSecond",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "AuraDuration",
+            "values": [
+              3.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamagePerTick": {
+            "mFormulaParts": [
+              {
+                "mNumber": 15.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          },
+          "DPS": {
+            "mMultiplier": {
+              "mDataValue": "TicksPerSecond",
+              "__type": "NamedDataValueCalculationPart"
+            },
+            "mModifiedGameCalculation": "DamagePerTick",
+            "__type": "GameCalculationModified"
+          }
+        }
+      }
+    },
+    "2502": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/2502 (16.20) DrainCalc = 3% bonus health every 4 s in combat: Anguish, once at the chip.",
+      "name": "Unending Despair",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "DrainCalc",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BonusHealthDrainPercentage",
+            "values": [
+              0.029999999329447746
+            ]
+          },
+          {
+            "name": "Cooldown",
+            "values": [
+              4.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DrainCalc": {
+            "mFormulaParts": [
+              {
+                "mStat": 12,
+                "mStatFormula": 2,
+                "mDataValue": "BonusHealthDrainPercentage",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3050": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3050 (16.20) DamagePerSecond 30 for Duration 5: Frostfire Tempest after the ultimate, a storm around the holder - the chip, its 5 s.",
+      "name": "Zeke's Convergence",
+      "trigger": "itemsNode",
+      "damageType": "Magic",
+      "calc": "StormDamagePerSecond",
+      "multiplier": 5.0,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "DamagePerSecond",
+            "values": [
+              30.0
+            ]
+          },
+          {
+            "name": "Duration",
+            "values": [
+              5.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "StormDamagePerSecond": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "DamagePerSecond",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3107": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3107 (16.20) DamageToChampions 0.10: Intervention, the active deals 10% max health true damage to enemy champions - the chip.",
+      "name": "Redemption",
+      "trigger": "itemsNode",
+      "damageType": "True",
+      "hpPercentBasis": "TargetMax",
+      "meleeHpPercent": 0.10000000149011612,
+      "rangedHpPercent": 0.10000000149011612
+    },
+    "1043": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/1043 (16.20) OnHitDamage 15: Sting, attacks deal 15 physical on-hit.",
+      "name": "Recurve Bow",
+      "trigger": "onHit",
+      "damageType": "Physical",
+      "calc": "{e4493c5b}",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "OnHitDamage",
+            "values": [
+              15.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "{e4493c5b}": {
+            "DamageType": 0,
+            "mFormulaParts": [
+              {
+                "mDataValue": "OnHitDamage",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3144": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3144 (16.20) DamageAmount 40, Cooldown 40: Bullseye, damaging a champion deals 40 magic - once, on the first damaging hit.",
+      "name": "Scout's Slingshot",
+      "trigger": "onFirstDamage",
+      "damageType": "Magic",
+      "calc": "DamageAmount",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Cooldown",
+            "values": [
+              40.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamageAmount": {
+            "mFormulaParts": [
+              {
+                "mNumber": 40.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3145": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3145 (16.20) DamageAmount 65, Cooldown 40: Revved, damaging a champion deals 65 magic - once, on the first damaging hit.",
+      "name": "Hextech Alternator",
+      "trigger": "onFirstDamage",
+      "damageType": "Magic",
+      "calc": "DamageAmount",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "Cooldown",
+            "values": [
+              40.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "DamageAmount": {
+            "mFormulaParts": [
+              {
+                "mNumber": 65.0,
+                "__type": "NumberCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "2508": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/2508 (16.20) BurnFlatDamagePerSecond 5 for BurnDuration 3: Inflame, damaging abilities burn (it refreshes) - once, on the first damaging ability (the target lives through the burn).",
+      "name": "Fated Ashes",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "calc": "BurnPerSecond",
+      "multiplier": 3.0,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BurnFlatDamagePerSecond",
+            "values": [
+              5.0
+            ]
+          },
+          {
+            "name": "BurnDuration",
+            "values": [
+              3.0
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "BurnPerSecond": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BurnFlatDamagePerSecond",
+                "__type": "NamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3871": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3871 (16.20) TooltipDamage = 10 + 15% AP, + PercentHPDamage 3% max health (3871#hp), Cooldown 10: Void Explosion on ability damage to a champion - once, on the first damaging ability.",
+      "name": "Zaz'Zak's Realmspike",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "calc": "TooltipDamage",
+      "spell": {
+        "DataValues": [
+          {
+            "name": "BaseDamage",
+            "values": [
+              10.0
+            ]
+          },
+          {
+            "name": "APRatio",
+            "values": [
+              0.15000000596046448
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "TooltipDamage": {
+            "mFormulaParts": [
+              {
+                "mDataValue": "BaseDamage",
+                "__type": "NamedDataValueCalculationPart"
+              },
+              {
+                "mDataValue": "APRatio",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
+          }
+        }
+      }
+    },
+    "3871#hp": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3871 (16.20) PercentHPDamage 0.03: the explosion's max-health part.",
+      "name": "Zaz'Zak's Realmspike (max health)",
+      "trigger": "onFirstAbility",
+      "damageType": "Magic",
+      "hpPercentBasis": "TargetMax",
+      "meleeHpPercent": 0.029999999329447746,
+      "rangedHpPercent": 0.029999999329447746
+    },
+    "3877": {
+      "_note": "2026-10-20 (M45 loop 49) from CommunityDragon items.cdtb.bin.json Items/3877 (16.20) SpellbladeDamage = SheenMult 100% base AD, then Maim MeleeDamageAmp 8% / RangedDamageAmp 5% damage taken (4 s); the siphon on later attacks is not modeled.",
+      "name": "Bloodsong",
+      "trigger": "spellblade",
+      "damageType": "Physical",
+      "calc": "SpellbladeDamage",
+      "meleeAmpAfterPercent": 0.07999999821186066,
+      "rangedAmpAfterPercent": 0.05000000074505806,
+      "spell": {
+        "DataValues": [
+          {
+            "name": "SheenMult",
+            "values": [
+              1.0
+            ]
+          },
+          {
+            "name": "SpellbladeCooldown",
+            "values": [
+              1.5
+            ]
+          },
+          {
+            "name": "MeleeDamageAmp",
+            "values": [
+              0.07999999821186066
+            ]
+          },
+          {
+            "name": "RangedDamageAmp",
+            "values": [
+              0.05000000074505806
+            ]
+          }
+        ],
+        "mSpellCalculations": {
+          "SpellbladeDamage": {
+            "mFormulaParts": [
+              {
+                "mStat": 2,
+                "mStatFormula": 1,
+                "mDataValue": "SheenMult",
+                "__type": "StatByNamedDataValueCalculationPart"
+              }
+            ],
+            "__type": "GameCalculation"
           }
         }
       }

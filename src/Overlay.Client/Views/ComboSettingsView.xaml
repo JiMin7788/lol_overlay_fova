@@ -7,8 +7,15 @@
     <!-- One outer ScrollViewer wraps BOTH columns so a single wheel scroll moves the whole page
          (task 3). Inner lists do not scroll independently; the scrollbar is hidden but the wheel
          still works. -->
+    <DockPanel>
+    <!-- (2026-10-19, user request) Pinned under the page, outside the scroll, so it is always in
+         view: no number here includes the ENEMY's runes (shards, Bone Plating, Second Wind …). The
+         Live Client API reports an enemy's keystone at most, never their minor runes or shards. -->
+    <TextBlock x:Name="EnemyRunesNote" DockPanel.Dock="Bottom" Style="{StaticResource HintText}"
+               TextWrapping="Wrap" Margin="0,10,0,0"
+               Text="적의 룬 효과(체력 파편, 뼈 방패, 재생의 바람 등)는 계산에 반영되지 않습니다. 게임이 상대 룬 정보를 주지 않아, 실제로는 피해가 조금 덜 들어가거나 처치가 안 될 수 있습니다." />
     <ScrollViewer x:Name="PageScroll" Style="{StaticResource HiddenScroll}">
-        <StackPanel Margin="4">
+        <StackPanel Margin="0,0,0,24">
 
             <!-- No page title: the window header already says "콤보설정". -->
 
@@ -19,11 +26,11 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- ── Builder (left) ─────────────────────────────────────── -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,10,0" VerticalAlignment="Top">
+                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,8,0" VerticalAlignment="Top">
                     <StackPanel>
-                        <TextBlock x:Name="BuildCaption" Text="콤보 만들기" Style="{StaticResource SectionHeader}" />
+                        <TextBlock x:Name="BuildCaption" Text="콤보 만들기" Style="{StaticResource CardTitle}" />
 
-                        <TextBlock x:Name="ChampionCaption" Text="챔피언" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <TextBlock x:Name="ChampionCaption" Text="챔피언" Style="{StaticResource FieldLabel}" Margin="0,16,0,6" />
                         <!-- Search-to-filter + capped-scroll icon-tile champion picker (loop 38
                              pending items 4/5): the search box filters the tile grid below it; the
                              grid's own ScrollViewer caps visible height so the ~173+ roster never
@@ -33,11 +40,11 @@
                             <WrapPanel x:Name="ChampionPanel" Orientation="Horizontal" />
                         </ScrollViewer>
 
-                        <TextBlock x:Name="PaletteCaption" Text="스킬 팔레트" Style="{StaticResource CaptionText}" Margin="0,16,0,2" />
+                        <TextBlock x:Name="PaletteCaption" Text="스킬 팔레트" Style="{StaticResource FieldLabel}" Margin="0,16,0,2" />
                         <!-- The how-to sits right under the heading it explains (it used to come after
                              the item and rune folds, far from the skills). -->
                         <TextBlock x:Name="DragHint" Text="스킬을 아래로 드래그해 순서에 추가하세요."
-                                   Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                   Style="{StaticResource HintText}"
                                    Margin="0,0,0,8" />
                         <!-- Palette: drag a chip DOWN into the sequence. Also a drop target so a
                              sequence chip dragged UP here is deleted. -->
@@ -48,7 +55,7 @@
                             <StackPanel>
                                 <WrapPanel x:Name="PalettePanel" Orientation="Horizontal" />
                                 <TextBlock x:Name="PaletteHint" Text="챔피언을 선택하면 스킬이 표시됩니다."
-                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}" />
+                                           Style="{StaticResource HintText}" />
 
                                 <!-- Item picker (loop 38 pending item 2): search-to-add, icon tiles
                                      for both the matched results and the chosen "hypothetical build"
@@ -71,8 +78,7 @@
                                         <WrapPanel x:Name="ItemResultsPanel" Orientation="Horizontal" />
                                     </ScrollViewer>
                                     <WrapPanel x:Name="BuildItemsPanel" Orientation="Horizontal" Margin="0,8,0,0" />
-                                    <TextBlock x:Name="ItemHint" Style="{StaticResource BodyText}" FontSize="11"
-                                               Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <TextBlock x:Name="ItemHint" Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 </StackPanel>
 
                                 <!-- Rune drag-attach palette (M04 item 3, rune half): a static set of
@@ -88,22 +94,22 @@
                                 </Border>
                                 <StackPanel x:Name="RuneSection" Visibility="Collapsed">
                                     <WrapPanel x:Name="RunesPanel" Orientation="Horizontal" />
-                                    <TextBlock x:Name="RuneHint" Text="룬을 콤보 순서의 스킬 위로 드래그해 1초간 올려두면 그 스킬에 강제 적용됩니다(이론상 계산)." Style="{StaticResource BodyText}" FontSize="11" Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <TextBlock x:Name="RuneHint" Text="룬을 콤보 순서의 스킬 위로 드래그해 1초간 올려두면 그 스킬에 강제 적용됩니다(이론상 계산)." Style="{StaticResource HintText}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
 
-                        <TextBlock x:Name="SequenceCaption" Text="콤보 순서" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <TextBlock x:Name="SequenceCaption" Text="콤보 순서" Style="{StaticResource FieldLabel}" Margin="0,16,0,6" />
                         <!-- Sequence drop zone: palette chips land here (insertion indicator shows
                              where); placed chips can be reordered or dragged out to delete. -->
                         <Border x:Name="SequenceZone" AllowDrop="True" Background="{StaticResource SurfaceHi}"
-                                BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
-                                Padding="10" MinHeight="88"
+                                BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="{StaticResource RadiusControl}"
+                                Padding="8" MinHeight="88"
                                 DragEnter="SequenceZone_DragOver" DragOver="SequenceZone_DragOver"
                                 DragLeave="SequenceZone_DragLeave" Drop="SequenceZone_Drop">
                             <Grid>
                                 <TextBlock x:Name="SequenceHint" Text="여기로 스킬을 드래그하세요. 위로 드래그하면 삭제됩니다."
-                                           Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                                           Style="{StaticResource HintText}"
                                            VerticalAlignment="Center" IsHitTestVisible="False" />
                                 <WrapPanel x:Name="SequencePanel" Orientation="Horizontal" />
                             </Grid>
@@ -111,49 +117,52 @@
                         <!-- (loop 487) Live damage preview. Every knob added since loop 471 changed a
                              number the editor never showed; this is that number, with the basis it was
                              computed on stated underneath so a reference never reads as a prediction. -->
-                        <Border x:Name="PreviewCard" Background="{StaticResource Surface}"
-                                BorderBrush="{StaticResource Border}" BorderThickness="1" CornerRadius="8"
-                                Padding="12,10" Margin="0,10,0,0" Visibility="Collapsed">
+                        <Border x:Name="PreviewCard" Style="{StaticResource CardInset}" Margin="0,8,0,0" Visibility="Collapsed">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock x:Name="PreviewCaption" Text="예상 피해" Style="{StaticResource CaptionText}"
                                                VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBlock x:Name="PreviewRange" Text="—" FontSize="18" FontWeight="Bold"
+                                    <TextBlock x:Name="PreviewRange" Text="—" Style="{StaticResource SectionHeader}"
                                                Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
                                 </StackPanel>
-                                <TextBlock x:Name="PreviewBasis" Style="{StaticResource BodyText}" FontSize="11"
-                                           Foreground="{StaticResource TextDim}" TextWrapping="Wrap"
+                                <TextBlock x:Name="PreviewBasis" Style="{StaticResource HintText}" TextWrapping="Wrap"
                                            Margin="0,4,0,0" />
                                 <!-- M44: a stronger casting order, when the search finds one. -->
                                 <DockPanel x:Name="PreviewOrderPanel" Margin="0,8,0,0" Visibility="Collapsed">
                                     <Button x:Name="PreviewOrderApply" DockPanel.Dock="Right" Content="이 순서로"
                                             Style="{StaticResource GhostButton}" Margin="8,0,0,0"
                                             VerticalAlignment="Center" Click="PreviewOrderApply_Click" />
-                                    <TextBlock x:Name="PreviewOrderText" Style="{StaticResource BodyText}" FontSize="12"
+                                    <TextBlock x:Name="PreviewOrderText" Style="{StaticResource BodyText}"
                                                TextWrapping="Wrap" VerticalAlignment="Center" />
                                 </DockPanel>
                             </StackPanel>
                         </Border>
 
-                        <Button x:Name="ClearButton" Content="순서 비우기" Style="{StaticResource GhostButton}"
-                                HorizontalAlignment="Left" Margin="0,10,0,0" Click="ClearButton_Click" />
+                        <!-- [수정 취소] only while a saved combo is loaded for editing (✎): leaving edit
+                             mode used to have no control at all. -->
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="ClearButton" Content="순서 비우기" Style="{StaticResource GhostButton}"
+                                    Click="ClearButton_Click" />
+                            <Button x:Name="CancelEditButton" Content="수정 취소" Style="{StaticResource GhostButton}"
+                                    Margin="8,0,0,0" Visibility="Collapsed" Click="CancelEditButton_Click" />
+                        </StackPanel>
 
-                        <TextBlock x:Name="NameCaption" Text="콤보 이름" Style="{StaticResource CaptionText}" Margin="0,16,0,6" />
+                        <TextBlock x:Name="NameCaption" Text="콤보 이름" Style="{StaticResource FieldLabel}" Margin="0,16,0,6" />
                         <TextBox x:Name="NameBox" Tag="예: 올인 콤보" />
 
-                        <TextBlock x:Name="HotkeyCaption" Text="단축키 (선택)" Style="{StaticResource CaptionText}" Margin="0,14,0,6" />
+                        <TextBlock x:Name="HotkeyCaption" Text="단축키 (선택)" Style="{StaticResource FieldLabel}" Margin="0,14,0,6" />
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="HotkeyButton" Content="단축키 설정" Style="{StaticResource GhostButton}"
                                     HorizontalAlignment="Left" Focusable="True" Click="HotkeyButton_Click"
                                     PreviewKeyDown="HotkeyButton_PreviewKeyDown" LostFocus="HotkeyButton_LostFocus" />
                             <Button x:Name="HotkeyButton2" Content="＋" Style="{StaticResource GhostButton}"
-                                    Margin="6,0,0,0" HorizontalAlignment="Left" Focusable="True"
+                                    Margin="8,0,0,0" HorizontalAlignment="Left" Focusable="True"
                                     Click="HotkeyButton2_Click"
                                     PreviewKeyDown="HotkeyButton2_PreviewKeyDown" LostFocus="HotkeyButton2_LostFocus" />
                         </StackPanel>
 
                         <Button x:Name="SaveButton" Content="저장" Style="{StaticResource PrimaryButton}"
-                                HorizontalAlignment="Left" Margin="0,18,0,0" Click="SaveButton_Click" />
+                                HorizontalAlignment="Left" Margin="0,16,0,0" Click="SaveButton_Click" />
 
                         <TextBlock x:Name="SaveMessage" Style="{StaticResource BodyText}" Margin="0,12,0,0"
                                    Visibility="Collapsed" TextWrapping="Wrap" />
@@ -161,27 +170,21 @@
                 </Border>
 
                 <!-- ── Target + Saved list (right) ────────────────────────── -->
-                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="10,0,0,0" VerticalAlignment="Top">
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="8,0,0,0" VerticalAlignment="Top">
                     <StackPanel>
                         <!-- Combo target selector (user mandate): Auto (same-position) or a specific
                              living enemy champion. Writes targeting.mode/manualTarget to config. -->
-                        <TextBlock x:Name="TargetCaption" Text="콤보 대상" Style="{StaticResource SectionHeader}" Margin="0,0,0,8" />
+                        <TextBlock x:Name="TargetCaption" Text="콤보 대상" Style="{StaticResource CardTitle}" Margin="0,0,0,8" />
                         <ComboBox x:Name="TargetCombo" Style="{StaticResource ThemedComboBox}"
-                                  Height="34" HorizontalAlignment="Left" Width="200"
+                                  HorizontalAlignment="Left" Width="200"
                                   SelectionChanged="TargetCombo_SelectionChanged" />
-                        <TextBlock x:Name="TargetHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                        <TextBlock x:Name="TargetHint" Style="{StaticResource HintText}"
                                    Margin="0,6,0,18" TextWrapping="Wrap"
                                    Text="자동은 같은 라인 상대를 노립니다. 특정 챔피언을 선택하면 그 대상으로 계산합니다." />
 
-                        <!-- (M24 P5/P7) Assumed ENEMY defensive runes. The enemy's runes aren't readable
-                             from the Live Client API, so this is an honest user input: checking a rune
-                             lowers the damage range's FLOOR (worst case), never the resolved number.
-                             Writes "combo.assumedEnemyDefensiveRunes" (comma-separated ids). -->
-                        <TextBlock x:Name="EnemyRunesCaption" Text="적 방어룬 (가정)" Style="{StaticResource CaptionText}" Margin="0,0,0,6" />
-                        <StackPanel x:Name="EnemyDefensiveRunesPanel" />
-                        <TextBlock x:Name="EnemyRunesHint" Style="{StaticResource BodyText}" FontSize="11"
-                                   Foreground="{StaticResource TextDim}" TextWrapping="Wrap" Margin="0,4,0,18"
-                                   Text="적이 가졌다고 가정할 방어룬을 체크하면 데미지 구간의 하한(최악)이 낮아집니다. 적 룬은 API로 읽을 수 없어 유저 입력입니다." />
+                        <!-- (2026-10-19, user request) The assumed-enemy-defensive-rune checkboxes (M24
+                             P5/P7) were removed from this card; Attach clears any value they left in
+                             combo.assumedEnemyDefensiveRunes so it cannot keep lowering the floor unseen. -->
 
                         <!-- Header row: caption + share-code import (ComboShareCode). Pasting reads the
                              clipboard, so a whole Discord message with a FOVA1: code works as-is. -->
@@ -190,25 +193,24 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="SavedCaption" Text="저장된 콤보" Style="{StaticResource SectionHeader}"
+                            <TextBlock x:Name="SavedCaption" Text="저장된 콤보" Style="{StaticResource CardTitle}"
                                        VerticalAlignment="Center" />
                             <Button x:Name="PasteComboButton" Grid.Column="1" Content="콤보 붙여넣기"
-                                    Style="{StaticResource GhostButton}" FontSize="12" Padding="10,4,10,4"
+                                    Style="{StaticResource CompactGhostButton}"
                                     Click="PasteComboButton_Click" />
                         </Grid>
                         <!-- Plain ItemsControl (no inner ScrollViewer) so the outer page scroll owns
                              the wheel. -->
                         <ItemsControl x:Name="SavedList" />
-                        <TextBlock x:Name="EmptySaved" Text="아직 저장된 콤보가 없습니다." Style="{StaticResource BodyText}"
-                                   Foreground="{StaticResource TextDim}" />
+                        <TextBlock x:Name="EmptySaved" Text="아직 저장된 콤보가 없습니다." Style="{StaticResource HintText}" />
                         <!-- Built-in combos for the selected champion (ComboPresets); [추가] saves one. -->
                         <StackPanel x:Name="PresetPanel" Margin="0,18,0,0" Visibility="Collapsed">
-                            <TextBlock x:Name="PresetCaption" Text="추천 콤보" Style="{StaticResource CaptionText}" />
-                            <TextBlock x:Name="PresetHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                            <TextBlock x:Name="PresetCaption" Text="추천 콤보" Style="{StaticResource FieldLabel}" />
+                            <TextBlock x:Name="PresetHint" Style="{StaticResource HintText}"
                                        Margin="0,4,0,8" TextWrapping="Wrap" />
                             <ItemsControl x:Name="PresetList" />
                         </StackPanel>
-                        <TextBlock x:Name="SavedHint" Style="{StaticResource BodyText}" Foreground="{StaticResource TextDim}"
+                        <TextBlock x:Name="SavedHint" Style="{StaticResource HintText}"
                                    Margin="0,12,0,0"
                                    Text="게임 입장 후 등록한 단축키를 누르면 콤보 데미지가 오버레이에 표시됩니다." />
                     </StackPanel>
@@ -216,4 +218,5 @@
             </Grid>
         </StackPanel>
     </ScrollViewer>
+    </DockPanel>
 </UserControl>

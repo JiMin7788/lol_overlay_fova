@@ -1044,14 +1044,23 @@ public sealed class ComboEngine
             DamageType: MapDamageType(node.DamageType),
             // (M27) ORed with the curated per-hit flag so a non-AA ability (e.g. Garen E) can also
             // crit; every pre-existing node has CanCrit=false, so this is additive-only.
-            CanCrit: node.NodeType == ComboNodeType.Aa || node.CanCrit,
+            CanCrit: (node.NodeType == ComboNodeType.Aa && !node.NoCrit) || node.CanCrit,
             ExecuteType: MapExecuteType(node.ExecuteType),
             ExecuteThreshold: node.ExecuteThreshold ?? 0,
             ExecutePercent: node.ExecuteType is ComboExecuteType.CurrentHp or ComboExecuteType.MissingHp
                 ? node.ExecutePercent * amp : node.ExecutePercent,
             CritDamageScalar: node.CritDamageScalar,
             HpBelowGateFraction: node.HpBelowGate, // (§27 (B)) carry the dynamic low-HP on-hit gate
-            GuaranteedCrit: node.GuaranteedCrit);
+            GuaranteedCrit: node.GuaranteedCrit,
+            IsAttack: node.NodeType == ComboNodeType.Aa || node.IsAttack,
+            ArmorShredPercentAfter: node.ArmorShredAfter,
+            MrShredPercentAfter: node.MrShredAfter,
+            ArmorShredFlatAfter: node.ArmorShredFlatAfter,
+            MrShredFlatAfter: node.MrShredFlatAfter,
+            ExecuteFloor: node.ExecuteFloor * amp,
+            ArmorPenFlatFrom: node.ArmorPenFlatFrom,
+            PartialCritFloor: node.PartialCritFloor,
+            CritTrueShare: node.CritTrueShare);
     }
 
     private static Damage.DamageType MapDamageType(ComboDamageType type) => type switch
@@ -1196,6 +1205,16 @@ public enum ConditionType
     /// where the CASTER was. Neither is in the Live Client API, so both are UserAssumed and default
     /// unmet; the front-facing number stays the floor.</para></summary>
     FromBehind,
+
+    /// <summary>(M45 loop 41) The champion is in its OTHER form, one that can deal LESS (Kled dismounted: his attacks
+    /// deal DismountedAttackPenalty less to champions). No API reports the form, so UserAssumed; unticked is the
+    /// champion's ordinary form.</summary>
+    AltForm,
+
+    /// <summary>(M45 loop 42) The node's counted hits landed CONSECUTIVELY on the same champion (Daisy's 3rd
+    /// consecutive attack on one champion launches Ivern R's shockwave). A pet picks its own targets and no API
+    /// reports them, so UserAssumed; unticked counts no such landing.</summary>
+    Consecutive,
 }
 
 /// <summary>M03 spec's own <c>Condition</c> Data Model addition.</summary>
@@ -1228,6 +1247,8 @@ public static class ConditionResolution
             or ConditionType.Upgraded     // (loop 479) evolution/awakening — no API reports it
             or ConditionType.SweetSpot    // (loop 483) cast geometry — no position data at all
             or ConditionType.FromBehind   // (loop 485) caster position — same story
+            or ConditionType.AltForm      // (M45 loop 41) the other form (Kled dismounted) — no API reports it
+            or ConditionType.Consecutive  // (M45 loop 42) a pet's consecutive hits on one champion — same story
             => true,
         // Resolvable from the active player's own live snapshot, or a combo-sequence fact.
         ConditionType.ResourceGte         // own resource (ResourceValue)
@@ -1367,7 +1388,26 @@ public sealed record ComboNode(
     // (2026-10-17) Item amps on this hit (the "모든 아이템" chip's Riftmaker/Abyssal/Shadowflame/Shojin),
     // and Sundered Sky's guaranteed crit on the combo's first attack.
     double DamageAmp = 1.0,
-    bool GuaranteedCrit = false);
+    bool GuaranteedCrit = false,
+    // (2026-10-19) Threaded to the M05 node: an attack (Steelcaps reduces it — AA nodes are attacks
+    // already) and the armor shred this hit leaves for the rest of the combo.
+    bool IsAttack = false,
+    double ArmorShredAfter = 0,
+    double MrShredAfter = 0,
+    double ArmorShredFlatAfter = 0,
+    double MrShredFlatAfter = 0,
+    // (M45 loop 16) the floor of a current-health execute hit (Dr. Mundo Q's minimum)
+    double ExecuteFloor = 0,
+    // (M45 loop 18) a basic attack whose own shape cannot crit (Ashe folds crit into the hit, Zeri's
+    // attack does not crit): suppresses the AA-node default
+    bool NoCrit = false,
+    // (M45 loop 48) lethality this hit grants for the rest of the combo (Voltaic Cyclosword's energized attack);
+    // (loop 50) from this hit on, itself included
+    double ArmorPenFlatFrom = 0,
+    // (M45 loop 50) an attack that crits at least for this share, fully when it crits by itself, and then deals
+    // CritTrueShare of that damage again as true damage (Fiendhunter Bolts after the ultimate)
+    double PartialCritFloor = 0,
+    double CritTrueShare = 0);
 
 /// <summary>An implicit or (future V2) explicit sequencing edge between two node ids.
 /// MVP's <see cref="ComboEngine.BuildGraph"/> always populates this as the linear
@@ -1514,4 +1554,11 @@ public sealed record ComboResult(
     /// <summary>(M24 P1) Alias for <see cref="TotalDamageMax"/> — the CRIT-only ceiling (the all-crit
     /// track). See <see cref="CritMin"/>.</summary>
     public double CritMax => TotalDamageMax;
+
+    /// <summary>(M46) The crit expectation (<see cref="TotalDamage"/>, the Blend track) when crit moves this combo -
+    /// at least 1 HP inside both crit ends; null at 0% or 100% crit, or with no hit that can crit. League smooths crit
+    /// streaks but keeps the listed average, and the misses since the last crit are not observable (P2), so the plain
+    /// expectation is the middle the gauge marks.</summary>
+    public double? CritExpected =>
+        TotalDamage - TotalDamageMin >= 1 && TotalDamageMax - TotalDamage >= 1 ? TotalDamage : null;
 }

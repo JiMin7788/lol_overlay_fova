@@ -1,12 +1,15 @@
 {
   "_note": "Curated (T3.x passive pass). P (Absolution): basic attacks deal bonus PHYSICAL on-hit damage flat-scaled off total AD (BonusOnHitDamage = 0.2x total AD, SennaPassive.mSpellCalculations) — no level interpolation or breakpoints, always-on, so this is an exact (not approximated) proc. Curated as a P bonusEffect trigger onHit. Q/W/R kept as the auto first-pass physical picks.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "BonusOnHitDamage", "count": 1 } ] } ] },
+  "_noteSiphonP": "(2026-10-20, M45 loop 25) Absolution: a hit marks a champion for MarkDuration and the next one consumes it for BonusCurentHealthDamage (1-10%) of its current health; the target is then immune to a new mark for a while - the second attack, once a combo (procEvery 2, maxProcs 1). Abilities also mark/consume; only attacks are counted.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "BonusOnHitDamage", "count": 1 } ] }, { "trigger": "onHit", "procEvery": 2, "maxProcs": 1, "hits": [ { "type": "Physical", "hpPercentCalc": "BonusCurentHealthDamage", "hpBasis": "Current", "count": 1, "tags": ["PercentCurrentHp"] } ] } ] },
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Piercing Darkness applies on-hit effects to enemy champions.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "appliesOnHit": true
       }
     ]
   },

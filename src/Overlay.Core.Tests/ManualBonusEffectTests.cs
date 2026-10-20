@@ -276,14 +276,16 @@ public class ManualBonusEffectTests : IDisposable
         var morde = LoadChampionFromBin("Mordekaiser");
         Assert.True(morde.Skills.ContainsKey("P"), "Mordekaiser passive was not extracted as slot P");
 
-        // Curated: P (Darkness Rise) = on-hit magic aura via AuraDamagePerStack.
+        // (M45 loop 22) Darkness Rise is a per-second cloak - the P node's own hits on the exposure knob
+        // (it rode every attack as an on-hit); the on-hit BonusAPAuto is the P rider.
+        var aura = SkillDamageDb.GetHits("Mordekaiser", "P")!;
+        Assert.Equal("AuraDamagePerStack", aura[0].PerSecondCalc);
+        Assert.Equal(HitDamageType.Magic, aura[0].Type);
         var bonus = SkillDamageDb.GetBonusEffects("Mordekaiser", "P");
         Assert.NotNull(bonus);
         var effect = Assert.Single(bonus!);
         Assert.Equal(BonusTrigger.OnHit, effect.Trigger);
-        var hit = Assert.Single(effect.Hits);
-        Assert.Equal(HitDamageType.Magic, hit.Type);
-        Assert.Equal("AuraDamagePerStack", hit.Calc);
+        Assert.Equal("BonusAPAuto", Assert.Single(effect.Hits).Calc);
 
         // AuraDamagePerStack = 5 (flat) + 0.30 * AP, BIN-sourced. AP 100 → 5 + 30 = 35 (no per-rank
         // array, so the champion-level rank convention leaves it constant).
@@ -295,7 +297,7 @@ public class ManualBonusEffectTests : IDisposable
         var attachable = SkillDamageDb.GetAttachableBonusEffects("Mordekaiser");
         Assert.Contains(attachable, a =>
             a.Slot == "P" && a.Effect.Trigger == BonusTrigger.OnHit
-            && a.Effect.Hits.Any(h => h.Calc == "AuraDamagePerStack"));
+            && a.Effect.Hits.Any(h => h.Calc == "BonusAPAuto"));
 
         // Sylas (already curated in T3.1) is also discoverable — its P direct-damage passive is
         // surfaced as an attachable Self effect.

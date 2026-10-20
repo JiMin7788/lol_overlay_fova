@@ -28,3 +28,10 @@ dist/
 
 # wrangler local cache (telemetry-worker)
 telemetry-worker/.wrangler/
+
+# M45 tooltip audit: CommunityDragon string table cache (re-fetched with run_all.py --refresh)
+data-pipeline/tooltip_audit_cache/
+# M45 tooltip audit: regenerated intermediates (run_all.py writes them each run; baseline/meta/fidelity/profiles stay)
+docs/reports/tooltip_audit/classified.json
+docs/reports/tooltip_audit/clauses.json
+docs/reports/tooltip_audit/mapping.json

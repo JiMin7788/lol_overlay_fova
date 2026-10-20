@@ -163,6 +163,15 @@ public partial class ComboSettingsView : UserControl
     /// user picks a different champion / clears the sequence).</summary>
     private string? _editingComboId;
 
+    /// <summary>Hotkeys bound to <see cref="_editingComboId"/> when it was loaded, so a Save that
+    /// rebinds to a different key also drops the old mapping (it used to keep pointing at the
+    /// replaced combo's deleted id).</summary>
+    private IReadOnlyList<string> _editingHotkeys = Array.Empty<string>();
+
+    /// <summary>Auto-hides a success message after a few seconds; errors and the "수정 중" notice
+    /// stay until the next message replaces them.</summary>
+    private DispatcherTimer? _messageTimer;
+
     /// <summary>(loop 173) Guards the "auto-select the played champion on game start" behavior so it
     /// fires at most ONCE per game — after that the user is free to switch champions without being
     /// yanked back. Reset on GAME.CONNECTED/DISCONNECTED.</summary>
@@ -218,7 +227,10 @@ public partial class ComboSettingsView : UserControl
         PopulateChampions();
         PopulateRunes(); // runes are not champion-specific — populate the static palette once
         PopulateTargets();
-        PopulateEnemyDefensiveRunes(); // (M24 P5/P7) assumed-enemy-rune checkboxes -> config
+        // (2026-10-19) The assumed-enemy-rune checkboxes are gone; a value they saved would still
+        // lower every combo's damage floor with no control left to see or undo it, so drop it.
+        if (composition.Config.Get("combo.assumedEnemyDefensiveRunes") is string { Length: > 0 })
+            composition.Config.Set("combo.assumedEnemyDefensiveRunes", null);
         RefreshSavedList();
 
         // The M11 champion repository loads the full ~173-champion roster on a background task
@@ -229,60 +241,6 @@ public partial class ComboSettingsView : UserControl
         // Attach() is only ever called once per process lifetime (HomeWindow constructs this view
         // once), so no double-subscription guard is needed.
         composition.ChampionsReady += () => Dispatcher.Invoke(PopulateChampions);
-    }
-
-    /// <summary>(M24 P5/P7) The enemy defensive runes the user can assume the target has — id + label,
-    /// matching <see cref="Overlay.Core.Combo.ComboEngine.DefensiveRuneResists"/>. Checking one lowers
-    /// the damage range's floor; the enemy's real runes aren't API-readable (P2), so this is honest
-    /// user input.</summary>
-    private static readonly (int Id, string Label)[] AssumableEnemyDefensiveRunes =
-    {
-        (8429, "단련 (+8 방어/마저)"),
-        (8439, "여진 (CC 시 +45 방어/마저)"),
-        (8465, "수호자 (실드)"),
-    };
-
-    /// <summary>Builds the assumed-enemy-rune checkboxes, reflecting the config-stored list and writing
-    /// it back on toggle (see <see cref="ToggleEnemyRune"/>). No-op until <see cref="Attach"/> ran.</summary>
-    private void PopulateEnemyDefensiveRunes()
-    {
-        EnemyDefensiveRunesPanel.Children.Clear();
-        var current = ReadAssumedEnemyRuneIds();
-        foreach (var (id, label) in AssumableEnemyDefensiveRunes)
-        {
-            var cb = new CheckBox
-            {
-                Content = label,
-                IsChecked = current.Contains(id),
-                // Theme's primary text brush is keyed "Text" (Theme.xaml), not "TextPrimary".
-                // TryFindResource never throws on a missing key (unlike FindResource, which was
-                // crashing this panel every build with ResourceReferenceKeyNotFoundException).
-                Foreground = Application.Current.TryFindResource("Text") as Brush,
-                Margin = new Thickness(0, 2, 0, 2),
-                FontSize = 12,
-            };
-            cb.Checked += (_, _) => ToggleEnemyRune(id, true);
-            cb.Unchecked += (_, _) => ToggleEnemyRune(id, false);
-            EnemyDefensiveRunesPanel.Children.Add(cb);
-        }
-    }
-
-    private HashSet<int> ReadAssumedEnemyRuneIds()
-    {
-        var set = new HashSet<int>();
-        if (_composition?.Config.Get("combo.assumedEnemyDefensiveRunes") is string raw)
-            foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                if (int.TryParse(part, out int id)) set.Add(id);
-        return set;
-    }
-
-    private void ToggleEnemyRune(int id, bool on)
-    {
-        if (_composition is null) return;
-        var set = ReadAssumedEnemyRuneIds();
-        if (on) set.Add(id); else set.Remove(id);
-        _composition.Config.Set("combo.assumedEnemyDefensiveRunes",
-            string.Join(",", set.OrderBy(x => x)));
     }
 
     /// <summary>Loads the full champion roster id list (task 4/loop-38 item 4) and rebuilds the
@@ -389,6 +347,7 @@ public partial class ComboSettingsView : UserControl
     {
         TargetCaption.Text = Localization.L("target.title");
         TargetHint.Text = Localization.L("target.hint");
+        EnemyRunesNote.Text = Localization.L("combo.enemyRunesNote");
         BuildCaption.Text = Localization.L("combo.build");
         ChampionCaption.Text = Localization.L("combo.champion");
         ChampionSearchBox.Tag = Localization.L("combo.championSearch");
@@ -403,11 +362,11 @@ public partial class ComboSettingsView : UserControl
         NameBox.Tag = Localization.L("combo.nameHint");
         HotkeyCaption.Text = Localization.L("combo.hotkey");
         ClearButton.Content = Localization.L("combo.clear");
+        CancelEditButton.Content = Localization.L("combo.cancelEdit");
         SaveButton.Content = Localization.L("combo.save");
         SavedCaption.Text = Localization.L("combo.saved");
         PasteComboButton.Content = Localization.L("combo.paste");
         PasteComboButton.ToolTip = Localization.L("combo.pasteTip");
-        EmptySaved.Text = Localization.L("combo.emptySaved");
         SavedHint.Text = Localization.L("combo.savedHint");
         PresetCaption.Text = Localization.L("combo.presets");
         PresetHint.Text = Localization.L("combo.presetsHint");
@@ -551,6 +510,9 @@ public partial class ComboSettingsView : UserControl
         if (string.IsNullOrEmpty(id)) return; // no game / champion not resolved yet → try again next tick
         _autoSelectedThisGame = true;
         if (string.Equals(_selectedChampionId, id, StringComparison.Ordinal)) return; // already on it
+        // (design pass) Never throw away work the user has not saved: a game starting mid-edit used
+        // to wipe the draft sequence (SelectChampionAsync clears it) without a word.
+        if (_sequence.Count > 0 || _editingComboId is not null) return;
         _ = SelectChampionAsync(id);
     }
 
@@ -561,10 +523,12 @@ public partial class ComboSettingsView : UserControl
     private async Task SelectChampionAsync(string? championId)
     {
         _selectedChampionId = championId;
+        // (2026-10-19) The overlay preview plays the champion being edited.
+        if (_composition is not null && championId is not null) _composition.PreviewChampionId = championId;
         RebuildChampionTiles(ChampionSearchBox.Text); // refresh selection highlight
 
         _sequence.Clear();
-        _editingComboId = null; // (loop 173) switching champions abandons any in-progress "수정" edit
+        ExitEditMode(); // (loop 173) switching champions abandons any in-progress "수정" edit
         RebuildSequence();
         _palette.Clear();
         _icons = new Dictionary<string, ImageSource>(StringComparer.Ordinal);
@@ -1781,8 +1745,10 @@ public partial class ComboSettingsView : UserControl
         // (a BuffCounter per-stack term, e.g. Nasus Q Siphoning-Strike stacks — see SkillHit.StackScaled).
         // UserStackCount feeds the live stack count; unset = 0 = the un-stacked floor. Same badge+slider
         // picker pattern as the attack-count/distance knobs.
+        // (M45 loop 42) A per-stack hit (Varus W's Blight) caps at its own stack count and reads that cap unset.
         if (championId is not null && SkillDamageDb.GetStackScaledHit(championId, chip.Slot) is { } stackHit)
-            subRow.Children.Add(BuildStackCountBadge(chip, stackHit.MaxStackTier));
+            subRow.Children.Add(BuildStackCountBadge(chip, stackHit.PerStack ? stackHit.MaxStacks ?? 0 : stackHit.MaxStackTier,
+                unsetAtCap: stackHit.PerStack));
 
         // (loop 549) Rider-only slot hint: a curated slot whose CAST deals nothing because every
         // number rides the next basic attack (Camille Q/Q2, Draven Q — the RECURRING_TRAPS 1.7
@@ -2217,6 +2183,23 @@ public partial class ComboSettingsView : UserControl
     /// differently from a terrain one: for fury/ferocity the box is an ASSUMPTION that overrides the
     /// live bar, which is the whole reason it is offered outside a game.</summary>
     private static string ConditionBadgeTooltip(SkillHit hit)
+        // (M45 loop 51) ...and the further facts the same click asserts (SkillHit.AlsoAssumes - Udyr's awakened lightning
+        // needs an isolated target), so the box never claims more than it says
+        => hit.AlsoAssumes is { Length: > 0 } also
+            ? ConditionBadgeTooltipCore(hit) + "\n켜면 함께 가정: " + string.Join(", ", also.Select(AssumedFactLabel))
+            : ConditionBadgeTooltipCore(hit);
+
+    private static string AssumedFactLabel(string condition) => condition switch
+    {
+        nameof(Overlay.Core.Combo.ConditionType.VsIsolated) => "대상이 고립됨(주변에 다른 적 없음)",
+        nameof(Overlay.Core.Combo.ConditionType.FromBehind) => "대상 뒤에서 적중",
+        nameof(Overlay.Core.Combo.ConditionType.HitsWall) => "벽에 부딪힘",
+        nameof(Overlay.Core.Combo.ConditionType.HpBelow) => "대상 체력이 기준 이하",
+        nameof(Overlay.Core.Combo.ConditionType.VsDebuffed) => "대상에게 표식/디버프",
+        _ => condition,
+    };
+
+    private static string ConditionBadgeTooltipCore(SkillHit hit)
     {
         bool parsed = Enum.TryParse<Overlay.Core.Combo.ConditionType>(hit.ConditionType, out var t);
         // (loop 479) An Upgraded condition is not a "maximum damage" assumption — it is which FORM of
@@ -2228,6 +2211,12 @@ public partial class ComboSettingsView : UserControl
         if (parsed && t == Overlay.Core.Combo.ConditionType.SweetSpot)
             return "정타(스윗스팟) 가정 — 아트록스 Q 바깥날, 제라스 W 중앙, 릴리아 W 안쪽 원처럼 "
                    + "맞히는 위치로 배수가 붙는 스킬입니다. 꺼짐이 일반 적중(보수적 기본값).";
+        if (parsed && t == Overlay.Core.Combo.ConditionType.Consecutive)
+            return "연속 적중 — 켜면 소환수가 같은 챔피언을 연속으로 친 것으로 계산합니다"
+                   + "(예: 데이지의 같은 챔피언 연속 3타째 충격파). 꺼짐이 기본값입니다.";
+        if (parsed && t == Overlay.Core.Combo.ConditionType.AltForm)
+            return "다른 형태 — 켜면 그 형태로 계산합니다(예: 클레드 하차 시 챔피언 상대 평타 감소). "
+                   + "꺼짐이 기본 형태입니다.";
         if (parsed && t == Overlay.Core.Combo.ConditionType.Upgraded)
             return "강화/진화 형태 — 켜면 강화된 형태로 계산합니다. 꺼짐이 기본 형태(보수적 기본값)이고, "
                    + "건드리지 않으면 두 형태를 [기본~강화] 범위로 함께 보여줍니다.";
@@ -2245,6 +2234,8 @@ public partial class ComboSettingsView : UserControl
         ? t switch
         {
             Overlay.Core.Combo.ConditionType.Upgraded => "강화",
+            Overlay.Core.Combo.ConditionType.AltForm => "형태",
+            Overlay.Core.Combo.ConditionType.Consecutive => "연속",
             Overlay.Core.Combo.ConditionType.SweetSpot => "정타",
             Overlay.Core.Combo.ConditionType.FromBehind => "뒤",
             // (loop 551) Named for what the user asserts, not a generic "max" — an unnamed 최대
@@ -2336,9 +2327,10 @@ public partial class ComboSettingsView : UserControl
     /// currently-assumed stack count (or "0스택" when unset, matching the honest un-stacked floor) and
     /// opens a picker (<see cref="OpenStackCountPicker"/>) to set it. Same visual pattern as
     /// <see cref="BuildAttackCountBadge"/>.</summary>
-    private Border BuildStackCountBadge(Chip chip, int maxStacks)
+    private Border BuildStackCountBadge(Chip chip, int maxStacks, bool unsetAtCap = false)
     {
         int current = Math.Max(0, chip.Node.UserStackCount ?? 0);
+        bool atCap = unsetAtCap && current == 0;
         var badge = new Border
         {
             Width = 42,
@@ -2349,10 +2341,12 @@ public partial class ComboSettingsView : UserControl
             Background = KeyBadgeBrush,
             Margin = new Thickness(0, 0, 2, 0),
             Cursor = Cursors.Hand,
-            ToolTip = "스택 수 — 버프 스택(예: 나수스 Q 흡수의 일격)당 추가 데미지 (미설정=0=미스택)",
+            ToolTip = unsetAtCap
+                ? "중첩 수 — 이 스킬이 터뜨리는 중첩(예: 바루스 W 역병) 수 (미설정=최대 중첩)"
+                : "스택 수 — 버프 스택(예: 나수스 Q 흡수의 일격)당 추가 데미지 (미설정=0=미스택)",
             Child = new TextBlock
             {
-                Text = current.ToString(System.Globalization.CultureInfo.InvariantCulture) + "스택",
+                Text = atCap ? "최대" : current.ToString(System.Globalization.CultureInfo.InvariantCulture) + "스택",
                 FontSize = 9,
                 FontWeight = FontWeights.Bold,
                 Foreground = (Brush)Application.Current.FindResource("Accent"),
@@ -2360,7 +2354,7 @@ public partial class ComboSettingsView : UserControl
                 VerticalAlignment = VerticalAlignment.Center,
             },
         };
-        badge.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenStackCountPicker(badge, chip, maxStacks); };
+        badge.MouseLeftButtonUp += (_, e) => { e.Handled = true; OpenStackCountPicker(badge, chip, maxStacks, unsetAtCap); };
         return badge;
     }
 
@@ -2372,7 +2366,8 @@ public partial class ComboSettingsView : UserControl
     /// <param name="maxTier">(loop 484) The cap a TIERED hit states through its own tier list (Locke
     /// has three nails, so 3). 0 for an ordinary BuffCounter stack, which has no natural cap and keeps
     /// the old 600 — dragging a 600-wide slider to pick 1 of 3 nails would be unusable.</param>
-    private void OpenStackCountPicker(Border anchor, Chip chip, int maxTier)
+    /// <param name="unsetAtCap">(M45 loop 42) 0 reads the cap (a per-stack hit), and the label says so.</param>
+    private void OpenStackCountPicker(Border anchor, Chip chip, int maxTier, bool unsetAtCap = false)
     {
         int maxStacks = maxTier > 0 ? maxTier : 600;
         int initial = Math.Clamp(chip.Node.UserStackCount ?? 0, 0, maxStacks);
@@ -2390,13 +2385,15 @@ public partial class ComboSettingsView : UserControl
             Maximum = maxStacks,
             Value = initial,
             Width = 140,
-            SmallChange = 5,
-            LargeChange = 50,
+            // (M45 loop 42) a capped knob steps by one - a 5-tick snap left only 0 and the cap of 3
+            SmallChange = maxTier > 0 ? 1 : 5,
+            LargeChange = maxTier > 0 ? 1 : 50,
             IsSnapToTickEnabled = true,
-            TickFrequency = 5,
+            TickFrequency = maxTier > 0 ? 1 : 5,
         };
-        void UpdateLabel(double v) => label.Text =
-            $"{(int)Math.Round(v)}스택 / {maxStacks}";
+        void UpdateLabel(double v) => label.Text = unsetAtCap && (int)Math.Round(v) == 0
+            ? $"미설정 = 최대 {maxStacks}스택"
+            : $"{(int)Math.Round(v)}스택 / {maxStacks}";
         UpdateLabel(initial);
         slider.ValueChanged += (_, e) => UpdateLabel(e.NewValue);
 
@@ -2602,6 +2599,32 @@ public partial class ComboSettingsView : UserControl
         RebuildSequence();
     }
 
+    /// <summary>[수정 취소]: leaves edit mode and empties the form; the saved combo is untouched.</summary>
+    private void CancelEditButton_Click(object sender, RoutedEventArgs e)
+    {
+        _sequence.Clear();
+        RebuildSequence();
+        ResetForm();
+        ExitEditMode();
+        SaveMessage.Visibility = Visibility.Collapsed;
+    }
+
+    private void ExitEditMode()
+    {
+        _editingComboId = null;
+        _editingHotkeys = Array.Empty<string>();
+        if (CancelEditButton is not null) CancelEditButton.Visibility = Visibility.Collapsed;
+    }
+
+    private void ResetForm()
+    {
+        NameBox.Clear();
+        _capturedHotkey = string.Empty;
+        HotkeyButton.Content = Localization.L("combo.setHotkey");
+        _capturedHotkey2 = string.Empty;
+        HotkeyButton2.Content = "＋";
+    }
+
     // ── Hotkey capture ──────────────────────────────────────────────────────
 
     private void HotkeyButton_Click(object sender, RoutedEventArgs e)
@@ -2612,29 +2635,72 @@ public partial class ComboSettingsView : UserControl
     }
 
     private void HotkeyButton_PreviewKeyDown(object sender, KeyEventArgs e)
+        => CaptureHotkey(e, ref _capturing, ref _capturedHotkey, HotkeyButton, Localization.L("combo.setHotkey"));
+
+    /// <summary>Chord capture shared by both hotkey buttons. (design pass) Esc cancels and keeps the
+    /// previous chord, Backspace/Delete clears it — both used to be bound as "ESCAPE"/"BACKSPACE" —
+    /// an OS-reserved chord is refused in place instead of failing silently at registration, and a
+    /// chord another combo of this champion already uses is pointed out before Save takes it.</summary>
+    private void CaptureHotkey(KeyEventArgs e, ref bool capturing, ref string captured, Button button, string emptyLabel)
     {
-        if (!_capturing) return;
+        if (!capturing) return;
+        e.Handled = true;
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
         // Ignore lone modifier presses — wait for the first non-modifier key.
-        if (IsModifierKey(key)) { e.Handled = true; return; }
+        if (IsModifierKey(key)) return;
+
+        var mods = Keyboard.Modifiers;
+        if (mods == ModifierKeys.None && key is Key.Escape)
+        {
+            capturing = false;
+            button.Content = captured.Length > 0 ? captured : emptyLabel;
+            return;
+        }
+        if (mods == ModifierKeys.None && key is Key.Back or Key.Delete)
+        {
+            capturing = false;
+            captured = string.Empty;
+            button.Content = emptyLabel;
+            return;
+        }
 
         var token = KeyToToken(key);
-        if (token is null) { e.Handled = true; return; } // unmappable; keep waiting
+        if (token is null) return; // unmappable; keep waiting
 
         var parts = new List<string>(5);
-        var mods = Keyboard.Modifiers;
         if (mods.HasFlag(ModifierKeys.Control)) parts.Add("CTRL");
         if (mods.HasFlag(ModifierKeys.Alt)) parts.Add("ALT");
         if (mods.HasFlag(ModifierKeys.Shift)) parts.Add("SHIFT");
         if (mods.HasFlag(ModifierKeys.Windows)) parts.Add("WIN");
         parts.Add(token);
+        var chord = string.Join("+", parts);
 
-        _capturedHotkey = string.Join("+", parts);
-        _capturing = false;
-        HotkeyButton.Content = _capturedHotkey;
-        e.Handled = true;
+        if (Overlay.Core.Hotkeys.HotkeyRegistry.ReservedCombos.Contains(Overlay.Core.Hotkeys.HotkeyCombo.Parse(chord).Canonical))
+        {
+            ShowMessage(Localization.F("combo.hotkeyReserved", chord), isError: true);
+            return; // keep capturing
+        }
+
+        captured = chord;
+        capturing = false;
+        button.Content = chord;
+        if (ComboNameUsingHotkey(chord) is { } other)
+            ShowMessage(Localization.F("combo.hotkeyTaken", chord, other), isError: false, sticky: true);
+    }
+
+    /// <summary>Name of the other saved combo of the selected champion bound to
+    /// <paramref name="chord"/>, or null (none, or it is the combo being edited).</summary>
+    private string? ComboNameUsingHotkey(string chord)
+    {
+        if (_selectedChampionId is not string championId || _composition is null) return null;
+        if (_composition.Config.Get("hotkeys.comboSlots." + ComboEditor.ComposeSlotKey(chord, championId)) is not string id
+            || id.Length == 0 || string.Equals(id, _editingComboId, StringComparison.Ordinal))
+            return null;
+        var combo = TryDeserialize(_composition.Config.Get("combos.saved." + id)?.ToString());
+        if (combo is null) return null;
+        return string.IsNullOrEmpty(combo.Name) ? Localization.L("combo.noName") : combo.Name;
     }
 
     private void HotkeyButton_LostFocus(object sender, RoutedEventArgs e)
@@ -2654,29 +2720,7 @@ public partial class ComboSettingsView : UserControl
     }
 
     private void HotkeyButton2_PreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (!_capturing2) return;
-
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
-
-        if (IsModifierKey(key)) { e.Handled = true; return; }
-
-        var token = KeyToToken(key);
-        if (token is null) { e.Handled = true; return; }
-
-        var parts = new List<string>(5);
-        var mods = Keyboard.Modifiers;
-        if (mods.HasFlag(ModifierKeys.Control)) parts.Add("CTRL");
-        if (mods.HasFlag(ModifierKeys.Alt)) parts.Add("ALT");
-        if (mods.HasFlag(ModifierKeys.Shift)) parts.Add("SHIFT");
-        if (mods.HasFlag(ModifierKeys.Windows)) parts.Add("WIN");
-        parts.Add(token);
-
-        _capturedHotkey2 = string.Join("+", parts);
-        _capturing2 = false;
-        HotkeyButton2.Content = _capturedHotkey2;
-        e.Handled = true;
-    }
+        => CaptureHotkey(e, ref _capturing2, ref _capturedHotkey2, HotkeyButton2, "＋");
 
     private void HotkeyButton2_LostFocus(object sender, RoutedEventArgs e)
     {
@@ -2703,6 +2747,7 @@ public partial class ComboSettingsView : UserControl
             Key.Space => "SPACE",
             Key.Enter => "ENTER",
             Key.Tab => "TAB",
+            Key.OemTilde => "`", // (M46) the backtick key
             Key.Escape => "ESCAPE",
             Key.Back => "BACKSPACE",
             Key.Insert => "INSERT",
@@ -2766,8 +2811,15 @@ public partial class ComboSettingsView : UserControl
             // BindHotkey calls above already re-pointed the same hotkey(s) to this new combo, so deleting
             // the mapping here would unbind what we just bound.
             if (_editingComboId is { } oldId && !string.Equals(oldId, draft.Id, StringComparison.Ordinal))
+            {
                 _composition?.Config.Set("combos.saved." + oldId, null);
-            _editingComboId = null;
+                // A key the edit moved away from still pointed at the removed original; drop it.
+                foreach (var old in _editingHotkeys)
+                    if (!string.Equals(old, _capturedHotkey, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(old, _capturedHotkey2, StringComparison.OrdinalIgnoreCase))
+                        _composition?.Config.Set("hotkeys.comboSlots." + ComboEditor.ComposeSlotKey(old, championId), null);
+            }
+            ExitEditMode();
         }
         catch (Exception ex)
         {
@@ -2776,11 +2828,7 @@ public partial class ComboSettingsView : UserControl
         }
 
         ShowMessage(Localization.F("combo.saveOk", name), isError: false);
-        NameBox.Clear();
-        _capturedHotkey = string.Empty;
-        HotkeyButton.Content = Localization.L("combo.setHotkey");
-        _capturedHotkey2 = string.Empty;
-        HotkeyButton2.Content = "＋";
+        ResetForm();
         _sequence.Clear();
         RebuildSequence();
         RefreshSavedList();
@@ -2905,11 +2953,27 @@ public partial class ComboSettingsView : UserControl
         return false;
     }
 
-    private void ShowMessage(string text, bool isError)
+    /// <param name="sticky">Keep a non-error message up until replaced (edit-mode notice, a key
+    /// that is already taken). Other success messages hide themselves after a few seconds — they
+    /// used to stay forever, so an old "saved" line read as the result of the next action.</param>
+    private void ShowMessage(string text, bool isError, bool sticky = false)
     {
         SaveMessage.Text = text;
-        SaveMessage.Foreground = (Brush)Application.Current.FindResource(isError ? "Danger" : "Success");
+        SaveMessage.Foreground = (Brush)Application.Current.FindResource(
+            isError ? "Danger" : sticky ? "Accent" : "Success");
         SaveMessage.Visibility = Visibility.Visible;
+
+        if (_messageTimer is null)
+        {
+            _messageTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            _messageTimer.Tick += (_, _) =>
+            {
+                _messageTimer.Stop();
+                SaveMessage.Visibility = Visibility.Collapsed;
+            };
+        }
+        _messageTimer.Stop();
+        if (!isError && !sticky) _messageTimer.Start();
     }
 
     // ── Saved list ──────────────────────────────────────────────────────────
@@ -2928,17 +2992,18 @@ public partial class ComboSettingsView : UserControl
         var selectedChampionId = _selectedChampionId;
 
         var hotkeysByCombo = BuildHotkeyReverseMap();
-        int count = 0;
+        int count = 0, total = 0;
         var savedNames = new HashSet<string>(StringComparer.Ordinal);
 
-        if (selectedChampionId is not null
-            && _composition.Config.Get("combos.saved") is IDictionary<string, object?> saved)
+        if (_composition.Config.Get("combos.saved") is IDictionary<string, object?> saved)
         {
             foreach (var (id, value) in saved)
             {
                 var combo = TryDeserialize(value?.ToString());
                 if (combo is null) continue;
-                if (!string.Equals(combo.ChampionId, selectedChampionId, StringComparison.Ordinal)) continue;
+                total++;
+                if (selectedChampionId is null
+                    || !string.Equals(combo.ChampionId, selectedChampionId, StringComparison.Ordinal)) continue;
 
                 var hotkeys = hotkeysByCombo.TryGetValue(id, out var hk) ? hk : new List<string>();
                 SavedList.Items.Add(BuildSavedCard(combo, hotkeys));
@@ -2947,6 +3012,11 @@ public partial class ComboSettingsView : UserControl
             }
         }
 
+        // (design pass) The list is per champion, and "no saved combos yet" read as a contradiction of
+        // Home's total (it showed 48 while this said none). Say what the list is scoped to.
+        EmptySaved.Text = selectedChampionId is null
+            ? Localization.F("combo.emptyNoChampion", total)
+            : Localization.F("combo.emptyForChampion", Localization.ChampionName(selectedChampionId));
         EmptySaved.Visibility = count == 0 ? Visibility.Visible : Visibility.Collapsed;
         RefreshPresetList(selectedChampionId, savedNames);
     }
@@ -2967,41 +3037,41 @@ public partial class ComboSettingsView : UserControl
     {
         var add = new Button
         {
-            Style = (Style)Application.Current.FindResource("GhostButton"),
+            Style = (Style)Application.Current.FindResource("CompactGhostButton"),
             Content = Localization.L("combo.presetAdd"),
-            FontSize = 11,
-            Padding = new Thickness(10, 3, 10, 3),
             VerticalAlignment = VerticalAlignment.Center,
         };
         DockPanel.SetDock(add, Dock.Right);
         add.Click += (_, _) =>
         {
+            var editor = _composition?.ComboEditor;
+            if (editor is null) { ShowMessage(Localization.L("combo.initializing"), isError: true); return; }
             try
             {
-                _composition?.ComboEditor?.AddPreset(championId, preset);
+                var (_, hotkey) = editor.AddPreset(championId, preset);
                 RefreshSavedList();
                 _composition?.RefreshComboHotkeys(); // the preset came with ALT+n; make it live now
+                ShowMessage(hotkey is null
+                    ? Localization.F("combo.presetAddedNoKey", preset.Name)
+                    : Localization.F("combo.presetAdded", preset.Name, hotkey), isError: false);
             }
             catch (Exception ex) when (ex is ComboImportException or KeyNotFoundException or ArgumentException)
             {
-                ShowMessage(ex.Message, isError: true);
+                ShowMessage(Localization.F("combo.presetFailed", ex.Message), isError: true);
             }
         };
 
-        var preview = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
+        var preview = new WrapPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
         foreach (var slot in preset.Sequence) preview.Children.Add(BuildPreviewIcon(slot));
         var text = new StackPanel();
         text.Children.Add(new TextBlock
         {
             Text = preset.Name,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)Application.Current.FindResource("Text"),
-            TextWrapping = TextWrapping.Wrap,
+            Style = (Style)Application.Current.FindResource("FieldLabel"),
         });
         text.Children.Add(preview);
 
-        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
         row.Children.Add(add);
         row.Children.Add(text);
         return row;
@@ -3044,7 +3114,7 @@ public partial class ComboSettingsView : UserControl
         }
         catch
         {
-            ShowMessage(Localization.F("combo.saveFailed", combo.Id), isError: true);
+            ShowMessage(Localization.L("combo.loadFailed"), isError: true);
             return;
         }
 
@@ -3062,10 +3132,11 @@ public partial class ComboSettingsView : UserControl
         HotkeyButton.Content = _capturedHotkey.Length > 0 ? _capturedHotkey : Localization.L("combo.setHotkey");
         HotkeyButton2.Content = _capturedHotkey2.Length > 0 ? _capturedHotkey2 : "＋";
         _editingComboId = combo.Id;
+        _editingHotkeys = hotkeys.ToList();
+        CancelEditButton.Visibility = Visibility.Visible;
 
-        // Literal (not a Localization key) to avoid depending on a new resource string in this batch.
         var editingName = string.IsNullOrEmpty(combo.Name) ? Localization.L("combo.noName") : combo.Name;
-        ShowMessage($"수정 중: {editingName} — 저장하면 기존 콤보를 대체합니다.", isError: false);
+        ShowMessage(Localization.F("combo.editing", editingName), isError: false, sticky: true);
     }
 
     /// <summary>Reverse-maps <c>hotkeys.comboSlots</c> (composite <c>{hotkey}::{championId}</c> key
@@ -3209,34 +3280,26 @@ public partial class ComboSettingsView : UserControl
 
     private UIElement BuildSavedCard(SavedCombo combo, IReadOnlyList<string> hotkeys)
     {
-        var textBrush = (Brush)Application.Current.FindResource("Text");
         var dimBrush = (Brush)Application.Current.FindResource("TextDim");
         var accentBrush = (Brush)Application.Current.FindResource("Accent");
+        Style StyleOf(string key) => (Style)Application.Current.FindResource(key);
+        string displayName = string.IsNullOrEmpty(combo.Name) ? Localization.L("combo.noName") : combo.Name;
 
         // Up to 2 bound chords, joined for display (e.g. "ALT+1, ALT+2").
         string hotkeyText = string.Join(", ", hotkeys);
 
         var stack = new StackPanel();
-        stack.Children.Add(new TextBlock
-        {
-            Text = string.IsNullOrEmpty(combo.Name) ? Localization.L("combo.noName") : combo.Name,
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = textBrush,
-            TextWrapping = TextWrapping.Wrap,
-        });
+        stack.Children.Add(new TextBlock { Text = displayName, Style = StyleOf("CardTitle") });
         stack.Children.Add(new TextBlock
         {
             Text = Localization.ChampionName(combo.ChampionId), // task 4: localized display name
-            FontSize = 12,
-            Foreground = dimBrush,
+            Style = StyleOf("HintText"),
             Margin = new Thickness(0, 2, 0, 0),
         });
         stack.Children.Add(new TextBlock
         {
             Text = hotkeyText.Length == 0 ? Localization.L("combo.noHotkey") : Localization.F("combo.hotkeyLabel", hotkeyText),
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
+            Style = StyleOf("CaptionText"),
             Foreground = hotkeyText.Length == 0 ? dimBrush : accentBrush,
             Margin = new Thickness(0, 8, 0, 0),
         });
@@ -3257,10 +3320,8 @@ public partial class ComboSettingsView : UserControl
         // Share code: copies a Discord-ready message with this combo's FOVA1: code.
         var shareButton = new Button
         {
-            Style = (Style)Application.Current.FindResource("GhostButton"),
+            Style = StyleOf("CompactGhostButton"),
             Content = Localization.L("combo.share"),
-            FontSize = 11,
-            Padding = new Thickness(8, 3, 8, 3),
             Margin = new Thickness(0, 8, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Left,
             ToolTip = Localization.L("combo.shareTip"),
@@ -3280,9 +3341,7 @@ public partial class ComboSettingsView : UserControl
             var snapshot = TargetSnapshotStore.Load(_composition.Config, combo.Id);
             snapshotPanel.Children.Add(new TextBlock
             {
-                FontSize = 11,
-                Foreground = dimBrush,
-                TextWrapping = TextWrapping.Wrap,
+                Style = StyleOf("HintText"),
                 Text = snapshot is null
                     ? Localization.L("combo.snapshotNone")
                     : Localization.F("combo.snapshotCaptured",
@@ -3295,10 +3354,8 @@ public partial class ComboSettingsView : UserControl
             var snapshotRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             var captureButton = new Button
             {
-                Style = (Style)Application.Current.FindResource("GhostButton"),
+                Style = StyleOf("CompactGhostButton"),
                 Content = Localization.L("combo.copyTargetStats"),
-                FontSize = 11,
-                Padding = new Thickness(8, 3, 8, 3),
             };
             string comboIdForCapture = combo.Id; // captured by value, not by the loop/field
             captureButton.Click += (_, _) =>
@@ -3312,12 +3369,12 @@ public partial class ComboSettingsView : UserControl
             var useSnapshotToggle = new CheckBox
             {
                 Content = Localization.L("combo.useSnapshotTarget"),
-                FontSize = 11,
                 Foreground = dimBrush,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(10, 0, 0, 0),
+                Margin = new Thickness(12, 0, 0, 0),
                 IsChecked = TargetSnapshotStore.GetUseSnapshot(_composition.Config, comboIdForCapture),
             };
+            useSnapshotToggle.SetResourceReference(FontSizeProperty, "FontCaption");
             useSnapshotToggle.Checked += (_, _) => TargetSnapshotStore.SetUseSnapshot(_composition.Config, comboIdForCapture, true);
             useSnapshotToggle.Unchecked += (_, _) => TargetSnapshotStore.SetUseSnapshot(_composition.Config, comboIdForCapture, false);
             snapshotRow.Children.Add(useSnapshotToggle);
@@ -3337,26 +3394,47 @@ public partial class ComboSettingsView : UserControl
         // it. Stacked above the existing delete (✕) button in the right column.
         var editButton = new Button
         {
-            Style = (Style)Application.Current.FindResource("GhostButton"),
+            Style = StyleOf("IconButton"),
             Content = "✎",
-            FontSize = 13,
-            Padding = new Thickness(8, 4, 8, 4),
             HorizontalAlignment = HorizontalAlignment.Right,
-            ToolTip = "수정",
+            ToolTip = Localization.L("combo.edit"),
         };
         editButton.Click += (_, _) => LoadComboForEdit(combo, hotkeys);
 
+        // (design pass) Delete takes two clicks: the first arms the button ("삭제할까요?"), the second
+        // deletes. It disarms when the pointer leaves or after 3 seconds. One click used to delete the
+        // combo and its hotkeys outright, from a button sitting right under ✎.
         var deleteButton = new Button
         {
-            Style = (Style)Application.Current.FindResource("GhostButton"),
-            Content = "✕", // ✕
-            FontSize = 13,
-            Padding = new Thickness(8, 4, 8, 4),
+            Style = StyleOf("DangerIconButton"),
+            Content = "✕",
             HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 4, 0, 0),
+            Margin = new Thickness(0, 8, 0, 0),
             ToolTip = Localization.L("combo.delete"),
         };
-        deleteButton.Click += (_, _) => DeleteCombo(combo.Id, combo.ChampionId, hotkeys);
+        bool armed = false;
+        var disarmTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        void Disarm()
+        {
+            disarmTimer.Stop();
+            armed = false;
+            deleteButton.Content = "✕";
+        }
+        disarmTimer.Tick += (_, _) => Disarm();
+        deleteButton.MouseLeave += (_, _) => { if (armed) Disarm(); };
+        deleteButton.Click += (_, _) =>
+        {
+            if (!armed)
+            {
+                armed = true;
+                deleteButton.Content = Localization.L("combo.deleteConfirm");
+                disarmTimer.Start();
+                return;
+            }
+            Disarm();
+            DeleteCombo(combo.Id, combo.ChampionId, hotkeys);
+            ShowMessage(Localization.F("combo.deleted", displayName), isError: false);
+        };
 
         var buttonStack = new StackPanel
         {
@@ -3371,12 +3449,8 @@ public partial class ComboSettingsView : UserControl
 
         return new Border
         {
-            Background = (Brush)Application.Current.FindResource("SurfaceHi"),
-            BorderBrush = (Brush)Application.Current.FindResource("Border"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(0),
-            Padding = new Thickness(14),
-            Margin = new Thickness(0, 0, 0, 10),
+            Style = StyleOf("CardInset"),
+            Margin = new Thickness(0, 0, 0, 8),
             Child = grid,
         };
     }

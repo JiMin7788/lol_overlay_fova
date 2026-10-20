@@ -146,12 +146,6 @@ public partial class MainWindow : Window
     /// the monitor-fill fallback" — set when the game window is not found.</summary>
     private RECT? _lastGameRect;
 
-    /// <summary>Whether the monitor-fill fallback has been applied at least once. Needed because
-    /// <see cref="_lastGameRect"/> is null in TWO different states — "never positioned yet" and
-    /// "currently on the fallback" — and the fallback branch used to skip on null alone, so an
-    /// overlay opened with no game running was never sized or positioned at all.</summary>
-    private bool _fallbackApplied;
-
     /// <summary>M02 Overlay Engine host (HUD coordinator + M16 render loop). Composed in
     /// <see cref="OnLoaded"/> once window geometry is known; kept alive for the window's
     /// lifetime. Reuses this window's existing click-through — no new injection path.</summary>
@@ -285,7 +279,8 @@ public partial class MainWindow : Window
         if (_composition is not null)
         {
             _overlayHost = Overlay.Client.Hud.OverlayHost.Start(
-                this, WidgetCanvas, _composition.Config, () => _composition.LatestSnapshot,
+                // OverlaySnapshot: the live game, or the preview's sample game (2026-10-19).
+                this, WidgetCanvas, _composition.Config, () => _composition.OverlaySnapshot,
                 IsTargetClickModifierHeld, IsMovableDragActive,
                 // (loop 125) same-lane enemy return prediction, queried live each frame (null when off)
                 () => _composition.LaneReturnPredictor?.GetActive(
@@ -306,7 +301,13 @@ public partial class MainWindow : Window
                 // (M40) enemy kill-threat estimates (computed in the background, read each frame).
                 () => _composition.EnemyThreats,
                 // (M43) next-item ranking while dead (computed in the background, read each frame).
-                () => _composition.NextItems);
+                () => _composition.NextItems,
+                // (2026-10-19) preview: sample alerts held on screen + per-element size bars.
+                () => _composition.PreviewActive && _composition.LatestSnapshot is not { HasData: true },
+                // (2026-10-19) global gold, shown while League's scoreboard (Tab toggle) is open -
+                // (2026-10-20) or toggled by its own key when one is set.
+                () => _composition.GlobalGoldView,
+                () => _composition.GlobalGoldShown);
 
             // M02/M04/M13 combo-hotkey toggle-off wiring: give ComboRunner the coordinator so it
             // can tell whether its own combo card is still on screen (OverlayCoordinator.IsActive)
@@ -555,6 +556,9 @@ public partial class MainWindow : Window
 
     /// <summary>M19: set the overlay window opacity live, clamped to the settings range [0.2, 1.0].
     /// Called on load and from the <c>overlay.opacity</c> config listener.</summary>
+    /// <summary>(2026-10-19) See <see cref="Overlay.Client.Hud.OverlayHost.ClearComboCard"/>.</summary>
+    public void ClearComboCard() => _overlayHost?.ClearComboCard();
+
     public void SetOverlayOpacity(double opacity)
         => Opacity = System.Math.Clamp(opacity, 0.2, 1.0);
 
@@ -652,23 +656,19 @@ public partial class MainWindow : Window
             }
             else
             {
-                // Game window not found → monitor-fill fallback (preview mode).
-                // Re-apply when we were tracking the game, or when nothing has been applied yet:
-                // at startup _lastGameRect is ALSO null, so guarding on it alone skipped the very
-                // first apply and left a preview-mode overlay at WPF's default window geometry
-                // ("overlay-only layout is wrong, in-game is fine").
-                if (_lastGameRect is null && _fallbackApplied)
-                    return;
-
+                // Game window not found → monitor-fill fallback (preview mode). Checked every tick
+                // (ApplyMonitorGeometry only moves the window when it is off target): applying it
+                // once was not enough — hiding and re-showing the preview let WPF restore its own
+                // default geometry (half the monitor, top-left), and the "already applied" guard
+                // then kept it there, so the HUD ran off the visible area.
                 ApplyMonitorGeometry();
-                _fallbackApplied = true;
                 _lastGameRect = null;
             }
         }
         catch
         {
             // Any interop/PresentationSource failure: fall back to monitor-fill.
-            try { ApplyMonitorGeometry(); _fallbackApplied = true; } catch { /* last-resort: leave as-is */ }
+            try { ApplyMonitorGeometry(); } catch { /* last-resort: leave as-is */ }
             _lastGameRect = null;
         }
     }
@@ -820,7 +820,12 @@ public partial class MainWindow : Window
         {
             var info = new MONITORINFOEX { cbSize = Marshal.SizeOf<MONITORINFOEX>() };
             if (GetMonitorInfo(hMonitor, ref info))
-                monitorRects.Add(info.rcMonitor);
+            {
+                // Primary first, so Settings' "0 = 주 모니터" holds — enumeration order alone
+                // does not guarantee it.
+                if ((info.dwFlags & MONITORINFOF_PRIMARY) != 0) monitorRects.Insert(0, info.rcMonitor);
+                else monitorRects.Add(info.rcMonitor);
+            }
             return true;
         }
         EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, CollectMonitor, IntPtr.Zero);
@@ -835,10 +840,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        int idx = _config.TargetMonitorIndex;
+        // Settings' "미리보기 모니터" (overlay.targetMonitor) — it was saved but never read here,
+        // so the preview always used overlay-config.json's index. That file's value stays the
+        // fallback for a config without the setting.
+        int idx = _composition?.Config.Get("overlay.targetMonitor") switch
+        {
+            double d => (int)d,
+            int i => i,
+            _ => _config.TargetMonitorIndex,
+        };
         if (idx < 0 || idx >= monitorRects.Count)
             idx = 0;
 
-        ApplyDeviceRect(monitorRects[idx]);
+        var target = monitorRects[idx];
+        if (_hwnd != IntPtr.Zero && GetWindowRect(_hwnd, out RECT own) && RectEquals(own, target))
+            return; // already in place — this runs every follow tick
+        ApplyDeviceRect(target);
     }
+
+    private const uint MONITORINFOF_PRIMARY = 1;
 }

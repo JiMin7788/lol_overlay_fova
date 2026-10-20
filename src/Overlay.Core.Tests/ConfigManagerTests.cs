@@ -141,9 +141,16 @@ public class ConfigManagerTests : IDisposable
         using var config = new ConfigManager(_path);
 
         Assert.Equal(false, config.Get("overlay.items.recallTimer.enabled"));
-        Assert.Equal(false, config.Get("overlay.items.laneReturn.enabled"));
         Assert.Equal(false, config.Get("overlay.items.enemyJunglerSpotted.enabled"));
         Assert.Equal(false, config.Get("overlay.items.enemyItemAlert.enabled"));
+    }
+
+    [Fact]
+    public void LaneReturnTimer_DefaultsOn_UserDecision()
+    {
+        // (2026-10-20) The user brought the lane-return estimate back: other products ship it. Out of the gated tier.
+        using var config = new ConfigManager(_path);
+        Assert.Equal(true, config.Get("overlay.items.laneReturn.enabled"));
     }
 
     [Fact]

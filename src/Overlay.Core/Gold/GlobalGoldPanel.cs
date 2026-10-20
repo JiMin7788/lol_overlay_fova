@@ -8,26 +8,27 @@ namespace Overlay.Core.Gold;
 /// <c>UI.GLOBAL_GOLD</c> toast. Mirrors <see cref="Inhibitor.InhibitorTimer"/>'s
 /// Start()/Dispose() subscribe-unsubscribe shape.
 ///
-/// <para><b>Item-event-driven recompute (M07 "Pending User-Reported Changes"):</b> the estimate
-/// only meaningfully changes when a player buys/sells an item, so this no longer recomputes on
-/// every poll tick. It subscribes to M07's own <c>GAME.ITEM_CHANGED</c> (fired for ANY visible
+/// <para><b>Item-event-driven publish (M07 "Pending User-Reported Changes"):</b> the estimate
+/// only meaningfully jumps when a player buys/sells an item, so <c>UI.GLOBAL_GOLD</c> is published
+/// only then. It subscribes to M07's own <c>GAME.ITEM_CHANGED</c> (fired for ANY visible
 /// scoreboard player's item slots, not just the active player — see
-/// <see cref="LiveClientEventPublisher.PublishPerPlayerChanges"/>) and only ARMS a recompute
-/// flag there. It still subscribes to <see cref="LiveClientPoller.SnapshotAvailable"/> too —
-/// but only to consume that flag against the tick's fresh, FULL scoreboard snapshot (no single
-/// GAME.* payload carries the whole scoreboard <see cref="GoldEstimate.TryCompute"/> needs), not
-/// to recompute unconditionally on every tick. Since <see cref="LiveClientEventPublisher"/> is
+/// <see cref="LiveClientEventPublisher.PublishPerPlayerChanges"/>) and only ARMS a publish
+/// flag there. It subscribes to <see cref="LiveClientPoller.SnapshotAvailable"/> too, to
+/// consume that flag against the tick's fresh, FULL scoreboard snapshot (no single
+/// GAME.* payload carries the whole scoreboard <see cref="GoldEstimate.TryCompute"/> needs).
+/// Since <see cref="LiveClientEventPublisher"/> is
 /// wired to the poller before this panel (see <c>AppComposition</c>) and GAME.* Event Bus
 /// delivery to a synchronous subscriber happens on the publisher's own call stack, the ARM
 /// (via GAME.ITEM_CHANGED, published from inside the publisher's own SnapshotAvailable handler)
 /// always happens before this panel's own SnapshotAvailable handler runs in the same tick — so
 /// the consumed snapshot is always the same tick's fresh data, never stale.</para>
 ///
-/// <para>"점수판 켰을 때만" (M19 §3.3) cannot be detected without a keyboard hook (P3 forbids
-/// a global keylogger for the game's Tab state), so — per the spec's own documented
-/// alternative — this always publishes while the item is enabled (gated by
-/// <c>overlay.items.globalGold.enabled</c> in <c>AppComposition</c>), not just while Tab is
-/// held.</para>
+/// <para>(2026-10-19) "점수판 켰을 때만" (M19 §3.3) is now honoured by the OVERLAY, not here: the
+/// app's hotkey hook (a registered-combo matcher that records nothing — see
+/// <c>LowLevelHotkeyHook</c>'s policy note) mirrors League's Tab scoreboard toggle, and the overlay
+/// draws <see cref="LatestView"/> only while it is open. So this panel keeps the estimate current on
+/// every tick (its earned-gold part grows with time and CS between purchases), while
+/// <c>UI.GLOBAL_GOLD</c> is still published only on an item change.</para>
 /// </summary>
 public sealed class GlobalGoldPanel : IDisposable
 {
@@ -38,8 +39,13 @@ public sealed class GlobalGoldPanel : IDisposable
     private string? _itemSubId;
 
     /// <summary>Set by an item-change event, consumed (and cleared) by the next
-    /// SnapshotAvailable tick. Recompute only happens when this is true — see class doc.</summary>
+    /// SnapshotAvailable tick, which then publishes <c>UI.GLOBAL_GOLD</c> — see class doc.</summary>
     private bool _pendingRecompute;
+
+    /// <summary>(2026-10-19) The latest estimate with its per-lane matchups, or null outside a game /
+    /// before the active player's team resolves. The overlay draws it while the scoreboard (Tab) is
+    /// toggled open, instead of the toast that re-popped on every item change anyone made.</summary>
+    public GlobalGoldView? LatestView { get; private set; }
 
     public GlobalGoldPanel(LiveClientPoller poller)
         => _poller = poller ?? throw new ArgumentNullException(nameof(poller));
@@ -62,13 +68,16 @@ public sealed class GlobalGoldPanel : IDisposable
 
     private void OnSnapshot(GameSnapshot previous, GameSnapshot current, bool isInitialSync)
     {
-        if (!_pendingRecompute) return;
+        if (!current.HasData) { LatestView = null; return; }
+        // Recompute every tick (ten scoreboard rows) so the panel is current whenever the scoreboard
+        // opens; only an item change is published (the event's long-standing contract).
+        bool publish = _pendingRecompute;
         _pendingRecompute = false;
 
-        if (!current.HasData) return;
-        if (!GoldEstimate.TryCompute(current, out var result)) return;
-
-        EventBus.EventBus.Publish("UI.GLOBAL_GOLD", BuildMessage(result), Source);
+        if (!GoldEstimate.TryCompute(current, out var result)) { LatestView = null; return; }
+        bool allyIsBlue = GoldEstimate.FindActiveTeam(current) == "ORDER";
+        LatestView = new GlobalGoldView(result, GoldEstimate.ByRole(current), allyIsBlue);
+        if (publish) EventBus.EventBus.Publish("UI.GLOBAL_GOLD", BuildMessage(result), Source);
     }
 
     /// <summary>"(추정)" is on every line — P2: never let this read as confirmed gold.</summary>

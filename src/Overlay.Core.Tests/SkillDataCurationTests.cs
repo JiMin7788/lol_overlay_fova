@@ -274,13 +274,15 @@ public class SkillDataCurationTests : IDisposable
         // Exactly one hit per passive carries a named calc. Urgot's P additionally carries a second
         // hit for Echoing Flames' %maxHP term, which resolves via hpPercentCalc and so has no Calc
         // of its own — select by non-empty Calc rather than assuming a single hit. See Urgot._noteP.
+        // (M45 loop 24) Samira's is a melee-range conditional: its number is the met calc.
         var hit = Assert.Single(
-            Assert.Single(bonusEffects!).Hits.Where(h => !string.IsNullOrEmpty(h.Calc)));
+            Assert.Single(bonusEffects!).Hits.Where(h => !string.IsNullOrEmpty(h.Calc) || !string.IsNullOrEmpty(h.MetCalc)));
+        string calc = string.IsNullOrEmpty(hit.Calc) ? hit.MetCalc! : hit.Calc;
 
         var stats = SampleStats();
-        double? damage = SkillDamage.ComputeCalcDamage(champion!, "P", hit.Calc, stats, level: 18);
+        double? damage = SkillDamage.ComputeCalcDamage(champion!, "P", calc, stats, level: 18);
 
-        Assert.True(damage is > 0, $"{championId} P/{hit.Calc}: expected positive damage, got {damage}");
+        Assert.True(damage is > 0, $"{championId} P/{calc}: expected positive damage, got {damage}");
     }
 
     [Fact]
@@ -335,9 +337,12 @@ public class SkillDataCurationTests : IDisposable
     [Fact]
     public void RenektonW_RuthlessPredator_IsTwoStrikes()
     {
+        // (M45 loop 21) the two strikes as the BIN's own total (BasicTotalDamage = HitDamage x 2), and the
+        // Fury Bonus three (EmpTotalDamage) on the ResourceGte 50 condition
         var hit = Single("Renekton", "W");
-        Assert.Equal("HitDamage", hit.Calc);
-        Assert.Equal(2, hit.Count);
+        Assert.Equal("BasicTotalDamage", hit.Calc);
+        Assert.Equal("EmpTotalDamage", hit.MetCalc);
+        Assert.Equal(1, hit.Count);
     }
 
     [Fact]
@@ -396,7 +401,6 @@ public class SkillDataCurationTests : IDisposable
     // hit, so the slot is no longer single-hit.
     [InlineData("Nautilus", "Q")]
     [InlineData("Nautilus", "W")]
-    [InlineData("Nautilus", "E")]
     [InlineData("Nautilus", "R")]
     [InlineData("Thresh", "Q")]
     [InlineData("Thresh", "E")]
@@ -406,6 +410,11 @@ public class SkillDataCurationTests : IDisposable
         var hit = Single(championId, slot);
         Assert.Equal(HitDamageType.Magic, hit.Type);
     }
+
+    // (M45 loop 6) Riptide gained its repeat-wave hit, so the slot is no longer single-hit.
+    [Fact]
+    public void NautilusE_FirstWaveAndRepeatWaves_AreMagic()
+        => Assert.All(SkillDamageDb.GetHits("Nautilus", "E")!, h => Assert.Equal(HitDamageType.Magic, h.Type));
 
     [Fact]
     public void MalzaharR_BeamPlusNullZone_BothMagic()
@@ -504,13 +513,17 @@ public class SkillDataCurationTests : IDisposable
         var hits = SkillDamageDb.GetHits("Amumu", "W");
         Assert.NotNull(hits);
         Assert.Equal(2, hits!.Length);
-        Assert.Contains(hits, h => h.Calc == "{c8e45bc3}");
-        Assert.Contains(hits, h => h.HpPercentCalc == "{8a96509c}" && h.HpBasis == HpBasis.Max);
+        // (M45 loop 2) Despair deals its damage every second, so both terms are per-second rates.
+        // (M45 loop 11) The hashed calcs are the 0.5 s TICK; the per-second rates are the tooltip's own
+        // BaseDamage and TotalHealthDamage% - per-second they were half.
+        Assert.Contains(hits, h => h.PerSecondDataValue == "BaseDamage");
+        Assert.Contains(hits, h => h.PerSecondHpPercentCalc == "TotalHealthDamage" && h.HpBasis == HpBasis.Max);
 
         var stats = SampleStats();
-        var flatHit = hits.Single(h => h.Calc == "{c8e45bc3}");
-        double? flat = SkillDamage.ComputeCalcDamage(amumu!, "W", flatHit.Calc, stats, level: 18);
+        double? flat = SkillDamage.ComputeFlatDataValue(amumu!, "W", "BaseDamage", stats, level: 18);
+        double? tick = SkillDamage.ComputeCalcDamage(amumu!, "W", "{c8e45bc3}", stats, level: 18);
         Assert.True(flat is > 0, $"Amumu W flat term: expected positive damage, got {flat}");
+        Assert.Equal(flat!.Value * 0.5, tick!.Value, 6); // the hash is the half-second tick
     }
 
     [Fact]
@@ -546,8 +559,11 @@ public class SkillDataCurationTests : IDisposable
         // TotalMaxDamage amplifies TotalMinDamage by up to 2x based on the target's missing
         // health -- a live multiplier this schema can't express, so W must curate only the
         // conservative unamplified TotalMinDamage baseline.
+        // (M45 loop 22) ...as the per-second rate it is (it was one second), with the missing-health rate
+        // on an HpBelow box rather than assumed.
         var hit = Single("Morgana", "W");
-        Assert.Equal("TotalMinDamage", hit.Calc);
+        Assert.Equal("TotalMinDamage", hit.PerSecondCalc);
+        Assert.Equal("TotalMaxDamage", hit.MetCalc);
     }
 
     [Fact]
@@ -561,9 +577,14 @@ public class SkillDataCurationTests : IDisposable
     }
 
     [Fact]
-    public void AshePassive_HasNoHits_StatConversionNotADamageInstance()
+    public void AshePassive_IsHerAttackShape_CritFoldedIntoEveryAttack()
     {
-        Assert.Null(SkillDamageDb.GetHits("Ashe", "P"));
+        // (M45 loop 18) Frost Shot folds crit into every attack (DamageBonus x AD) and her crits add
+        // nothing: one attack-shape hit that cannot crit.
+        var hit = Assert.Single(SkillDamageDb.GetHits("Ashe", "P")!);
+        Assert.True(hit.AttackShape);
+        Assert.False(hit.CanCrit);
+        Assert.Equal("{da9201cc}", hit.Calc);
     }
 
     [Theory]

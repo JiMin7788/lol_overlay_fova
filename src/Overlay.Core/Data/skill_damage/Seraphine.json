@@ -1,12 +1,16 @@
 {
   "_note": "Curated (T3.x passive pass). P (High Note / Stage Presence): periodically empowers Seraphine's next basic attack to deal bonus MAGIC damage (AutoDamage = level-interpolated base 4→25 + 0.04x AP, SeraphinePassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than the periodic empowered attack (documented, same style as other on-hit passives). Q/E/R kept as the auto first-pass magic picks.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "AutoDamage", "count": 1 } ] } ] },
+  "_noteNotesP": "(2026-10-20, M45 loop 25) Each ability cast stores a Note (up to MaxNotes 4) and the next attack spends them all, AutoDamage each - it rode every attack as one note. Allies' casts (also notes) are unknown and not counted.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "castCharges": 4, "hits": [ { "type": "Magic", "calc": "AutoDamage", "count": 1 } ] } ] },
+  "_noteRangeQ": "(2026-10-20, M45 loop 24) High Note grows with the target's missing health, up to TotalEmpoweredDamage (x1.75) below ExecuteThreshold (25%): the [min, max] knob.",
   "Q": {
     "hits": [
       {
         "type": "Magic",
         "calc": "ExplosionDamage",
-        "count": 1
+        "count": 1,
+        "minCalc": "ExplosionDamage",
+        "maxCalc": "TotalEmpoweredDamage"
       }
     ]
   },

@@ -6,7 +6,8 @@
   "_noteE": "Heroic Charge: TackleDamage (tooltipOnly but BIN-exact) = BaseDamageValue + 0.6x bonus AD. Matches wiki 'Physical Damage: 40/60/80/100/120 (+60% bonus AD)' exactly -- the base tackle-impact hit. The wall-collision second hit (same damage again + longer stun, wiki 'Total Physical Damage' = 2x) has no separately exposed BIN calc (WallDamage is a bare DataValue with no GameCalculation referencing it) and is conditional on colliding with terrain -- not curated as a second hit (P2 conservative, avoids assuming a wall is present).",
   "_noteR": "Keeper's Verdict: 'Damage' (BaseDamage + 0.9x bonus AD) is the CHARGED release, matching wiki 'Increased Damage: 200/300/400 (+90% bonus AD)' exactly -- used as the curated hit since charging is the ultimate's whole point (matches this project's ultimate/BurstCeiling convention, e.g. Nunu R). 'HalfDamage' (tooltipOnly, Damage x0.5, the uncharged snap-cast) matches wiki's base 'Physical Damage: 100/150/200' but is not used since it undersells the ability's real combo use. Tagged BurstCeiling: Poppy's single highest realistic burst-damage contribution (ultimate).",
   "_noteRefresh1616": "16.16 BIN REFRESH (loop 495). Q HealthDamagePercent stopped being a flat 9 and became per rank, 6.5/7/7.5/8/8.5 (the DataValue reads [6.5,7,7.5,8,8.5,9,9.5] and the curation indexes it by rank). A max-rank Q is unchanged at 9 percent, which is why this drift was invisible to any spot-check at rank 5 - what was wrong was every rank BELOW it, where the app was claiming 9 percent for an ability that deals as little as 6.5. Q flat damage also moved, 430 to 355 at the probe stats. MaxHealthDamageToNonHeroes rose too but is out of scope for a champion-target calculator. W PassiveResistPercent 12 to 16 is a resistance, not damage.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Iron Ambassador: every ActualCooldown seconds her next Attack throws the buckler - once in a burst (maxProcs 1); it rode every attack.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] },
   "Q": {
     "hits": [
       { "type": "Physical", "calc": "BaseDamage", "count": 2 },
@@ -21,6 +22,7 @@
       { "type": "Physical", "conditionType": "HitsWall", "metCalc": "TackleDamage", "count": 1 }
     ]
   },
-  "R": { "hits": [ { "type": "Physical", "calc": "Damage", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },
+  "_noteChargeR": "(2026-10-19, M45 loop 7) An uncharged swing deals HalfDamage; the charged release deals Damage - Upgraded condition (the charged form), unmet = the uncharged swing (P2).",
+  "R": { "hits": [ { "type": "Physical", "calc": "HalfDamage", "count": 1, "conditionType": "Upgraded", "metCalc": "Damage" } ], "tags": ["BurstCeiling", "AoeUltimate"] },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27) - THE E HALF CLOSED IN LOOP 483, see _noteEWall: the wall slam is curated behind HitsWall. The R half stands (no min calc in the BIN). Original text follows. R SnapCastDamageRatio(0.5) is the quick-tap variant multiplier; the BIN exposes no min calc (only the ratio DV), so a Fizz-style range is not expressible from BIN names - the curated full-charge value stands with this disclosure (Nunu-W class). E WallDamage is the wall-slam positional variant (Gnar-R-wall class), conservative-omit. Documented."
 }

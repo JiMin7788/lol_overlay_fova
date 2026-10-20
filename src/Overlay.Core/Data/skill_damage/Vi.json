@@ -4,39 +4,47 @@
   "_noteW": "Denting Blows -- confirmed via wiki as a PASSIVE-slot ability (BIN mSpellTags includes Trait_PassiveSlot, mana=null, no active cast): Vi's basic attacks and Vault Breaker each apply a stack; the 3rd stack consumes all 3 to deal bonus physical on-hit damage = 4/5/6/7/8% (+3.5% per 100 bonus AD) of the target's max HP. BIN TotalDamageTooltip = (MaxHealthDamage[rank] + ADCoefficient*bonusAD) x 0.01 (mDisplayAsPercent=true) -- a %maxHP fraction living only inside the formula tree (no flat DataValues-only entry), so curated via hpPercentCalc per the Skarner P hpPercentCalc precedent, not hpPercentDataValue. Modeled as an onHit bonusEffect (no direct W hits -- W itself is never 'cast'), the same shape Warwick P uses; the real trigger condition (every 3rd stack, not literally every attack) is a documented simplification. Also inflicts 20% armor reduction for 4s on the proc target (BIN DataValue ShredAmount=20) -- tagged ArmorShred at the slot level (metadata only; no live shred value is wired into DefenderStat yet, consistent with SkillDamageDb.cs's documented current scope).",
   "_noteE": "Relentless Force (the M0X doc's 'Excessive Force' name is stale -- the live wiki confirms this E ability is actually named 'Relentless Force'). Empowers Vi's next basic attack with bonus physical damage in a cone: wiki 'Physical Damage: 10/30/50/70/90 (+110% AD) (+100% AP)', matching BIN TotalDamageTooltip = BaseDamage[rank] + ADRatio(1.1)*totalAD(mStat=2, no StatFormula) + StatByCoefficient(mCoefficient=1, mStat omitted -> defaults AP) exactly -- confirms the previously-unexplained bare StatByCoefficient third part really is the wiki's '+100% AP' term, not a BIN artifact to discard. Curated as a DIRECT hit on E (not a bonusEffect), following the Vayne Q 'Tumble empowers next auto' precedent already in this file set -- the E node in a combo represents the empowered auto landing.",
   "_noteR": "Cease and Desist. Damage = RBaseDamage[rank] + RBonusADRatio(0.9)*bonusAD (mStat=2, mStatFormula=2) -- matches the wiki-documented base damage progression (50/150/250/350 at wiki ranks 1-3; BIN RBaseDamage array has 7 slots consistent with this project's per-rank clamp convention, values agree at ranks 1-3). BIN also defines SecondaryTargetDamage = Damage x SecondaryTargetDamageMultiplier (currently 1.0) for OTHER champions caught in Vi's dash path -- NOT summed into this hit, since it damages a DIFFERENT target, not a second hit on the same target (Vi dunks one primary target; secondary-target damage applies to a separate champion entirely). Tagged BurstCeiling: Cease and Desist is Vi's single highest realistic burst contribution (up to ~650 + 0.9 bonus AD physical burst, plus a hard stun enabling the follow-up combo).",
+  "_noteRangeQ": "(2026-10-19, M45 loop 19) Deals TotalDamage to MaxDamageTooltip by charge time: a [min, max] range on the charge / distance knob, the minimum anchor (P2) - it was the minimum only, with no ceiling.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "minCalc": "TotalDamage",
+        "maxCalc": "MaxDamageTooltip"
       }
     ]
   },
+  "_noteShredW": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Denting Blows proc removes ShredAmount% armor; later nodes of the combo hit the reduced resistance.",
+  "_noteCadenceW": "(2026-10-20, M45 loop 42) Denting Blows procs on every 3rd stack, not every attack (it rode them all): procEvery 3, attacks and Vault Breaker (one stack per cast, the curation's own wiki reading) on one counter.",
   "W": {
     "bonusEffects": [
       {
         "trigger": "onHit",
         "alwaysOn": true,
+        "procEvery": 3,
+        "countsAbilities": ["Q"],
         "hits": [
           {
             "type": "Physical",
             "hpPercentCalc": "TotalDamageTooltip",
             "hpBasis": "Max",
             "count": 1,
-            "tags": ["PercentMaxHp"]
-          }
+            "tags": ["PercentMaxHp"], "armorShredDataValue": "ShredAmount" }
         ]
       }
     ],
     "tags": ["ArmorShred"]
   },
+  "_noteAttackE": "(2026-10-19, M45 loop 20) Its hit is (part of) the empowered next attack - tagged isAttack (Plated Steelcaps reduces it).",
   "E": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamageTooltip",
-        "count": 1
+        "count": 1,
+        "isAttack": true
       }
     ]
   },

@@ -25,6 +25,27 @@ public class SharedConditionFlagTests
             "Both amplifications are the SAME 30%-health threshold (the dagger's own 1.5x and the "
             + "backstab payload's), so ticking once yields the real maximum. The payload additionally "
             + "needs him behind the target, which is what makes the box a best-case assertion.",
+        ["Ambessa.Q"] =
+            "(M45 loop 7) Both hits are the SAME gate - the edge of the sweep. The flat and the %max-health "
+            + "terms are one hit's two parts; the edge takes both at full, everyone else both at 50%.",
+        ["Ambessa.Q2"] =
+            "(M45 loop 7) Both hits are the SAME gate - being the first enemy the slam hits, which takes "
+            + "the flat and the %max-health terms at full; everyone else both at 50%.",
+        ["Zeri.P"] =
+            "(M45 loop 18) Both hits are the SAME gate - a fully charged attack, which deals the flat "
+            + "PassiveMaxDamage and the %max-health term together.",
+        ["Evelynn.E"] =
+            "(M45 loop 8) Both hits are the SAME gate - cast from Demon Shade. The flat and the %max-health "
+            + "terms switch to their Empowered values together.",
+        ["Gwen.Q"] =
+            "(M45 loop 23) Every snip is the SAME gate - landing on the target with the snip's centre, which "
+            + "converts TrueDamageConversion of each into true damage. One box = the cast's snips all centred.",
+        ["Shaco.Q"] =
+            "(M45 loop 35) Both hits are the SAME gate - the Deceive attack landing from behind, whose swing and bonus "
+            + "critically strike together for QCritDamageMod.",
+        ["Zaahen.E"] =
+            "(M45 loop 23) Both hits are the SAME gate - the slice's edge, which deals BonusDamageCalc physical "
+            + "plus the %max-health magic term together, instead of the plain slice.",
     };
 
     private static string DataDir =>

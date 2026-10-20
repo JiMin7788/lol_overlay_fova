@@ -1,9 +1,10 @@
 {
   "_note": "Curated (loop39). P (Martial Cadence): basic attacks deal bonus PHYSICAL damage = 8% of target's CURRENT health (wiki-confirmed physical, not true), min 20, capped at 400 vs non-champions only (cap irrelevant for PvP combo modeling, omitted). BIN has no GameCalculation for it (JarvanIVMartialCadence has only a TooltipCooldown calc) so curated via hpPercentDataValue=TooltipCurrentHealthDamage/hpBasis Current as a P bonusEffect (trigger onHit), same pattern as Warwick P. Q (Dragon Strike) and R (Cataclysm) kept as the auto first-pass physical picks, both verified against wiki+BIN (BaseDamage + 145%/180% bonus AD respectively). E (Demacian Standard) added: BIN TotalDamage = EffectValue(idx2, 80/120/160/200/240 per wiki) + 0.8x AP, verified magic AoE on the initial flag-plant cast. W (Golden Aegis) intentionally omitted: wiki explicitly states 'Golden Aegis deals no damage' (pure slow+shield utility) — genuinely damage-less, not an unresolved slot.",
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Martial Cadence: a TooltipCooldown second cooldown per target - once on the combo target (maxProcs 1); it rode every attack.",
   "P": {
     "bonusEffects": [
       {
-        "trigger": "onHit",
+        "trigger": "onHit", "maxProcs": 1,
         "hits": [
           {
             "type": "Physical",
@@ -15,14 +16,14 @@
       }
     ]
   },
+  "_noteShredQ": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Dragon Strike removes BaseARShred armor; later nodes of the combo hit the reduced resistance.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
         "count": 1,
-        "tags": ["ArmorShred"]
-      }
+        "tags": ["ArmorShred"], "armorShredDataValue": "BaseARShred" }
     ]
   },
   "E": {

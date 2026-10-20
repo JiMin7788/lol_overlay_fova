@@ -18,6 +18,7 @@
       }
     ]
   },
+  "_noteRangeR": "(2026-10-19, M45 loop 19) Deals MinDamage to MaxDamage by the target's missing health: a [min, max] range on the charge / distance knob, the minimum anchor (P2) - it was the minimum only, with no ceiling.",
   "R": {
     "tags": [
       "BurstCeiling"
@@ -26,7 +27,9 @@
       {
         "type": "Magic",
         "calc": "MinDamage",
-        "count": 1
+        "count": 1,
+        "minCalc": "MinDamage",
+        "maxCalc": "MaxDamage"
       }
     ]
   }

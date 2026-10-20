@@ -14,6 +14,7 @@
       }
     ]
   },
+  "_noteHyperW": "(2026-10-20, M45 loop 42) Hyper procs by itself on every third attack or Mini ability (procEvery 3, Q and E counted once per cast); a combo that places the W node states its procs itself (manualSlot - the measured golden row: W = one proc), and a Mega cast ends the count (endedBy) - when Gnar reverts is unknown.",
   "W": {
     "hits": [
       {
@@ -30,23 +31,28 @@
           "PercentMaxHp"
         ]
       }
-    ]
+    ],
+    "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "procEvery": 3, "countsAbilities": ["Q", "E"], "manualSlot": "W", "endedBy": ["QMega", "WMega", "EMega", "R"], "hits": [ { "type": "Magic", "calc": "MiniTotalDamage", "count": 1 }, { "type": "Magic", "hpPercentDataValue": "MiniPercentHPDamage", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] } ]
   },
+  "_noteTypeE": "(2026-10-19, M45 loop 9) Type set to Physical from the tooltip - Hop: 'physical damage'.",
   "E": {
     "hits": [
       {
-        "type": "Magic",
+        "type": "Physical",
         "calc": "MiniTotalDamage",
         "count": 1
       }
     ]
   },
+  "_noteWallR": "(2026-10-19, M45 loop 12) Enemies knocked into a wall take WallDamage instead - HitsWall condition.",
   "R": {
     "hits": [
       {
         "type": "Physical",
         "calc": "Damage",
-        "count": 1
+        "count": 1,
+        "conditionType": "HitsWall",
+        "metCalc": "WallDamage"
       }
     ],
     "tags": [
@@ -65,11 +71,12 @@
       }
     ]
   },
+  "_noteMegaType": "(2026-10-19, M45 loop 22) Mega Gnar's W and E deal PHYSICAL damage (the tooltip) - both were magic.",
   "WMega": {
     "icon": "assets/characters/gnar/hud/icons2d/gnarbig_w.png",
     "hits": [
       {
-        "type": "Magic",
+        "type": "Physical",
         "calc": "MegaTotalDamage",
         "binSpell": "W",
         "count": 1
@@ -80,7 +87,7 @@
     "icon": "assets/characters/gnar/hud/icons2d/gnarbig_e.png",
     "hits": [
       {
-        "type": "Magic",
+        "type": "Physical",
         "calc": "MegaTotalDamage",
         "binSpell": "E",
         "count": 1

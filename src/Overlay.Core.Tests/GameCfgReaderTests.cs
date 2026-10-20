@@ -131,4 +131,33 @@ public class GameCfgReaderTests
             File.Delete(tmp);
         }
     }
+
+    // ── [General] WindowMode (fullscreen warning, 2026-10-19) ──────────────────────────
+
+    [Theory]
+    [InlineData("[General]\nWindowMode=0\n", 0)]
+    [InlineData("[General]\r\nWindowMode=1\r\nHeight=1600\r\n", 1)]
+    [InlineData("[General]\nWindowMode=2\n[HUD]\nWindowMode=0\n", 2)] // only [General] counts
+    [InlineData("[general]\nwindowmode = 2\n", 2)]                    // case-insensitive, spaces
+    [InlineData("[General]\nWindowMode=1\nWindowMode=0\n", 0)]       // last occurrence wins
+    public void ParseWindowMode_ReadsGeneralSection(string text, int expected)
+    {
+        Assert.Equal(expected, GameCfgReader.ParseWindowMode(text));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("[HUD]\nWindowMode=0\n")]
+    [InlineData("[General]\nWindowMode=abc\n")]
+    public void ParseWindowMode_MissingOrBad_IsNull(string? text)
+    {
+        Assert.Null(GameCfgReader.ParseWindowMode(text));
+    }
+
+    [Fact]
+    public void ReadWindowMode_NonexistentFile_IsNull_NoThrow()
+    {
+        Assert.Null(GameCfgReader.ReadWindowMode(Path.Combine(Path.GetTempPath(), "no-such-" + Guid.NewGuid() + ".cfg")));
+    }
 }

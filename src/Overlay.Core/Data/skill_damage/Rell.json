@@ -11,20 +11,23 @@
       { "type": "Magic", "calc": "Damage", "count": 1 }
     ]
   },
+  "_noteRidesW": "(2026-10-20, M45 loop 43) Mount Up: her next Attack knocks up for FlipDamage - one attack (maxProcs 1); it rode every attack after W.",
   "W": {
     "hits": [
       { "type": "Magic", "calc": "DismountDamage", "count": 1 }
     ],
-    "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "FlipDamage", "count": 1 } ] } ]
+    "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Magic", "calc": "FlipDamage", "count": 1 } ] } ]
   },
+  "_noteAttackE": "(2026-10-19, M45 loop 20) Its hit is (part of) the empowered next attack - tagged isAttack (Plated Steelcaps reduces it).",
   "E": {
     "hits": [
-      { "type": "Magic", "hpPercentCalc": "MaxHealthDamageCalc", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
+      { "type": "Magic", "hpPercentCalc": "MaxHealthDamageCalc", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"], "isAttack": true }
     ]
   },
+  "_noteTotalR": "(2026-10-19, M45 loop 7) Was DamagePerSecond x count 2 (the Duration DataValue typed in as a count); now the BIN's own TotalDamage = DamagePerSecond x Duration, which follows the patch.",
   "R": {
     "hits": [
-      { "type": "Magic", "calc": "DamagePerSecond", "count": 2 }
+      { "type": "Magic", "calc": "TotalDamage", "count": 1 }
     ],
     "tags": ["BurstCeiling", "AoeUltimate"]
   }

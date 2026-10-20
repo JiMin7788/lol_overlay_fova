@@ -6,6 +6,7 @@
   "_noteR": "The Box (ThreshRPentaAbility): TotalDamage = EffectValue(index 1) + AP*APRatio (tooltipOnly flag is metadata only, doesn't block resolution -- same as other tooltip-flagged-but-resolvable calcs elsewhere in this project e.g. Nautilus P). Single wall-break hit per enemy that crosses a wall.",
   "_noteP": "Damnation (soul collection) itself has no direct damage calc -- CurrentSoulBonus is a stat-bonus tooltip display (StatValuePerSoul x souls = the bonus armor/AP per soul), not a hit. The passive's real damage effect (the Flay-passive charged empowered attack via collected souls) is the PAttackDamage pair documented under E above -- as of loop 108 its soul-stack term is resolvable (BuffCounter support + '몇 스택' knob), so it is no longer BuffCounter-blocked; the remaining barrier is the charged/once-per-combo shape + cross-slot calc location, deferred there. No P entry yet (honest, P2).",
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
-  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
+  "_noteFlayE": "(2026-10-19, M45 loop 14) Flay's passive: attacks deal PAttackDamageMin to PAttackDamageMax (charged by time since the last attack; souls are the stack knob) - an always-on rider, Upgraded = fully charged.",
+  "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "hits": [ { "type": "Magic", "calc": "PAttackDamageMin", "conditionType": "Upgraded", "metCalc": "PAttackDamageMax", "stackScaled": true, "count": 1 } ] } ] },
   "R": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["AoeUltimate"] }
 }

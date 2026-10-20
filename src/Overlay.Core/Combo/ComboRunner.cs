@@ -66,6 +66,17 @@ public sealed class ComboRunner : IDisposable
     private readonly Func<GameSnapshot?> _currentSnapshot;
     private readonly IClock _clock;
 
+    /// <summary>(2026-10-19) The overlay preview's sample game (<see cref="PreviewGameState"/>), or
+    /// null when the preview is off. A combo hotkey pressed with no game running computes against it,
+    /// so the preview can show a real card. Null provider = previous behaviour exactly.</summary>
+    private readonly Func<GameSnapshot?>? _previewSnapshot;
+
+    /// <summary>True for a pretend game: the overlay preview's (<see cref="PreviewGameState"/>) or the
+    /// editor's reference — both use <see cref="PreviewGameState.PlayerName"/>. A run on one must leave
+    /// nothing behind that a real game would later read (missing-HP tracker, last-seen target cache).</summary>
+    private static bool IsPreviewGame(GameSnapshot? snap)
+        => snap?.ActivePlayerSummonerName == PreviewGameState.PlayerName;
+
     /// <summary>The SAME <see cref="RuneEngine"/> instance <see cref="_engine"/> was built with
     /// (see AppComposition.StartSubsystems) — needed here so a manual rune's ON/OFF checkbox state
     /// (<see cref="RuneEngine.SetManualFlag"/>) can be armed on it right before
@@ -148,8 +159,10 @@ public sealed class ComboRunner : IDisposable
 
     public ComboRunner(
         ComboEngine engine, ConfigManager config, Func<GameSnapshot?> currentSnapshot,
-        IClock? clock = null, RuneEngine? runeEngine = null, TargetHealthTracker? targetHealthTracker = null)
+        IClock? clock = null, RuneEngine? runeEngine = null, TargetHealthTracker? targetHealthTracker = null,
+        Func<GameSnapshot?>? previewSnapshot = null)
     {
+        _previewSnapshot = previewSnapshot;
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _currentSnapshot = currentSnapshot ?? throw new ArgumentNullException(nameof(currentSnapshot));
@@ -315,6 +328,15 @@ public sealed class ComboRunner : IDisposable
 
             // 2. Get the latest snapshot. No active game => do not publish a bogus result.
             var snap = snapshotOverride ?? _currentSnapshot();
+            // (2026-10-19) Overlay preview: no game, preview on → the preview's sample game. Never when
+            // the caller passed its own snapshot (the editor's reference preview, threat, next item).
+            if ((snap is null || !snap.HasData) && snapshotOverride is null
+                && _previewSnapshot?.Invoke() is { HasData: true } preview)
+                snap = preview;
+            // Any run on a pretend game — this preview, or the threat / next item computed on it (they
+            // pass it as the override), or the editor's reference — leaves nothing behind.
+            bool previewGame = IsPreviewGame(snap);
+            if (previewGame) recordDamage = false;
             if (snap is null || !snap.HasData)
             {
                 Log("no active game; combo not computed.");
@@ -338,7 +360,7 @@ public sealed class ComboRunner : IDisposable
             var runeConfig = LoadRuneSelectionAndArmManualFlags(championId, snap);
 
             var context = BuildContext(snap, saved, targetMode, manualTarget, runeConfig, _config, comboId,
-                synthetic ? null : _targetHealthTracker,
+                synthetic || previewGame ? null : _targetHealthTracker,
                 out string targetChampion, out bool defenderIsFallback, out bool usingSnapshotTarget,
                 out int targetLevel, out bool designatedCleared, synthetic);
             if (defenderOverride is { } me)
@@ -506,6 +528,12 @@ public sealed class ComboRunner : IDisposable
                 if (execThr > 0)
                     result = result with { ExecuteThresholdHP = execThr, ExecuteRuleLabel = execLabel };
             }
+            // (M45 loop 37) a stored-damage execute (Mel's Overwhelm): every damaging hit of the combo stored a stack;
+            // once the store exceeds the target's health the next hit consumes it - a kill line at the store's size
+            if (ChampionRepository.Get(saved.ChampionId) is { } execChamp
+                && StoredExecuteThreshold(execChamp, snap.Stats, Math.Max(1, snap.Level), DamageInstances(graph)) is { } stored
+                && stored.Threshold > result.ExecuteThresholdHP)
+                result = result with { ExecuteThresholdHP = stored.Threshold, ExecuteRuleLabel = stored.Label };
 
             // Record this REAL combo's damage against the missing-HP tracker — only for a live,
             // non-fallback, non-snapshot target (a FallbackDefender or a frozen virtual snapshot is
@@ -709,6 +737,52 @@ public sealed class ComboRunner : IDisposable
     }
 
     private const string NextItemComboId = "__nextitem";
+
+    /// <summary>(M46, user request) The tank side of the next-item card: each defensive candidate ranked by how much of
+    /// the enemies' combined full combos (the M40 estimate: preset, common max order, all skills ready) my max HP takes
+    /// with it bought - its HP, armor and MR added to my live stats. Every enemy counts, dead or alive (they come back).
+    /// Rows come back best (lowest share) first, <see cref="NextItemRow.Tank"/> set; Before / After are the shares (1 = the
+    /// enemies' combos add up to exactly my max HP). Shields, healing and passives are not modelled. Never throws.</summary>
+    public IReadOnlyList<NextItemRow> RankTankItems(GameSnapshot live, IReadOnlyList<string> candidateIds)
+    {
+        var rows = new List<NextItemRow>();
+        try
+        {
+            if (live is not { HasData: true } || ResolveActive(live) is not { } me) return rows;
+            var enemies = new List<ScoreboardEntry>();
+            for (int i = 0; i < live.PlayerCount; i++)
+                if (live.Players[i] is { ChampionName.Length: > 0 } p && !string.Equals(p.Team, me.Team, StringComparison.Ordinal))
+                    enemies.Add(p);
+            if (enemies.Count == 0) return rows;
+
+            double Share(DefenderStat d)
+            {
+                double sum = 0;
+                foreach (var e in enemies)
+                    if (ComputeAttack(e, d, OrdersFor(e.ChampionName)) is { } t) sum += t.Damage;
+                return d.MaxHP > 0 ? sum / d.MaxHP : 0;
+            }
+
+            var mine = MeFrom(live);
+            double before = Share(mine);
+            if (before <= 0) return rows;
+            foreach (var id in candidateIds)
+            {
+                if (ItemRepository.Get(id) is not { } item) continue;
+                var bought = mine with
+                {
+                    CurrentHP = mine.CurrentHP + item.Stats.Hp, MaxHP = mine.MaxHP + item.Stats.Hp,
+                    Armor = mine.Armor + item.Stats.Armor, Mr = mine.Mr + item.Stats.Mr,
+                };
+                rows.Add(new NextItemRow(id, item.GoldTotal, before, Share(bought), 0, string.Empty, Tank: true));
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"tank item ranking failed: {ex.Message}");
+        }
+        return rows.OrderBy(r => r.After).ToList();
+    }
 
     /// <summary>My first saved combo for <paramref name="championId"/> (by config key order), else
     /// its all-in preset as an unsaved combo; null when neither exists.</summary>
@@ -926,11 +1000,27 @@ public sealed class ComboRunner : IDisposable
                 // the "+fx" picker (Irelia P: the 4-stack on-hit at face value, attached when the
                 // user says the Fervor is up, instead of a conditional range on every AA).
                 if (effect.ManualOnly) continue;
+                // (M45 loop 42) ...nor one whose procs the combo places itself (Gnar's W node)
+                if (effect.ManualSlot is { } manual
+                    && graph.Nodes.Any(n => n.NodeType == ComboNodeType.Skill && SlotOf(n.Id).Equals(manual, StringComparison.OrdinalIgnoreCase)))
+                    continue;
                 foreach (var hit in effect.Hits)
                 {
                     if (effect.Trigger == BonusTrigger.OnHit)
-                        onHitBonuses.Add(new BonusSpec(bonusSlot, hit, effect.AlwaysOn, effect.MaxProcs));
-                    else if (effect.Trigger == BonusTrigger.OnAbility) onAbilityBonuses.Add(new BonusSpec(bonusSlot, hit, AppliesTo: effect.AppliesTo));
+                    {
+                        onHitBonuses.Add(new BonusSpec(bonusSlot, hit, effect.AlwaysOn, effect.MaxProcs,
+                            ProcEvery: effect.ProcEvery, ProcFrom: effect.ProcFrom, AfterAnyAbility: effect.AfterAnyAbility,
+                            CastsToArm: effect.CastsToArm, CastCharges: effect.CastCharges, ArmedBy: effect.ArmedBy,
+                            LastArmingCast: effect.LastArmingCast, EndedBy: effect.EndedBy,
+                            AttacksPerArm: effect.AttacksPerArm, ChargePerAttack: effect.ChargePerAttack));
+                        // (M45 loop 42) ...counted by these casts too: the same hit, so the same proc counter
+                        if (effect.CountsAbilities is { Length: > 0 } counting)
+                            onAbilityBonuses.Add(new BonusSpec(bonusSlot, hit, AppliesTo: counting,
+                                ProcEvery: effect.ProcEvery, ProcFrom: effect.ProcFrom, EndedBy: effect.EndedBy));
+                    }
+                    else if (effect.Trigger == BonusTrigger.OnAbility) onAbilityBonuses.Add(new BonusSpec(bonusSlot, hit, AppliesTo: effect.AppliesTo,
+                        ProcEvery: effect.ProcEvery, ProcFrom: effect.ProcFrom, ConsumedByNextAbility: effect.ConsumedByNextAbility,
+                        ArmedBy: effect.ArmedBy));
                 }
             }
         }
@@ -964,6 +1054,12 @@ public sealed class ComboRunner : IDisposable
         // precedes any AA ⇒ no proc.
         bool spellbladeApplied = false;
         bool abilityCastSeen = false;
+        bool energizeArmed = false; // (M45 loop 48) a damaging cast readied an energized attack
+        var energized = ResolveEnergizedProcs(snap, champion);
+        bool firstDamageDone = false; // (M45 loop 49) Scout's Slingshot / Hextech Alternator: the first damaging hit
+        int ultCritsLeft = 0;         // (M45 loop 49) Fiendhunter Bolts: attacks the last ultimate made crit
+        var ultCrits = ItemEffects(snap, ItemTrigger.UltimateCrits).FirstOrDefault();
+        int maimFrom = -1; double maimAmp = 0; // (M45 loop 49) Bloodsong's Maim: the target takes more after the spellblade
 
         // (§10 damage-bug fix) The ABILITY SLOTS (Q/W/E/R) that have already been cast earlier in this
         // combo. A P-slot onHit bonus is an ALWAYS-ON passive (applies to every AA), but a Q/W/E/R-slot
@@ -990,6 +1086,18 @@ public sealed class ComboRunner : IDisposable
         // not a buff on every following auto, and Evelynn's mark is three. Keyed by the rider's
         // own slot, since that is what identifies it.
         var onHitProcs = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // (M45 loop 8) Armed by every spell cast, spent by the next attack: AfterAnyAbility riders.
+        // (M45 loop 43) ...by the next AttacksPerArm attacks (Taric's two), so the count is per rider.
+        var armedAttacks = new Dictionary<SkillHit, int>(ReferenceEqualityComparer.Instance);
+        // (M45 loop 25) Casts counted per cast-armed / cast-charged rider since it last fired (Sona, Seraphine).
+        var castCounts = new Dictionary<SkillHit, int>(ReferenceEqualityComparer.Instance);
+        var lastArmer = new Dictionary<SkillHit, string>(ReferenceEqualityComparer.Instance); // (M45 loop 29) Sona's last song
+        int CastCount(BonusSpec b) => castCounts.TryGetValue(b.Hit, out int c) ? c
+            : preStacked && b.CastsToArm > 0 ? b.CastsToArm - 1 : 0;
+        // (M45 loop 10) Marks placed by their own slot's cast, detonated by the next ability.
+        var marksArmed = new HashSet<SkillHit>();
+        // (M45 loop 5) Triggers seen per stack-gated bonus (procEvery / procFrom), keyed by its hit.
+        var procTriggers = new Dictionary<SkillHit, int>(ReferenceEqualityComparer.Instance);
 
         // (M22 Phase 4) K'Sante-style stance: an R node toggles "All Out" for SUBSEQUENT Q/W/E nodes
         // (from an R until the next R), so those nodes resolve their All-Out variant hit
@@ -1047,6 +1155,51 @@ public sealed class ComboRunner : IDisposable
                         DamageType = MapHitType(emp.Type),
                     });
                 }
+                else if (SkillDamageDb.GetAttackShape(champion.Id) is { } shape)
+                {
+                    // (M45 loop 18) This champion's attack is its own shape (Ashe, Zeri, Graves): the first
+                    // hit IS the AA node, the rest are parts of the same attack (no extra on-hit triggers).
+                    int part = 0;
+                    foreach (var hit in shape)
+                    {
+                        if (!TryBuildHitShape(hit, champion, "P", stats, level, defenderMaxHp, node.UserHitDurationSeconds,
+                                node.UserAttackCount, node.UserDistanceFraction, allOut, out double shapeDmg,
+                                out ComboExecuteType shapeExec, out double shapePct, node.UserConditionMet,
+                                EffectiveStacks(node.UserStackCount, liveStacks, "P")))
+                            continue;
+                        if (shapeDmg <= 0 && shapeExec == ComboExecuteType.None) continue;
+                        // (M45 loop 36) a crit-only part (Graves' extra crit bullets) weighs by the crit chance
+                        double shapeCritOnly = CritOnlyFactor(hit, champion, "P", stats, level, shapeDmg, EffectiveStacks(node.UserStackCount, liveStacks, "P"));
+                        if (shapeCritOnly <= 0) continue;
+                        shapeDmg *= shapeCritOnly;
+                        shapePct *= shapeCritOnly;
+                        // (M45 loop 32) a converted share, on every Nth attack when it says so (Yone's second attack half magic)
+                        double share = hit.ShareEveryNthAttack > 1 && (aaOrdinal + 1) % hit.ShareEveryNthAttack != 0
+                            ? 0 : TrueShareOf(hit, champion, "P", stats, level, node.UserConditionMet);
+                        foreach (var (shareDmg, sharePct, shareType) in TypeShares(hit, shapeDmg, shapePct, false, share))
+                        {
+                            rewritten.Add(node with
+                            {
+                                Id = part == 0 ? node.Id : $"{node.Id}#shape{part}",
+                                NodeType = part == 0 ? node.NodeType : ComboNodeType.Skill,
+                                Damage = shareDmg,
+                                RatioAD = 0,
+                                RatioBonusAD = 0,
+                                RatioAP = 0,
+                                DamageType = shareType,
+                                ExecuteType = shapeExec,
+                                ExecutePercent = sharePct,
+                                CanCrit = hit.CanCrit && !hit.CritOnly,
+                                NoCrit = !hit.CanCrit || hit.CritOnly,
+                                // (M45 loop 36) its own crit shape (Graves: CritDamageMult instead of the usual multiplier)
+                                CritDamageScalar = CritScalarFor(hit, champion, "P", stats, level, shapeDmg,
+                                    EffectiveStacks(node.UserStackCount, liveStacks, "P")),
+                                IsAttack = true,
+                            });
+                            part++;
+                        }
+                    }
+                }
                 else
                 {
                     rewritten.Add(node with
@@ -1076,13 +1229,73 @@ public sealed class ComboRunner : IDisposable
                     ? onHitBonuses
                     : onHitBonuses.Where(b =>
                         b.AlwaysOn || b.CalcSlot.Equals("P", StringComparison.OrdinalIgnoreCase) || castSlots.Contains(b.CalcSlot)).ToList();
-                // (loop 477) …and only while it has procs left. A cap applies to the empowered-attack
-                // class only: an AlwaysOn or P-slot passive really does fire on every attack.
+                // (loop 477) …and only while it has procs left. An AlwaysOn ability-slot passive fires on every
+                // attack. (M45 loop 20) A P-slot rider that states a cap honors it - Zed's and Gangplank's
+                // passives proc once per cooldown, which a burst combo sees once; before, it was ignored.
+                // (M45 loop 23) ...and so does an AlwaysOn ability-slot one (Fizz W's bleed refreshes, it does
+                // not stack); none stated a cap while it was ignored.
                 if (applicableOnHit.Count > 0)
                     applicableOnHit = applicableOnHit.Where(b =>
-                        b.MaxProcs <= 0 || b.AlwaysOn
-                        || b.CalcSlot.Equals("P", StringComparison.OrdinalIgnoreCase)
-                        || onHitProcs.GetValueOrDefault(b.CalcSlot) < b.MaxProcs).ToList();
+                        b.MaxProcs <= 0 || onHitProcs.GetValueOrDefault(b.CalcSlot) < b.MaxProcs).ToList();
+                // (M45 loop 42) ...and not after a cast that ends it (Gnar's Mega casts end Mini Gnar's passive).
+                if (applicableOnHit.Count > 0)
+                    applicableOnHit = applicableOnHit.Where(b => !EndedByCast(b, castSlots)).ToList();
+                // (M45 loop 5) …and only on the trigger its stack count reaches (Braum's 4th attack).
+                if (applicableOnHit.Count > 0)
+                    applicableOnHit = applicableOnHit.Where(b => ProcFires(b, procTriggers, preStacked)).ToList();
+                // (M45 loop 8) …and an after-any-spell rider only on the attack a cast armed.
+                if (applicableOnHit.Count > 0)
+                    applicableOnHit = applicableOnHit.Where(b => !b.AfterAnyAbility || armedAttacks.GetValueOrDefault(b.Hit) > 0).ToList();
+                foreach (var armed in armedAttacks.Keys.ToList())
+                    armedAttacks[armed] = Math.Max(0, armedAttacks[armed] - 1);
+                // (M45 loop 25) ...a cast-armed rider once its casts are in (Sona's Power Chord), a cast-charged one
+                // once per stored charge (Seraphine's notes); the attack spends them either way.
+                if (applicableOnHit.Count > 0)
+                {
+                    var charged = new List<BonusSpec>();
+                    foreach (var b in applicableOnHit)
+                    {
+                        if (b.CastsToArm > 0)
+                        {
+                            if (CastCount(b) < b.CastsToArm) continue;
+                            castCounts[b.Hit] = 0;
+                            // (M45 loop 29) a form taken from the last arming cast; the ceiling's assumed prior casts have none
+                            if (b.LastArmingCast is { } forms && lastArmer.TryGetValue(b.Hit, out var lastLetter)
+                                && !forms.Any(f => f.Equals(lastLetter, StringComparison.OrdinalIgnoreCase)))
+                                continue;
+                        }
+                        else if (b.CastCharges > 0 && b.ChargePerAttack)
+                        {
+                            // (M45 loop 43) one stored charge per attack (Riven, Ambessa)
+                            int stored = Math.Min(CastCount(b), b.CastCharges);
+                            if (stored <= 0) continue;
+                            castCounts[b.Hit] = stored - 1;
+                        }
+                        else if (b.CastCharges > 0)
+                        {
+                            int charges = Math.Min(CastCount(b), b.CastCharges);
+                            castCounts[b.Hit] = 0;
+                            for (int k = 0; k < charges; k++) charged.Add(b);
+                            continue;
+                        }
+                        charged.Add(b);
+                    }
+                    applicableOnHit = charged;
+                }
+                // (M45 loop 44) ...and an attack its rider's box makes a sure crit (Jhin's fourth shot)
+                if (applicableOnHit.Any(b => b.Hit.GuaranteedCritWhenMet && ConditionHolds(b.Hit, node.UserConditionMet, stats))
+                    && rewritten.FindLastIndex(n => n.Id == node.Id) is int swing and >= 0)
+                    rewritten[swing] = rewritten[swing] with { GuaranteedCrit = true };
+                // (M45 loop 49) Fiendhunter Bolts: an attack after the ultimate crits for CritModifier of a crit; (loop 50) one
+                // that crits by itself crits fully and deals BonusTrueDamage of it again as true damage (measured: 52 on a
+                // 347 crit). The engine's crit tracks weigh the two cases (PartialCritFloor / CritTrueShare).
+                if (ultCritsLeft > 0 && ultCrits is not null && rewritten.FindLastIndex(n => n.Id == node.Id) is int ultSwing and >= 0)
+                {
+                    ultCritsLeft--;
+                    var sw = rewritten[ultSwing];
+                    if (!sw.GuaranteedCrit && !sw.NoCrit)
+                        rewritten[ultSwing] = sw with { PartialCritFloor = ultCrits.CritDamageScalar!.Value, CritTrueShare = ultCrits.BonusTrueShare ?? 0 };
+                }
                 if (applicableOnHit.Count > 0)
                 {
                     AppendBonusHits(rewritten, node, champion, applicableOnHit, stats, level, defenderMaxHp, "onHit", liveStacks);
@@ -1102,6 +1315,10 @@ public sealed class ComboRunner : IDisposable
                 {
                     AppendItemHit(rewritten, node, shot);
                     spellbladeApplied = true;
+                    // (M45 loop 49) Bloodsong: Maim, the target takes more from then on
+                    if (ItemEffectDb.Get(shot.ItemId) is { } sbEffect
+                        && (IsMelee(champion) ? sbEffect.MeleeAmpAfterPercent : sbEffect.RangedAmpAfterPercent) is > 0 and var maim)
+                        (maimFrom, maimAmp) = (rewritten.Count, maim);
                     // (2026-10-17) Dusk and Dawn: the empowered attack applies its on-hit effects an
                     // additional time — the same on-hit group (passives and items) once more.
                     if (shot.ItemId == DuskAndDawnItemId)
@@ -1136,6 +1353,31 @@ public sealed class ComboRunner : IDisposable
                 AppendBonusHits(rewritten, node, champion, aaBonuses, stats, level, defenderMaxHp, liveStacks: liveStacks);
                 if (++damagingHits == 2)
                     foreach (var p in conditional.SecondHit) AppendItemHit(rewritten, node, p);
+                if (!firstDamageDone)
+                {
+                    firstDamageDone = true;
+                    foreach (var p in conditional.FirstDamage) AppendItemHit(rewritten, node, p);
+                }
+                // (M45 loop 48) the attack an ability readied (Voltaic Cyclosword): its share of the current health, then
+                // its lethality - (loop 50) on this attack already, the share included (measured: 263 at 0 armor, 250 at 30
+                // with 10 lethality of my own = 263 x 100 / (100 + 30 - 25))
+                double lethalityAfter = 0;
+                if (energizeArmed && energized.Count > 0)
+                {
+                    foreach (var (p, leth) in energized)
+                    {
+                        AppendItemHit(rewritten, node, p);
+                        lethalityAfter = Math.Max(lethalityAfter, leth);
+                    }
+                    energizeArmed = false;
+                }
+                int attackStart = rewritten.FindLastIndex(n => n.Id == node.Id); // the readers move to here
+                MoveHealthReadersAhead(rewritten, node.Id);
+                if (lethalityAfter > 0 && attackStart >= 0)
+                    rewritten[attackStart] = rewritten[attackStart] with
+                    {
+                        ArmorPenFlatFrom = Math.Max(rewritten[attackStart].ArmorPenFlatFrom, lethalityAfter),
+                    };
                 continue; // (changed already true)
             }
 
@@ -1150,7 +1392,7 @@ public sealed class ComboRunner : IDisposable
             {
                 if (itemsChipAt < 0) itemsChipAt = rewritten.Count;
                 rewritten.Add(node);
-                foreach (var p in ResolveItemsNodeProcs(snap, champion, level))
+                foreach (var p in ResolveItemsNodeProcs(snap, champion, level, defenderMaxHp))
                 {
                     AppendItemHit(rewritten, node, p);
                     changed = true;
@@ -1219,9 +1461,23 @@ public sealed class ComboRunner : IDisposable
             {
                 abilityCastSeen = true;
                 castSlots.Add(slot);
+                // (M45 loop 49) Fiendhunter Bolts: the ultimate's next attacks crit
+                if (ultCrits is not null && slot.StartsWith("R", StringComparison.OrdinalIgnoreCase))
+                    ultCritsLeft = ultCrits.Attacks!.Value;
                 // (loop 536) Any spell cast (re)arms Sylas's empowered next auto — the charge does
                 // not stack, so a second cast before the auto lands just keeps it armed.
                 empoweredArmed = true;
+                foreach (var b in onHitBonuses)
+                    if (b.AfterAnyAbility)
+                        armedAttacks[b.Hit] = Math.Max(1, b.AttacksPerArm);
+                foreach (var b in onHitBonuses)
+                    if ((b.CastsToArm > 0 || b.CastCharges > 0)
+                        && (b.ArmedBy is null || b.ArmedBy.Any(a => a.Equals(slot[..1], StringComparison.OrdinalIgnoreCase))))
+                    {
+                        // (M45 loop 43) a node that folds casts (Riven Q's three) stores a charge per cast
+                        castCounts[b.Hit] = CastCount(b) + (b.ChargePerAttack ? Math.Max(1, SkillDamageDb.GetCastCount(champion.Id, slot)) : 1);
+                        lastArmer[b.Hit] = slot[..1];
+                    }
 
                 // (loop 539) An AD-buff slot raises the working AD BEFORE this node's own hits
                 // resolve: Riven's R node is curated as Wind Slash, which the blade's own +20% AD
@@ -1255,14 +1511,51 @@ public sealed class ComboRunner : IDisposable
 
             int sizeBeforeCast = rewritten.Count;
             var hits = SkillDamageDb.GetHits(champion.Id, slot);
+            // (M45 loop 18) an attack-shape P hit is the basic attack itself - it lands on AA nodes, not on P
+            if (hits is not null && hits.Any(h => h.AttackShape))
+                hits = hits.Where(h => !h.AttackShape).ToArray() is { Length: > 0 } rest ? rest : null;
             int castCount = SkillDamageDb.GetCastCount(champion.Id, slot);
             var expanded = hits is not null
-                ? ExpandCuratedSkill(node, champion, slot, hits, stats, level, defenderMaxHp, castCount, allOut, countedAsPercent, liveStacks)
+                ? ExpandCuratedSkill(node, champion, slot, hits, stats, level, defenderMaxHp, castCount, allOut, countedAsPercent, liveStacks,
+                    priorHits: rewritten.Count(n => n.NodeType is ComboNodeType.Aa or ComboNodeType.Skill
+                                                    && (n.Damage > 0 || n.ExecuteType != ComboExecuteType.None)),
+                    castSlots: castSlots)
                 : null;
             if (expanded is not null)
             {
                 rewritten.AddRange(expanded);
                 changed = true;
+                // (M45 loop 20) a cast that applies on-hit effects carries the always-on riders and on-hit items
+                // (M45 loop 23) ...once per strike: Bel'Veth E's slashes each apply on-hit effects
+                // (M45 loop 47) ...at the hit's effectiveness (Katarina R's daggers at 20-30%), a per-attack hit once per
+                // counted attack, or the tooltip's own number of times (Warwick R)
+                int strike = 0;
+                foreach (var h in hits!.Where(h => h.AppliesOnHit))
+                {
+                    double eff = OnHitEffectiveness(h, champion, slot, stats, level);
+                    int times = h.OnHitStrikes > 0 ? h.OnHitStrikes
+                        : !string.IsNullOrEmpty(h.PerAttackCalc) || h.PerAttackBasicAttack
+                            ? CountedAttacks(h, champion, string.IsNullOrEmpty(h.BinSpell) ? slot : h.BinSpell!, slot, stats, level, node.UserAttackCount)
+                            : Math.Max(1, h.Count);
+                    for (int k = 0; k < times; k++, strike++)
+                    {
+                        var strikeNode = strike == 0 ? node : node with { Id = $"{node.Id}#strike{strike}" };
+                        int from = rewritten.Count;
+                        // (M45 loop 47) ...not a rider that is part of the attack itself (Akshan's second shot): an ability
+                        // applying on-hit effects does not fire the champion's attack again
+                        var alwaysOn = onHitBonuses.Where(b => (b.AlwaysOn || b.CalcSlot.Equals("P", StringComparison.OrdinalIgnoreCase))
+                            && !b.AfterAnyAbility && b.MaxProcs <= 0 && b.CastsToArm <= 0 && b.CastCharges <= 0
+                            && !b.Hit.IsAttack && !b.Hit.BasicAttack
+                            && ProcFires(b, procTriggers, preStacked)).ToList();
+                        if (alwaysOn.Count > 0)
+                            AppendBonusHits(rewritten, strikeNode, champion, alwaysOn, stats, level, defenderMaxHp, "onHit", liveStacks);
+                        foreach (var item in onHitItems)
+                            AppendItemHit(rewritten, strikeNode, item);
+                        if (eff != 1.0)
+                            for (int i = from; i < rewritten.Count; i++)
+                                rewritten[i] = rewritten[i] with { Damage = rewritten[i].Damage * eff, ExecutePercent = rewritten[i].ExecutePercent * eff };
+                    }
+                }
             }
             // Legacy fallback: champion cached but slot not curated (or curated hits all
             // failed to resolve, e.g. an unlearned/rank-0 ability during isolated single-skill
@@ -1318,10 +1611,21 @@ public sealed class ComboRunner : IDisposable
                 // not apply to. Null/empty appliesTo keeps the default (every ability cast), so only
                 // the explicitly-restricted effects are filtered out here.
                 var applicable = onAbilityBonuses.FindAll(b =>
-                    b.AppliesTo is not { Length: > 0 }
-                    || Array.Exists(b.AppliesTo, s => s.Equals(slot, StringComparison.OrdinalIgnoreCase)));
+                    (b.AppliesTo is not { Length: > 0 }
+                     || Array.Exists(b.AppliesTo, s => s.Equals(slot, StringComparison.OrdinalIgnoreCase)))
+                    && (!b.ConsumedByNextAbility || marksArmed.Contains(b.Hit)) // (M45 loop 10) LeBlanc Q sigil
+                    && !EndedByCast(b, castSlots) // (M45 loop 42) Gnar's Mega casts
+                    && ProcFires(b, procTriggers, preStacked)); // (M45 loop 5) Vel'Koz: every 3rd ability
                 if (applicable.Count > 0)
                     changed |= AppendBonusHits(rewritten, node, champion, applicable, stats, level, defenderMaxHp, "onAbility", liveStacks, nodeChargeFraction);
+                foreach (var b in applicable)
+                    if (b.ConsumedByNextAbility) marksArmed.Remove(b.Hit);
+                // ...and this cast places its own mark for the next ability (after the pass, so never on itself).
+                // (M45 loop 43) ...or another cast that places it (Vex's E applies the P's Gloom)
+                foreach (var b in onAbilityBonuses)
+                    if (b.ConsumedByNextAbility && (b.CalcSlot.Equals(slot, StringComparison.OrdinalIgnoreCase)
+                            || (b.ArmedBy?.Any(a => a.Equals(slot[..1], StringComparison.OrdinalIgnoreCase)) ?? false)))
+                        marksArmed.Add(b.Hit);
             }
 
             // User-attached bonus effects on this skill node (manual sub-icons, T3.3/T8). Merged with
@@ -1344,7 +1648,15 @@ public sealed class ComboRunner : IDisposable
                 }
                 if (++damagingHits == 2)
                     foreach (var p in conditional.SecondHit) AppendItemHit(rewritten, node, p);
-                changed |= conditional.FirstAbility.Count > 0 || conditional.SecondHit.Count > 0;
+                // (M45 loop 48) once per damaging cast (Muramana), and the next attack energized (Voltaic Cyclosword)
+                foreach (var p in conditional.EveryAbility) AppendItemHit(rewritten, node, p);
+                energizeArmed = true;
+                if (!firstDamageDone)
+                {
+                    firstDamageDone = true;
+                    foreach (var p in conditional.FirstDamage) AppendItemHit(rewritten, node, p);
+                }
+                changed |= conditional.FirstAbility.Count > 0 || conditional.SecondHit.Count > 0 || conditional.EveryAbility.Count > 0;
             }
 
             // (M22 Phase 4) Flip the All-Out stance AFTER resolving this node, so the R cast itself
@@ -1352,14 +1664,108 @@ public sealed class ComboRunner : IDisposable
             if (slot.Equals("R", StringComparison.OrdinalIgnoreCase)) allOut = !allOut;
         }
 
-        changed |= ApplyItemAmps(rewritten, itemsChipAt, snap, champion);
+        changed |= ApplyItemAmps(rewritten, itemsChipAt, snap, champion, level);
+        changed |= ApplyStackingShred(rewritten, snap);
+        if (maimFrom >= 0)
+            for (int i = maimFrom; i < rewritten.Count; i++)
+                rewritten[i] = rewritten[i] with { DamageAmp = rewritten[i].DamageAmp * (1 + maimAmp) };
         changed |= ApplyFirstAttackCrit(rewritten, snap);
+        changed |= ApplyCritReduction(rewritten, champion, stats, level);
+        changed |= ApplyMagicTrueAmp(rewritten, champion, stats, level);
         return changed ? graph with { Nodes = rewritten } : graph;
     }
 
-    /// <summary>(2026-10-17) Lethality summed over my owned items (live scoreboard), 0 without static data.</summary>
+    /// <summary>(M45 loop 37) The combo's damaging hit instances (attack and ability nodes with a number).</summary>
+    private static int DamageInstances(ComboGraph graph)
+        => graph.Nodes.Count(n => n.NodeType is ComboNodeType.Aa or ComboNodeType.Skill
+                                  && (n.Damage > 0 || n.ExecuteType != ComboExecuteType.None));
+
+    /// <summary>(M45 loop 37) The stored-damage kill line after <paramref name="stacks"/> stacks, or null.</summary>
+    internal static (double Threshold, double PerStack, string? Label)? StoredExecuteThreshold(ChampionData champion,
+        ActivePlayerStats stats, int level, int stacks)
+    {
+        if (SkillDamageDb.GetStoredExecute(champion.Id) is not { } se) return null;
+        string spell = se.BinSpell ?? "P";
+        if (SkillDamage.ComputeCalcDamage(champion, spell, se.FlatCalc, stats, level, 0, rankSlot: spell) is not double flat
+            || SkillDamage.ComputeCalcDamage(champion, spell, se.PerStackCalc, stats, level, 0, rankSlot: spell) is not double perStack)
+            return null;
+        return (flat + perStack * Math.Max(0, stacks), perStack, se.Label);
+    }
+
+    /// <summary>(M45 loop 44) The crit reduction the engine applies (the fidelity dump), or null.</summary>
+    internal static double? CritReductionForAudit(ChampionData champion, ActivePlayerStats stats, int level)
+        => PercentDataValue(champion, "P", SkillDamageDb.GetCritReduction(champion.Id), stats, level, "P");
+
+    /// <summary>(M45 loop 44) Jhin's crits deal CritReductionPercent less: each attack's crit multiplier M becomes M x (1 - r),
+    /// expressed through the node's crit scalar (crit = 1 + s x (M - 1)), so the expected crit and a guaranteed one (his
+    /// fourth shot) both read it. (M45 loop 45) The live crit-damage stat already carries it (the Practice Tool: critDamage
+    /// 172.5 = 230 x 0.75 with Infinity Edge, and a crit of 411 on an attack of 238), so only the unreported fallback,
+    /// the 2.0 constant, is reduced.</summary>
+    private static bool ApplyCritReduction(List<ComboNode> nodes, ChampionData champion, ActivePlayerStats stats, int level)
+    {
+        if (stats.CritDamage > 0) return false;
+        if (CritReductionForAudit(champion, stats, level) is not double r || r <= 0) return false;
+        double m = Damage.DamageEngine.CritDamageMultiplier;
+        double scale = (m * (1 - r) - 1) / (m - 1);
+        bool changed = false;
+        for (int i = 0; i < nodes.Count; i++)
+            if (nodes[i].NodeType == ComboNodeType.Aa || nodes[i].IsAttack)
+            {
+                nodes[i] = nodes[i] with { CritDamageScalar = nodes[i].CritDamageScalar * scale };
+                changed = true;
+            }
+        return changed;
+    }
+
+    /// <summary>(M45 loop 33) The curse amp the engine applies (the fidelity dump), or null.</summary>
+    internal static double? MagicTrueAmpForAudit(ChampionData champion, ActivePlayerStats stats, int level)
+        => SkillDamageDb.GetMagicTrueAmp(champion.Id) is { } curse
+            ? PercentDataValue(champion, "P", curse.DataValue, stats, level, "P") : null;
+
+    /// <summary>(M45 loop 33) Amumu's Cursed Touch: once a cursing hit has landed (a basic attack, or R), every LATER
+    /// magic hit is joined by a true-damage share of its pre-mitigation number (DamageAmp). The curse lasts 3 s and
+    /// Despair refreshes it - a burst combo is assumed to sit inside it, the same window convention as the stacking
+    /// items. Nodes of the cursing hit itself are not amplified (the curse lands with them).</summary>
+    private static bool ApplyMagicTrueAmp(List<ComboNode> nodes, ChampionData champion, ActivePlayerStats stats, int level)
+    {
+        if (SkillDamageDb.GetMagicTrueAmp(champion.Id) is not { } curse
+            || PercentDataValue(champion, "P", curse.DataValue, stats, level, "P") is not double amp || amp <= 0)
+            return false;
+        bool Applies(ComboNode n) => curse.AppliedBy.Any(a => a.Equals("AA", StringComparison.OrdinalIgnoreCase)
+            ? n.NodeType == ComboNodeType.Aa : SlotOf(n.Id).Equals(a, StringComparison.OrdinalIgnoreCase));
+        string? cursedBy = null;
+        bool added = false;
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            var n = nodes[i];
+            string baseId = n.Id.Split('#')[0];
+            if (cursedBy is null)
+            {
+                if (Applies(n)) cursedBy = baseId;
+                continue;
+            }
+            if (baseId == cursedBy || n.DamageType != ComboDamageType.Magic
+                || (n.Damage <= 0 && n.ExecuteType == ComboExecuteType.None))
+                continue;
+            nodes.Insert(++i, n with
+            {
+                Id = n.Id + "#curse",
+                NodeType = ComboNodeType.Skill,
+                DamageType = ComboDamageType.True,
+                Damage = n.Damage * amp,
+                ExecutePercent = n.ExecutePercent * amp,
+                IsAttack = false,
+            });
+            added = true;
+        }
+        return added;
+    }
+
+    /// <summary>(2026-10-17) Lethality summed over my owned items (live scoreboard), 0 without static data.
+    /// (M45 loop 49) The live stat when the game reports it: it carries runes and buffs the item data cannot.</summary>
     private static double ItemLethality(GameSnapshot snap)
     {
+        if (snap.Stats.PhysicalLethality > 0) return snap.Stats.PhysicalLethality;
         if (StaticData is not { } data || ResolveActive(snap) is not { } active) return 0;
         double total = 0;
         for (int i = 0; i < active.ItemCount && i < active.ItemIds.Length; i++)
@@ -1373,14 +1779,22 @@ public sealed class ComboRunner : IDisposable
     /// <summary>(2026-10-17) The owned items' damage amps (Riftmaker, Liandry's Suffering, Abyssal Mask,
     /// Shadowflame, Shojin) on every node from the "모든 아이템" chip onward, each at full strength: the
     /// chip is the user saying the fight has gone on long enough. No chip, no amp.</summary>
-    private static bool ApplyItemAmps(List<ComboNode> nodes, int from, GameSnapshot snap, ChampionData champion)
+    private static bool ApplyItemAmps(List<ComboNode> nodes, int from, GameSnapshot snap, ChampionData champion, int level)
     {
         if (from < 0 || ResolveActive(snap) is not { } active) return false;
         bool melee = IsMelee(champion);
         var amps = new List<(ItemAmpScope Scope, double Percent)>();
         for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
             if (ItemEffectDb.Get(active.ItemIds[j].ToString()) is { AmpScope: { } scope, AmpPercent: > 0 } e)
-                amps.Add((scope, melee ? e.AmpPercent!.Value : e.RangedAmpPercent ?? e.AmpPercent!.Value));
+            {
+                double pct = melee ? e.AmpPercent!.Value : e.RangedAmpPercent ?? e.AmpPercent!.Value;
+                // (M45 loop 50) an amp the BIN computes (Actualizer: 15% + 0.5% per 100 bonus mana); the listed one is the floor
+                if (e.AmpCalc is { } ampCalc
+                    && ComputeItemProc(e with { Calc = ampCalc }, BuildItemStatResolver(snap.Stats, champion, level), snap.Stats,
+                        level, champion) is double computed && computed > 0)
+                    pct = computed;
+                amps.Add((scope, pct));
+            }
         if (amps.Count == 0) return false;
 
         for (int i = from; i < nodes.Count; i++)
@@ -1395,6 +1809,7 @@ public sealed class ComboRunner : IDisposable
                     ItemAmpScope.MagicAndTrue => n.DamageType is ComboDamageType.Magic or ComboDamageType.True,
                     ItemAmpScope.Ability => n.NodeType is ComboNodeType.Skill or ComboNodeType.Passive
                         && !n.Id.Contains("#item", StringComparison.Ordinal),
+                    ItemAmpScope.Attack => n.NodeType == ComboNodeType.Aa || n.IsAttack, // (M45 loop 49) Hexoptics C44
                     _ => true,
                 };
                 if (applies) m *= 1 + pct;
@@ -1460,7 +1875,7 @@ public sealed class ComboRunner : IDisposable
         foreach (var h in hits)
             if (h.IsDistanceScaled)
                 return userDistanceFraction
-                    ?? (string.Equals(h.Calc, h.MaxCalc, StringComparison.OrdinalIgnoreCase) ? 1.0 : 0.0);
+                    ?? (h.ChargeLinear || string.Equals(h.Calc, h.MaxCalc, StringComparison.OrdinalIgnoreCase) ? 1.0 : 0.0);
         return null;
     }
 
@@ -1514,12 +1929,25 @@ public sealed class ComboRunner : IDisposable
                 CalcTrace.Row($"node={node.Id} branch=bonus trigger={trigger} calc={hit.Calc} slot={calcSlot}");
 
             int count = Math.Max(1, hit.Count);
-            var shares = TypeShares(hit, dmg, execPercent);
+            // (M45 loop 36) a crit-only rider weighs by the crit chance and does not roll again (Yunara P)
+            double critOnly = CritOnlyFactor(hit, champion, calcSlot, stats, level, dmg, EffectiveStacks(node.UserStackCount, liveStacks, calcSlot));
+            if (critOnly <= 0) continue;
+            var shares = TypeShares(hit, dmg * critOnly, execPercent * critOnly, ConditionHolds(hit, node.UserConditionMet, stats),
+                TrueShareOf(hit, champion, calcSlot, stats, level, node.UserConditionMet));
+            var (shred, shredAt) = ShredOf(hit, champion, calcSlot, stats, level); // (M45 loop 4) Vi W's proc shreds
+            if (hit.ShredWhenMet && !ConditionHolds(hit, node.UserConditionMet, stats)) (shred, shredAt) = (Damage.DamageEngine.ShredState.None, -1);
             for (int c = 0; c < count; c++)
             for (int s = 0; s < shares.Count; s++)
             {
+                bool shredsHere = c == shredAt && s == shares.Count - 1;
                 into.Add(node with
                 {
+                    ArmorShredAfter = shredsHere ? shred.ArmorPercent : 0,
+                    MrShredAfter = shredsHere ? shred.MrPercent : 0,
+                    ArmorShredFlatAfter = shredsHere ? shred.ArmorFlat : 0,
+                    MrShredFlatAfter = shredsHere ? shred.MrFlat : 0,
+                    ExecuteFloor = execType == ComboExecuteType.CurrentHp
+                        ? (FloorOf(hit, champion, calcSlot, stats, level) ?? 0) / shares.Count : 0,
                     Id = shares.Count > 1 ? $"{node.Id}#bonus{n}c{c}s{s}" : $"{node.Id}#bonus{n}c{c}",
                     Damage = shares[s].Damage,
                     RatioAD = 0,
@@ -1528,14 +1956,39 @@ public sealed class ComboRunner : IDisposable
                     DamageType = shares[s].Type,
                     ExecuteType = execType,
                     ExecutePercent = shares[s].ExecutePercent,
-                    CanCrit = hit.CanCrit,
-                    CritDamageScalar = hit.CritDamageScalar,
+                    CanCrit = hit.CanCrit && !hit.CritOnly,
+                    // (M45 loop 45) copied from an attack node, a rider kept the attack's crit: on-hit damage does not crit
+                    // (Jhin's fourth-shot bonus, measured) unless its hit says it can
+                    NoCrit = !hit.CanCrit || hit.CritOnly,
+                    CritDamageScalar = CritScalarFor(hit, champion, calcSlot, stats, level, dmg,
+                        EffectiveStacks(node.UserStackCount, liveStacks, calcSlot)),
                     HpBelowGate = hit.HpBelowGate,
+                    // (2026-10-19) A champion's on-hit rider is part of the attack it rides.
+                    IsAttack = hit.IsAttack || hit.BasicAttack || trigger == "onHit",
                 });
                 added = true;
             }
         }
         return added;
+    }
+
+    /// <summary>(M45 loop 45) An on-hit that reads the target's health reads it BEFORE the attack it rides: the Practice
+    /// Tool's Ruined King (Ezreal 105 AD on 1000: 165 = 105 + 6% x 1000, then 155, 146), Kraken (250 at 780 / 1000 = 110 +
+    /// 120 x (1 + 0.75 x 0.22)) and Jhin's fourth shot (352 = 202 + 15% x 999). Appended after the swing they read it after
+    /// the swing's own damage, so they go ahead of it, in their order (two such on-hits on one attack: the second reads
+    /// the first's damage too - not measured).</summary>
+    private static void MoveHealthReadersAhead(List<ComboNode> nodes, string swingId)
+    {
+        int swing = nodes.FindLastIndex(n => n.Id == swingId);
+        if (swing < 0) return;
+        var readers = new List<ComboNode>();
+        for (int i = swing + 1; i < nodes.Count; i++)
+            if (nodes[i].ExecuteType is ComboExecuteType.CurrentHp or ComboExecuteType.MissingHp or ComboExecuteType.BaseWithMissingHpBonus)
+            {
+                readers.Add(nodes[i]);
+                nodes.RemoveAt(i--);
+            }
+        nodes.InsertRange(swing, readers);
     }
 
     /// <summary>(M23 Phase 2 Step 3) The classified condition for a spellblade-style proc — see
@@ -1582,8 +2035,26 @@ public sealed class ComboRunner : IDisposable
            : liveStacks?.Invoke(slot) is int live && live > 0 ? live : 0;
 
     /// <summary>A bonus hit plus the skill slot whose BIN spell holds its calc.</summary>
+    /// <summary>(M45 loop 5) Counts this bonus's triggers in the combo and says whether this one fires
+    /// (<see cref="SkillBonusEffect.ProcEvery"/> / <see cref="SkillBonusEffect.ProcFrom"/>). The range
+    /// ceiling (<paramref name="preStacked"/>) starts one stack short of the threshold, like Kraken.</summary>
+    private static bool ProcFires(BonusSpec b, Dictionary<SkillHit, int> triggers, bool preStacked)
+    {
+        if (b.ProcEvery <= 0 && b.ProcFrom <= 0) return true;
+        int n = triggers.GetValueOrDefault(b.Hit) + 1;
+        triggers[b.Hit] = n;
+        int k = n + (preStacked ? Math.Max(b.ProcEvery, b.ProcFrom) - 1 : 0);
+        return b.ProcEvery > 0 ? k % b.ProcEvery == 0 : k >= b.ProcFrom;
+    }
+
     private readonly record struct BonusSpec(string CalcSlot, SkillHit Hit, bool AlwaysOn = false,
-        int MaxProcs = 0, string[]? AppliesTo = null);
+        int MaxProcs = 0, string[]? AppliesTo = null, int ProcEvery = 0, int ProcFrom = 0, bool AfterAnyAbility = false,
+        bool ConsumedByNextAbility = false, int CastsToArm = 0, int CastCharges = 0, string[]? ArmedBy = null,
+        string[]? LastArmingCast = null, string[]? EndedBy = null, int AttacksPerArm = 0, bool ChargePerAttack = false);
+
+    /// <summary>(M45 loop 42) A rider some earlier cast of the combo ended (<see cref="SkillBonusEffect.EndedBy"/>).</summary>
+    private static bool EndedByCast(BonusSpec b, IReadOnlySet<string> castSlots)
+        => b.EndedBy is { Length: > 0 } ends && ends.Any(castSlots.Contains);
 
     /// <summary>Expands one curated skill node into its per-(cast×hit×count) nodes, each with the
     /// hit's curated damage type and resolved raw BIN number. <paramref name="castCount"/> &gt; 1
@@ -1596,17 +2067,30 @@ public sealed class ComboRunner : IDisposable
     private static List<ComboNode>? ExpandCuratedSkill(
         ComboNode node, ChampionData champion, string slot, SkillHit[] hits,
         ActivePlayerStats stats, int level, double defenderMaxHp, int castCount = 1, bool allOut = false,
-        double countedAsPercent = 0, Func<string, int?>? liveStacks = null)
+        double countedAsPercent = 0, Func<string, int?>? liveStacks = null, int priorHits = 0,
+        IReadOnlySet<string>? castSlots = null)
     {
         var result = new List<ComboNode>();
+        bool slotFoldsSwing = hits.Any(h => h.BasicAttack);
         for (int cast = 0; cast < Math.Max(1, castCount); cast++)
         {
             for (int h = 0; h < hits.Length; h++)
             {
                 var hit = hits[h];
+                // (M45 loop 38) a summon an earlier cast created (Wukong's W clone joins his Q attack)
+                if (!string.IsNullOrEmpty(hit.RequiresPriorCast)
+                    && !(castSlots ?? new HashSet<string>()).Any(c => !c.Equals(slot, StringComparison.OrdinalIgnoreCase)
+                                                                      && c.StartsWith(hit.RequiresPriorCast!, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                // (M45 loop 31) Overwhelm-style stacks: the combo's earlier damage instances when the knob is unset
+                int hitStacks = hit.StacksFromPriorHits && node.UserStackCount is null
+                    ? priorHits
+                    : EffectiveStacks(node.UserStackCount, liveStacks, slot);
                 if (!TryBuildHitShape(hit, champion, slot, stats, level, defenderMaxHp, node.UserHitDurationSeconds,
-                        node.UserAttackCount, node.UserDistanceFraction, allOut, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, EffectiveStacks(node.UserStackCount, liveStacks, slot)))
+                        node.UserAttackCount, node.UserDistanceFraction, allOut, out double dmg, out ComboExecuteType execType, out double execPercent, node.UserConditionMet, hitStacks))
                     continue; // unresolvable calc/DataValue -> drop this hit (documented)
+                // (M45 loop 21) a repeat-hit term with its count unset adds nothing - no 0-damage breakdown row
+                if (dmg == 0 && execType == ComboExecuteType.None && (!string.IsNullOrEmpty(hit.PerAttackCalc) || hit.PerAttackBasicAttack)) continue;
 
                 // (T1-c, M26 §6 Trace Mode) One row per resolved curated hit, before it's replicated
                 // into `count` per-count nodes below (the count copies are the same calc repeated).
@@ -1624,7 +2108,16 @@ public sealed class ComboRunner : IDisposable
                 int count = hit.AttackSpeedStrikeStep is > 0
                     ? Math.Max(1, hit.Count) + (int)Math.Floor(countedAsPercent / hit.AttackSpeedStrikeStep.Value)
                     : Math.Max(1, hit.Count);
-                var shares = TypeShares(hit, dmg, execPercent);
+                var shares = TypeShares(hit, dmg, execPercent, ConditionHolds(hit, node.UserConditionMet, stats),
+                    TrueShareOf(hit, champion, slot, stats, level, node.UserConditionMet));
+                // (2026-10-19) A next-attack empowerment's hits are all part of the attack.
+                bool isAttack = hit.IsAttack || hit.BasicAttack || slotFoldsSwing;
+                var (shred, shredAt) = ShredOf(hit, champion, slot, stats, level);
+                // (M45 loop 21) a shred only the condition-met cast applies (Renekton's Fury-empowered Dice)
+                if (hit.ShredWhenMet && !ConditionHolds(hit, node.UserConditionMet, stats)) (shred, shredAt) = (Damage.DamageEngine.ShredState.None, -1);
+                // (M45 loop 6) Kennen R: each later bolt of the same cast hits harder.
+                double rampPerCount = PercentDataValue(champion, string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!,
+                    hit.RampPerCountDataValue, stats, level, slot) ?? 0;
                 for (int c = 0; c < count; c++)
                 for (int s = 0; s < shares.Count; s++)
                 {
@@ -1633,21 +2126,92 @@ public sealed class ComboRunner : IDisposable
                         Id = shares.Count > 1
                             ? $"{node.Id}#cast{cast}h{h}c{c}s{s}"
                             : $"{node.Id}#cast{cast}h{h}c{c}",
-                        Damage = shares[s].Damage,
+                        Damage = shares[s].Damage * (1 + rampPerCount * c),
                         RatioAD = 0,
                         RatioBonusAD = 0,
                         RatioAP = 0,
                         DamageType = shares[s].Type,
                         ExecuteType = execType,
                         ExecutePercent = shares[s].ExecutePercent,
-                        CanCrit = hit.CanCrit,
-                        CritDamageScalar = hit.CritDamageScalar,
+                        // (2026-10-19, M45) A folded swing IS a basic attack: it crits like one.
+                        // (M45 loop 35) ...unless its crit is the guaranteed one already folded in (Shaco Q from behind)
+                        CanCrit = (hit.CanCrit || hit.BasicAttack)
+                                  && !(!string.IsNullOrEmpty(hit.MetMultiplierCalc) && ConditionTicked(hit, node.UserConditionMet, stats)),
+                        CritDamageScalar = CritScalarFor(hit, champion, slot, stats, level, dmg,
+                            EffectiveStacks(node.UserStackCount, liveStacks, slot)),
                         HpBelowGate = hit.HpBelowGate,
+                        IsAttack = isAttack,
+                        ArmorShredAfter = c == shredAt && s == shares.Count - 1 ? shred.ArmorPercent : 0,
+                        MrShredAfter = c == shredAt && s == shares.Count - 1 ? shred.MrPercent : 0,
+                        ArmorShredFlatAfter = c == shredAt && s == shares.Count - 1 ? shred.ArmorFlat : 0,
+                        MrShredFlatAfter = c == shredAt && s == shares.Count - 1 ? shred.MrFlat : 0,
+                        ExecuteFloor = execType == ComboExecuteType.CurrentHp
+                            ? (FloorOf(hit, champion, slot, stats, level) ?? 0) / shares.Count : 0,
                     });
                 }
             }
         }
         return result.Count > 0 ? result : null;
+    }
+
+    /// <summary>(2026-10-19, M45 loop 4) A hit's shred and the 0-based landing that applies it. Percent
+    /// DataValues use the &gt;=1-is-a-percentage rule (Kog'Maw 12-32 = 12-32%, Garen 0.25 = 25%); every sign
+    /// is dropped (Nasus stores -0.3, Corki -10). (None, -1) when the hit shreds nothing.</summary>
+    private static (Damage.DamageEngine.ShredState Shred, int At) ShredOf(SkillHit hit, ChampionData champion, string slot,
+        ActivePlayerStats stats, int level)
+    {
+        string dataSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        double Read(string? dv, bool percent)
+        {
+            if (string.IsNullOrEmpty(dv)
+                || SkillDamage.ComputeFlatDataValue(champion, dataSlot, dv!, stats, level, rankSlot: slot) is not double v)
+                return 0;
+            v = Math.Abs(v);
+            return percent ? Math.Min(v >= 1.0 ? v / 100.0 : v, 1.0) : v;
+        }
+        var shred = new Damage.DamageEngine.ShredState(Read(hit.ArmorShredDataValue, true), Read(hit.MrShredDataValue, true),
+            Read(hit.ArmorShredFlatDataValue, false), Read(hit.MrShredFlatDataValue, false));
+        if (shred == Damage.DamageEngine.ShredState.None) return (shred, -1);
+        int at = 0;
+        if (!string.IsNullOrEmpty(hit.ArmorShredAfterHitsDataValue)
+            && SkillDamage.ComputeFlatDataValue(champion, dataSlot, hit.ArmorShredAfterHitsDataValue!, stats, level, rankSlot: slot)
+                is double after && after >= 1)
+            at = (int)Math.Round(after) - 1;
+        return (shred, at);
+    }
+
+    /// <summary>(2026-10-19) The engine's crit factor is <c>1 + s × (M − 1)</c> (M = live crit
+    /// multiplier). For a hit naming its own crit calc, <c>s</c> is chosen so that factor equals
+    /// the game's crit-to-normal ratio: <c>s = (crit / normal − 1) / (M − 1)</c>. The crit is
+    /// <see cref="SkillHit.CritCalc"/> (a total) or this hit's damage + <see cref="SkillHit.CritBonusCalc"/>;
+    /// "normal" is this hit's damage or <see cref="SkillHit.CritBaseCalc"/>. Evaluated at the same
+    /// stacks as the hit (Nasus Q's stacks do not crit). Falls back to the curated scalar when there is
+    /// no crit calc or one does not resolve.</summary>
+    private static double CritScalarFor(SkillHit hit, ChampionData champion, string slot,
+        ActivePlayerStats stats, int level, double normalDamage, int stacks)
+    {
+        bool total = !string.IsNullOrEmpty(hit.CritCalc), bonus = !string.IsNullOrEmpty(hit.CritBonusCalc);
+        string calcSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        double? Calc(string name) => SkillDamage.ComputeCalcDamage(champion, calcSlot, name, stats, level, stacks, rankSlot: slot);
+        // (M45 loop 36) a crit that deals (1 + calc) x normal (Graves P's CritDamageMult)
+        if (!string.IsNullOrEmpty(hit.CritExtraCalc) && Calc(hit.CritExtraCalc!) is double extraFrac)
+        {
+            double live = SkillDamage.LiveCritMultiplier(stats);
+            return live > 1.0 ? Math.Max(0.0, extraFrac / (live - 1.0)) : hit.CritDamageScalar;
+        }
+        if (!total && !bonus) return hit.CritDamageScalar;
+
+        double normal = normalDamage;
+        if (!string.IsNullOrEmpty(hit.CritBaseCalc))
+        {
+            if (Calc(hit.CritBaseCalc!) is not double b) return hit.CritDamageScalar;
+            normal = b;
+        }
+        if (normal <= 0) return hit.CritDamageScalar;
+        double? crit = total ? Calc(hit.CritCalc!) : Calc(hit.CritBonusCalc!) is double extra ? normal + extra : null;
+        if (crit is not double c) return hit.CritDamageScalar;
+        double m = SkillDamage.LiveCritMultiplier(stats);
+        return m > 1.0 ? Math.Max(0.0, (c / normal - 1.0) / (m - 1.0)) : hit.CritDamageScalar;
     }
 
     /// <summary>
@@ -1677,6 +2241,85 @@ public sealed class ComboRunner : IDisposable
     /// <see cref="SkillHit.Calc"/> exactly as before. Returns false — drop the hit — when the %HP
     /// fraction can't be resolved (and no literal fallback), or a non-%HP calc can't be resolved.
     /// </summary>
+    /// <summary>(M45 §5.5) One curated hit resolved exactly the way a combo resolves it, for the tooltip
+    /// fidelity audit (TooltipFidelityDumpTests): the same TryBuildHitShape, with only the knobs the
+    /// audit sets — exposure seconds, the condition, the stack count.</summary>
+    internal static bool ResolveHitForAudit(
+        SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats, int level, double defenderMaxHp,
+        double? exposureSeconds, bool? conditionMet, int stacks, bool allOut,
+        out double damage, out ComboExecuteType execType, out double execPercent, int? attackCount = null,
+        double? distanceFraction = null)
+        => TryBuildHitShape(hit, champion, slot, stats, level, defenderMaxHp, exposureSeconds, attackCount, distanceFraction, allOut,
+            out damage, out execType, out execPercent, conditionMet, stacks);
+
+    /// <summary>(M45 §5.5) The modifier fractions the engine applies to a hit, by curated field name:
+    /// share / penalty / per-count ramp / met amp (PercentDataValue) and shreds (ShredOf). Only the fields
+    /// the hit names and that resolve.</summary>
+    internal static Dictionary<string, double> ModifiersForAudit(SkillHit hit, ChampionData champion, string slot,
+        ActivePlayerStats stats, int level)
+    {
+        string dvSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        var result = new Dictionary<string, double>();
+        void Add(string field, double? v) { if (v is double d) result[field] = d; }
+        Add("damageMultiplierDataValue", PercentDataValue(champion, hit.DamageMultiplierBinSpell ?? dvSlot, hit.DamageMultiplierDataValue, stats, level, slot));
+        if (!string.IsNullOrEmpty(hit.DamageMultiplierCalc))
+            Add("damageMultiplierCalc", SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.DamageMultiplierCalc!, stats, level, 0, rankSlot: slot));
+        if (!string.IsNullOrEmpty(hit.MetMultiplierCalc))
+            Add("metMultiplierCalc", SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.MetMultiplierCalc!, stats, level, 0, rankSlot: slot));
+        foreach (var (field, calc) in new[] { ("critExtraCalc", hit.CritExtraCalc), ("attackDamageFractionCalc", hit.AttackDamageFractionCalc),
+                     ("metPenaltyCalc", hit.MetPenaltyCalc) })
+            if (!string.IsNullOrEmpty(calc))
+                Add(field, SkillDamage.ComputeCalcDamage(champion, dvSlot, calc!, stats, level, 0, rankSlot: slot));
+        Add("damagePenaltyDataValue", PercentDataValue(champion, dvSlot, hit.DamagePenaltyDataValue, stats, level, slot));
+        // (M45 loop 47) what a cast's on-hit effects are multiplied by, and how many times they apply (1.0 / the hit's own
+        // count when the tooltip names neither)
+        if (hit.AppliesOnHit)
+        {
+            result["onHitEffectivenessDataValue"] = OnHitEffectiveness(hit, champion, slot, stats, level);
+            if (hit.OnHitStrikes > 0) result["onHitStrikes"] = hit.OnHitStrikes;
+        }
+        Add("rampPerCountDataValue", PercentDataValue(champion, dvSlot, hit.RampPerCountDataValue, stats, level, slot));
+        if (!string.IsNullOrEmpty(hit.RampPerCountCalc))
+            Add("rampPerCountCalc", SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.RampPerCountCalc!, stats, level, 0, rankSlot: slot));
+        Add("metMultiplierDataValue", PercentDataValue(champion, hit.MetMultiplierBinSpell ?? dvSlot, hit.MetMultiplierDataValue, stats, level, slot));
+        var (shred, _) = ShredOf(hit, champion, slot, stats, level);
+        if (!string.IsNullOrEmpty(hit.ArmorShredDataValue)) result["armorShredDataValue"] = shred.ArmorPercent;
+        if (!string.IsNullOrEmpty(hit.MrShredDataValue)) result["mrShredDataValue"] = shred.MrPercent;
+        if (!string.IsNullOrEmpty(hit.ArmorShredFlatDataValue)) result["armorShredFlatDataValue"] = shred.ArmorFlat;
+        if (!string.IsNullOrEmpty(hit.MrShredFlatDataValue)) result["mrShredFlatDataValue"] = shred.MrFlat;
+        if (!string.IsNullOrEmpty(hit.PerStackCalc)
+            && SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.PerStackCalc!, stats, level, 0, rankSlot: slot) is double perStack)
+            result["perStackCalc"] = perStack;
+        Add("perStackMultiplierDataValue", PercentDataValue(champion, dvSlot, hit.PerStackMultiplierDataValue, stats, level, slot));
+        // (M45 loop 22) the charge rider's two ends, raw (K'Sante W: 10% -> 80% of the base as true damage)
+        foreach (var (field, dv) in new[] { ("chargeMinDataValue", hit.ChargeMinDataValue), ("chargeMaxDataValue", hit.ChargeMaxDataValue) })
+            if (!string.IsNullOrEmpty(dv) && SkillDamage.ComputeFlatDataValue(champion, dvSlot, dv!, stats, level, rankSlot: slot) is double chargeEnd)
+                result[field] = Math.Abs(chargeEnd);
+        if (FloorOf(hit, champion, slot, stats, level) is double floorValue)
+            result[!string.IsNullOrEmpty(hit.MinDamageCalc) ? "minDamageCalc" : "minDamageDataValue"] = floorValue;
+        // (M45 loop 23) the true-damage conversion, with its condition (if any) held
+        if (!string.IsNullOrEmpty(hit.TrueShareCalc) || !string.IsNullOrEmpty(hit.TrueShareDataValue))
+            result[!string.IsNullOrEmpty(hit.TrueShareCalc) ? "trueShareCalc" : "trueShareDataValue"]
+                = TrueShareOf(hit, champion, slot, stats, level, userConditionMet: true);
+        return result;
+    }
+
+    /// <summary>(M45 §5.5) The crit scalar the engine gives a resolved hit (see CritScalarFor).</summary>
+    internal static double CritScalarForAudit(SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats,
+        int level, double normalDamage, int stacks)
+        => CritScalarFor(hit, champion, slot, stats, level, normalDamage, stacks);
+
+    /// <summary>(M45 loop 36) A crit-only hit's expected weight: crit chance x its own crit factor (1 + scalar x
+    /// (multiplier - 1)); 1 for any other hit.</summary>
+    private static double CritOnlyFactor(SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats,
+        int level, double normalDamage, int stacks)
+    {
+        if (!hit.CritOnly) return 1.0;
+        double cc = Math.Clamp(stats.CritChance, 0.0, 1.0);
+        double s = CritScalarFor(hit, champion, slot, stats, level, normalDamage, stacks);
+        return cc * (1 + s * (SkillDamage.LiveCritMultiplier(stats) - 1));
+    }
+
     private static bool TryBuildHitShape(
         SkillHit hit, ChampionData champion, string calcSlot, ActivePlayerStats stats, int level,
         double defenderMaxHp, double? userHitDurationSeconds, int? userAttackCount,
@@ -1684,11 +2327,56 @@ public sealed class ComboRunner : IDisposable
         out double damage, out ComboExecuteType execType, out double execPercent,
         bool? userConditionMet = null, int userStackCount = 0, double? bonusChargeFraction = null)
     {
+        if (hit.IsShredOnly)
+        {
+            // (M45 loop 4) Evelynn W: no damage of its own, only the shred later nodes see.
+            damage = 0; execType = ComboExecuteType.None; execPercent = 0;
+            return true;
+        }
+        // (M45 loop 25) a finale needs the exposure it ends (Fiddlesticks W's burst after the full drain)
+        if (hit.RequiresExposureSeconds is double needed
+            && (userHitDurationSeconds ?? hit.GuaranteedSeconds ?? 0) < needed - 1e-9)
+        {
+            damage = 0; execType = ComboExecuteType.None; execPercent = 0;
+            return false;
+        }
         if (!TryBuildHitShapeCore(hit, champion, calcSlot, stats, level, defenderMaxHp,
                 userHitDurationSeconds, userAttackCount, userDistanceFraction, allOut,
                 out damage, out execType, out execPercent, userConditionMet, userStackCount,
                 bonusChargeFraction))
             return false;
+
+        // (M45 loop 7) Per-stack bonus: each stack the node's knob states adds PerStackCalc, up to the
+        // BIN cap (Yasuo E: +25% of the base per earlier E, 4 stacks). Unset = 0 stacks = the plain hit.
+        if (!string.IsNullOrEmpty(hit.PerStackCalc) && userStackCount > 0)
+        {
+            string stackSlot = string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!;
+            if (SkillDamage.ComputeCalcDamage(champion, stackSlot, hit.PerStackCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double perStack)
+            {
+                damage += perStack * Math.Min(userStackCount, StackCap(hit, champion, stackSlot, stats, level, calcSlot));
+            }
+        }
+        // (M45 loop 12) ...or a fraction of the whole hit per stack (Darius R per Hemorrhage).
+        if (!string.IsNullOrEmpty(hit.PerStackMultiplierDataValue) && userStackCount > 0)
+        {
+            string stackSlot = string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!;
+            if (PercentDataValue(champion, stackSlot, hit.PerStackMultiplierDataValue, stats, level, calcSlot) is double perStackFrac)
+            {
+                double factor = 1 + perStackFrac * Math.Min(userStackCount, StackCap(hit, champion, stackSlot, stats, level, calcSlot));
+                damage *= factor;
+                execPercent *= factor;
+            }
+        }
+        // (M45 loop 42) ...or the hit is one stack's, landing x the stacks; unset reads the cap (Varus W's Blight)
+        if (hit.PerStack)
+        {
+            string stackSlot = string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!;
+            int cap = StackCap(hit, champion, stackSlot, stats, level, calcSlot);
+            int stacks = userStackCount > 0 ? Math.Min(userStackCount, cap) : cap;
+            if (stacks == int.MaxValue) return false; // no cap resolved: an unset knob has no number to read
+            damage *= stacks;
+            execPercent *= stacks;
+        }
 
         // (loop 471) Per-cast ramp: a later cast of the same ability scales whatever shape the
         // branches below produced. Applied HERE, around them, so it composes with every hit shape
@@ -1703,6 +2391,40 @@ public sealed class ComboRunner : IDisposable
             double factor = 1 + hit.RampSteps * step;
             damage *= factor;
             execPercent *= factor;
+        }
+
+        // (M45 loop 6) A hit worth a share of its own number ("Mines beyond the first deal X%", "X% less
+        // after the first"), and a whole-hit multiplier that applies only when its condition holds.
+        string dvSlot = string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!;
+        double scale = 1.0;
+        if (PercentDataValue(champion, hit.DamageMultiplierBinSpell ?? dvSlot, hit.DamageMultiplierDataValue, stats, level, calcSlot) is double mul)
+            scale *= mul;
+        // (M45 loop 26) ...or a calc's own value (Aphelios R's crit expectation)
+        if (!string.IsNullOrEmpty(hit.DamageMultiplierCalc)
+            && SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.DamageMultiplierCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double mulCalc)
+            scale *= Math.Max(0, mulCalc);
+        if (!hit.PenaltyAfterFirst && PercentDataValue(champion, dvSlot, hit.DamagePenaltyDataValue, stats, level, calcSlot) is double pen)
+            scale *= Math.Max(0, 1 - pen);
+        if (!string.IsNullOrEmpty(hit.MetMultiplierDataValue)
+            && Enum.TryParse<ConditionType>(hit.ConditionType, out var metCond)
+            && (userConditionMet ?? (!ConditionResolution.IsUserAssumed(metCond) && ResolveAutoCondition(metCond, hit.ConditionValue, stats)))
+            && PercentDataValue(champion, hit.MetMultiplierBinSpell ?? dvSlot, hit.MetMultiplierDataValue, stats, level, calcSlot) is double bonus)
+            scale *= 1 + bonus;
+        // (M45 loop 35) a guaranteed crit at the tooltip's multiplier when the condition holds (Shaco Q from behind)
+        if (!string.IsNullOrEmpty(hit.MetMultiplierCalc) && ConditionTicked(hit, userConditionMet, stats)
+            && SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.MetMultiplierCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double metMul)
+            scale *= Math.Max(0, metMul);
+        // (M45 loop 42) ...or the tooltip's literal increase when it holds (Nidalee's Takedown on a Hunted target)
+        if (hit.MetDamageAmp is double litAmp && ConditionTicked(hit, userConditionMet, stats))
+            scale *= 1 + Math.Max(0, litAmp);
+        // (M45 loop 41) ...or a share lost when it holds (Kled dismounted)
+        if (!string.IsNullOrEmpty(hit.MetPenaltyCalc) && ConditionTicked(hit, userConditionMet, stats)
+            && SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.MetPenaltyCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double metPen)
+            scale *= Math.Max(0, 1 - metPen);
+        if (scale != 1.0)
+        {
+            damage *= scale;
+            execPercent *= scale;
         }
 
         // (§40 loop 548) Charge amplification: a bonus hit whose payload the TRIGGERING cast's charge
@@ -1723,7 +2445,80 @@ public sealed class ComboRunner : IDisposable
                 execPercent *= amp;
             }
         }
+
+        // (M45 loop 16) "Deals a minimum of X": a flat / max-health number takes the floor here; a
+        // current-health execute carries it to M05 (ExecuteFloor), where the target's health is known.
+        if (execType == ComboExecuteType.None && FloorOf(hit, champion, calcSlot, stats, level) is double floor && floor > damage)
+            damage = floor;
         return true;
+    }
+
+    /// <summary>(M45 loop 16) A hit's minimum damage (calc or DataValue), or null.</summary>
+    internal static double? FloorOf(SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats, int level)
+    {
+        string floorSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        if (!string.IsNullOrEmpty(hit.MinDamageCalc))
+            return SkillDamage.ComputeCalcDamage(champion, floorSlot, hit.MinDamageCalc!, stats, level, rankSlot: slot);
+        if (!string.IsNullOrEmpty(hit.MinDamageDataValue))
+            return SkillDamage.ComputeFlatDataValue(champion, floorSlot, hit.MinDamageDataValue!, stats, level, rankSlot: slot);
+        return null;
+    }
+
+    /// <summary>(M45 loop 7/12) A per-stack term's stack cap: the BIN DataValue, else the literal, else none.</summary>
+    /// <summary>(M45 loop 28) The missing-health growth scalar of a hit that states its full-missing-health damage
+    /// (<see cref="SkillHit.MissingHpMaxCalc"/>): max / base - 1. Null when it names none or does not resolve.</summary>
+    private static double? MissingHpScalar(SkillHit hit, ChampionData champion, string calcSlotEff, ActivePlayerStats stats, int level,
+        int stacks, string calcSlot, double baseDamage)
+        => !string.IsNullOrEmpty(hit.MissingHpMaxCalc) && baseDamage > 0
+           && SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.MissingHpMaxCalc!, stats, level, stacks, rankSlot: calcSlot) is double max
+           && max > baseDamage
+            ? max / baseDamage - 1
+            : null;
+
+    private static int StackCap(SkillHit hit, ChampionData champion, string stackSlot, ActivePlayerStats stats, int level, string calcSlot)
+        => !string.IsNullOrEmpty(hit.MaxStacksDataValue)
+           && SkillDamage.ComputeFlatDataValue(champion, stackSlot, hit.MaxStacksDataValue!, stats, level, rankSlot: calcSlot) is double capRaw
+            ? (int)Math.Round(capRaw)
+            : hit.MaxStacks ?? int.MaxValue;
+
+    /// <summary>A BIN DataValue read as a fraction: &gt;= 1 is a percentage (15 = 15%), the sign dropped.
+    /// Null when the name is unset or does not resolve.</summary>
+    /// <summary>The attacks a per-attack hit counts: the node's count, capped by the tooltip's own count (M45 loop 7) or a
+    /// rank-indexed BIN count less the slot's own first hit (M45 loop 27).</summary>
+    private static int CountedAttacks(SkillHit hit, ChampionData champion, string calcSlotEff, string calcSlot,
+        ActivePlayerStats stats, int level, int? userAttackCount)
+    {
+        int attacks = Math.Max(0, userAttackCount ?? 0);
+        if (hit.MaxAttackCount is int cap) attacks = Math.Min(attacks, cap);
+        if (!string.IsNullOrEmpty(hit.MaxAttackCountDataValue)
+            && SkillDamage.ComputeFlatDataValue(champion, calcSlotEff, hit.MaxAttackCountDataValue!, stats, level, rankSlot: calcSlot) is double capDv)
+            attacks = Math.Min(attacks, Math.Max(0, (int)Math.Round(capDv) + hit.MaxAttackCountOffset));
+        return attacks;
+    }
+
+    /// <summary>(M45 loop 47) The effectiveness a hit's on-hit effects apply at: the product of its DataValues, as the
+    /// fractions the tooltip shows x 100 (1.0 is 100%, not 1%); 1 when it names none or one cannot be read.</summary>
+    internal static double OnHitEffectiveness(SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats, int level)
+    {
+        if (string.IsNullOrEmpty(hit.OnHitEffectivenessDataValue)) return 1.0;
+        string dvSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        double eff = 1.0;
+        foreach (var dv in hit.OnHitEffectivenessDataValue!.Split('*'))
+        {
+            if (SkillDamage.ComputeFlatDataValue(champion, dvSlot, dv.Trim(), stats, level, rankSlot: slot) is not double v) return 1.0;
+            eff *= Math.Abs(v);
+        }
+        return eff;
+    }
+
+    private static double? PercentDataValue(ChampionData champion, string slot, string? dataValue, ActivePlayerStats stats,
+        int level, string rankSlot)
+    {
+        if (string.IsNullOrEmpty(dataValue)
+            || SkillDamage.ComputeFlatDataValue(champion, slot, dataValue!, stats, level, rankSlot: rankSlot) is not double v)
+            return null;
+        v = Math.Abs(v);
+        return v >= 1.0 ? v / 100.0 : v;
     }
 
     private static bool TryBuildHitShapeCore(
@@ -1748,6 +2543,9 @@ public sealed class ComboRunner : IDisposable
         // two are mutually exclusive by stance.
         if (hit.BaseStanceOnly && allOut) return false;
 
+        // (M45 loop 51) A full-charge-only hit (Briar E's wall knock-back) is not there below full charge.
+        if (hit.FullChargeOnly && userDistanceFraction is double chargeSet && chargeSet < 1) return false;
+
         // (M22 Phase 4) While the combo is in the K'Sante All-Out stance (set by a preceding R node —
         // see the node loop), a hit that declares an All-Out variant resolves against THOSE fields
         // instead of its base ones. Inert when allOut is false or the hit has no All-Out override.
@@ -1769,6 +2567,14 @@ public sealed class ComboRunner : IDisposable
             damage = stats.AttackDamage;
             return true;
         }
+        // (M45 loop 36) a fraction of the attack itself (Yunara's crit bonus: Calc_Damage_Amp of the strike)
+        if (!string.IsNullOrEmpty(hit.AttackDamageFractionCalc))
+        {
+            if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.AttackDamageFractionCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double frac)
+                return false;
+            damage = frac * stats.AttackDamage;
+            return true;
+        }
 
         // (M25 §11.G) Conditional-bonus hit: the condition switches this hit from its baseline effCalc
         // (UNMET = the conservative RangeMin anchor, P2) to MetCalc (MET = RangeMax). An AutoResolvable
@@ -1788,9 +2594,13 @@ public sealed class ComboRunner : IDisposable
             // %HP shape below instead of being read as flat damage — 15% of missing health is not 0.15
             // damage. The UNMET half keeps the ordinary flat path: every existing conditional hit has a
             // flat baseline or none at all.
-            if (met && !string.IsNullOrEmpty(hit.MetHpPercentCalc))
+            // (M45 loop 23) ...or as a %HP DataValue (Zaahen E's edge).
+            if (met && (!string.IsNullOrEmpty(hit.MetHpPercentCalc) || !string.IsNullOrEmpty(hit.MetHpPercentDataValue)))
             {
-                if (SkillDamage.ResolveHpPercentCalc(champion, calcSlotEff, hit.MetHpPercentCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double metFrac || metFrac <= 0)
+                double? metFracRaw = !string.IsNullOrEmpty(hit.MetHpPercentCalc)
+                    ? SkillDamage.ResolveHpPercentCalc(champion, calcSlotEff, hit.MetHpPercentCalc!, stats, level, userStackCount, rankSlot: calcSlot)
+                    : SkillDamage.ResolveHpPercent(champion, calcSlotEff, hit.MetHpPercentDataValue!, stats, level, rankSlot: calcSlot);
+                if (metFracRaw is not double metFrac || metFrac <= 0)
                     return false;
                 // (§40 loop 548) Charge-interpolated MET fraction: [MetHpPercentCalc → MetHpPercentMaxCalc]
                 // by the triggering cast's charge (Varus W-active Q: 6% → 9% of missing health). A null
@@ -1807,13 +2617,45 @@ public sealed class ComboRunner : IDisposable
                 }
                 return true;
             }
-            string condCalc = met ? (hit.MetCalc ?? string.Empty) : effCalc;
-            if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, condCalc, stats, level, userStackCount, rankSlot: calcSlot) is double condDmg)
+            // (M45 loop 7) A per-second hit whose MET half is a different RATE (Anivia R's fully formed
+            // storm): the met calc times the same exposure seconds as the ordinary rate.
+            if (met && hit.IsDurationScaled && !string.IsNullOrEmpty(hit.PerSecondCalc))
             {
-                damage = condDmg;
+                double metSeconds = Math.Clamp(
+                    userHitDurationSeconds ?? hit.GuaranteedSeconds ?? 0, 0, hit.MaxDurationSeconds!.Value);
+                if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.MetCalc ?? string.Empty, stats, level, userStackCount, rankSlot: calcSlot) is not double metRate)
+                    return false;
+                damage = metRate * metSeconds;
                 return true;
             }
-            return false;
+            // (M45 loop 7) An UNMET half with no flat baseline is the hit's own shape - a %HP share
+            // (Ambessa Q's off-edge 50%, Fiddlesticks Q's plain current-health hit) or a per-second
+            // rate - so it falls through to the branches below. A hit with no other shape still
+            // resolves nothing there, exactly as before.
+            if (met && string.IsNullOrEmpty(hit.MetCalc) && !string.IsNullOrEmpty(hit.MetFlatDataValue))
+            {
+                if (SkillDamage.ComputeFlatDataValue(champion, calcSlotEff, hit.MetFlatDataValue!, stats, level, rankSlot: calcSlot) is not double metFlat)
+                    return false;
+                damage = metFlat;
+                return true;
+            }
+            // ...and so does an unmet half the plain path still has to shape (Kog'Maw R's missing-health amp).
+            if (met || (!string.IsNullOrEmpty(effCalc) && string.IsNullOrEmpty(hit.MissingHpBonusDataValue)))
+            {
+                string condCalc = met ? (hit.MetCalc ?? string.Empty) : effCalc;
+                if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, condCalc, stats, level, userStackCount, rankSlot: calcSlot) is double condDmg)
+                {
+                    damage = condDmg;
+                    // (M45 loop 28) a met half that grows with the target's missing health up to a stated maximum (Samira P)
+                    if (met && MissingHpScalar(hit, champion, calcSlotEff, stats, level, userStackCount, calcSlot, condDmg) is double metGrowth)
+                    {
+                        execType = ComboExecuteType.BaseWithMissingHpBonus;
+                        execPercent = metGrowth;
+                    }
+                    return true;
+                }
+                return false;
+            }
         }
 
         // (loop 484) Tiered stack CONSUMPTION: N stacks land the base calc N times, raised by a
@@ -1838,13 +2680,26 @@ public sealed class ComboRunner : IDisposable
         // (ComboNode.UserAttackCount), and damage = per-hit BIN number × that count. Unset/0 -> 0, the
         // same honest default as the duration-scaled hit (a summon's total output is player-uptime-
         // dependent, not a fixed cast number). Resolved before the %HP/plain branches from its own field.
-        if (!string.IsNullOrEmpty(hit.PerAttackCalc))
+        if (!string.IsNullOrEmpty(hit.PerAttackCalc) || hit.PerAttackBasicAttack)
         {
-            int attacks = Math.Max(0, userAttackCount ?? 0);
+            int attacks = CountedAttacks(hit, champion, calcSlotEff, calcSlot, stats, level, userAttackCount);
+            // (M45 loop 42) ...or once, on the Nth of them, while its condition holds (Ivern R's shockwave)
+            if (hit.LandsOnNthAttack is int nth && nth > 0)
+                attacks = attacks >= nth && (string.IsNullOrEmpty(hit.ConditionType) || ConditionTicked(hit, userConditionMet, stats)) ? 1 : 0;
             if (attacks == 0) return true; // damage stays 0 (honest unset default)
-            if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.PerAttackCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double perAttack)
+            // (M45 loop 39) ...or the champion's own attack, mirrored by a pet (Shaco's clone)
+            if ((hit.PerAttackBasicAttack ? stats.AttackDamage
+                    : SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.PerAttackCalc!, stats, level, userStackCount, rankSlot: calcSlot)) is double perAttack)
             {
                 damage = perAttack * attacks;
+                // (M45 loop 28) the share applies to the repeats beyond the first (Taliyah E's stones)
+                if (hit.PenaltyAfterFirst
+                    && PercentDataValue(champion, string.IsNullOrEmpty(hit.BinSpell) ? calcSlot : hit.BinSpell!, hit.DamagePenaltyDataValue, stats, level, calcSlot) is double later)
+                    damage = perAttack * (1 + (attacks - 1) * Math.Max(0, 1 - later));
+                // (M45 loop 27) repeat j carries j earlier hits' ramp (Xerath R): calc x k(k+1)/2 over k repeats
+                if (!string.IsNullOrEmpty(hit.RampPerCountCalc)
+                    && SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.RampPerCountCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double ramp)
+                    damage += ramp * attacks * (attacks + 1) / 2.0;
                 return true;
             }
             return false;
@@ -1893,10 +2748,18 @@ public sealed class ComboRunner : IDisposable
         // (value identity). The uncertainty RANGE [min, max] is produced separately by ComboRunner's
         // exposure-graph (min-exposure -> knob 0, max-exposure -> knob 1). Resolved before the %HP/plain
         // branches.
-        if (hit.IsDistanceScaled)
+        if (hit.IsDistanceScaled && string.IsNullOrEmpty(hit.HpPercentMaxCalc)) // a %HP range resolves in the %HP branch
         {
             if (userDistanceFraction is { } uf)
             {
+                // (M45 loop 42) ...or the full-charge number x the charge (Briar E)
+                if (hit.ChargeLinear)
+                {
+                    if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, effCalc, stats, level, userStackCount, rankSlot: calcSlot) is not double full)
+                        return false;
+                    damage = full * Math.Clamp(uf, 0, 1);
+                    return true;
+                }
                 if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.MinCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double min
                     || SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.MaxCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double max)
                     return false;
@@ -1937,6 +2800,21 @@ public sealed class ComboRunner : IDisposable
                 }
                 return false;
             }
+            // (M45 loop 28) ...or a whole-duration total, spread evenly (Jayce's Lightning Field)
+            if (!string.IsNullOrEmpty(hit.TotalOverDurationCalc))
+            {
+                if (SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.TotalOverDurationCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double whole)
+                    return false;
+                damage = whole * seconds / hit.MaxDurationSeconds!.Value;
+                return true;
+            }
+            if (!string.IsNullOrEmpty(hit.PerSecondDataValue))
+            {
+                if (SkillDamage.ComputeFlatDataValue(champion, calcSlotEff, hit.PerSecondDataValue!, stats, level, rankSlot: calcSlot) is not double perSecDv)
+                    return false;
+                damage = perSecDv * seconds;
+                return true;
+            }
             // (§27 Nasus R) BIN-sourced, rank-scaled PER-SECOND %maxHP DoT rate, scaled by exposure
             // seconds and target max HP — same shape as the literal PerSecondHpPercent, but the rate is a
             // live rank-scaled BIN lookup (DataValue or calc). Tried before the literal; an unresolved
@@ -1969,6 +2847,13 @@ public sealed class ComboRunner : IDisposable
                 return false; // %HP source unresolved and no usable fallback -> drop the hit
 
             double frac = fraction.Value;
+            // (M45 loop 51) ...toward its far end by the distance / charge knob (Kled R); unset keeps the near end
+            if (!string.IsNullOrEmpty(hit.HpPercentMaxCalc) && userDistanceFraction is double hpKnob)
+            {
+                if (SkillDamage.ResolveHpPercentCalc(champion, calcSlotEff, hit.HpPercentMaxCalc!, stats, level, userStackCount, rankSlot: calcSlot) is not double fracMax)
+                    return false;
+                frac += Math.Clamp(hpKnob, 0, 1) * (fracMax - frac);
+            }
             switch (hit.HpBasis)
             {
                 case HpBasis.Current:
@@ -1993,8 +2878,17 @@ public sealed class ComboRunner : IDisposable
             // (Hwei QW's BonusDamageMult), hand M05 the Kraken-Slayer shape so it re-reads the target's
             // health where the hit actually lands instead of freezing a pre-combo fraction. A scalar
             // that will not resolve leaves the plain base rather than dropping a real hit.
-            if (!string.IsNullOrEmpty(hit.MissingHpBonusDataValue)
-                && SkillDamage.ComputeFlatDataValue(champion, calcSlotEff, hit.MissingHpBonusDataValue!, stats, level, rankSlot: calcSlot) is > 0 and double scalar)
+            // (M45 loop 26) ...only when its condition holds, for a growth the condition gates (Hwei QW)
+            // (M45 loop 40) ...or stated as the extra at none left (a calc), scalar = extra / base
+            double? growth = !string.IsNullOrEmpty(hit.MissingHpBonusDataValue)
+                ? SkillDamage.ComputeFlatDataValue(champion, calcSlotEff, hit.MissingHpBonusDataValue!, stats, level, rankSlot: calcSlot)
+                : !string.IsNullOrEmpty(hit.MissingHpBonusCalc) && raw > 0
+                    && SkillDamage.ComputeCalcDamage(champion, calcSlotEff, hit.MissingHpBonusCalc!, stats, level, userStackCount, rankSlot: calcSlot) is double extra
+                    ? extra / raw : null;
+            if (growth is > 0 and double scalar
+                && (!hit.MissingHpBonusWhenMet
+                    || (Enum.TryParse<ConditionType>(hit.ConditionType, out var growthCond)
+                        && (userConditionMet ?? (!ConditionResolution.IsUserAssumed(growthCond) && ResolveAutoCondition(growthCond, hit.ConditionValue, stats))))))
             {
                 execType = ComboExecuteType.BaseWithMissingHpBonus;
                 execPercent = scalar;
@@ -2023,16 +2917,64 @@ public sealed class ComboRunner : IDisposable
     /// <para>An execute-shaped hit carries its magnitude in the percent rather than in the damage, so
     /// both are halved and whichever one is live gets the right split.</para></summary>
     private static List<(double Damage, double ExecutePercent, ComboDamageType Type)> TypeShares(
-        SkillHit hit, double damage, double executePercent)
+        SkillHit hit, double damage, double executePercent, bool conditionMet = false, double trueShare = 0)
     {
-        if (hit.SplitType is not { } split || split == hit.Type)
-            return new() { (damage, executePercent, MapHitType(hit.Type)) };
-        return new()
-        {
-            (damage / 2.0, executePercent / 2.0, MapHitType(hit.Type)),
-            (damage / 2.0, executePercent / 2.0, MapHitType(split)),
-        };
+        var type = conditionMet && hit.MetType is { } metType ? metType : hit.Type; // (M45 loop 9)
+        // (M45 loop 23) a converted share lands as true damage, the rest keeps the hit's type(s)
+        double keep = 1 - Math.Clamp(trueShare, 0, 1);
+        List<(double Damage, double ExecutePercent, ComboDamageType Type)> shares =
+            hit.SplitType is not { } split || split == type
+                ? new() { (damage * keep, executePercent * keep, MapHitType(type)) }
+                : new()
+                {
+                    (damage / 2.0 * keep, executePercent / 2.0 * keep, MapHitType(type)),
+                    (damage / 2.0 * keep, executePercent / 2.0 * keep, MapHitType(split)),
+                };
+        if (keep < 1)
+            shares.Add((damage * (1 - keep), executePercent * (1 - keep), hit.ShareType is { } st ? MapHitType(st) : ComboDamageType.True));
+        return shares;
     }
+
+    /// <summary>(M45 loop 23) The fraction of <paramref name="hit"/> converted to true damage (0 when it
+    /// names none, or when the conversion needs its condition and the condition does not hold).</summary>
+    private static double TrueShareOf(SkillHit hit, ChampionData champion, string slot, ActivePlayerStats stats, int level,
+        bool? userConditionMet)
+    {
+        if (string.IsNullOrEmpty(hit.TrueShareCalc) && string.IsNullOrEmpty(hit.TrueShareDataValue)) return 0;
+        if (hit.TrueShareWhenMet
+            && !(Enum.TryParse<ConditionType>(hit.ConditionType, out var c)
+                 && (userConditionMet ?? (!ConditionResolution.IsUserAssumed(c) && ResolveAutoCondition(c, hit.ConditionValue, stats)))))
+            return 0;
+        string dvSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        double? share = !string.IsNullOrEmpty(hit.TrueShareCalc)
+            ? SkillDamage.ComputeCalcDamage(champion, dvSlot, hit.TrueShareCalc!, stats, level, 0, rankSlot: slot)
+            : PercentDataValue(champion, dvSlot, hit.TrueShareDataValue, stats, level, slot);
+        return Math.Clamp(share ?? 0, 0, 1);
+    }
+
+    /// <summary>(M45 loop 35) Whether the hit's condition is asserted (the node's box) or auto-resolves - for a hit whose
+    /// condition changes only a modifier, not its number (no met calc), so <see cref="ConditionHolds"/> does not apply.</summary>
+    private static bool ConditionTicked(SkillHit hit, bool? userConditionMet, ActivePlayerStats stats)
+        => Enum.TryParse<ConditionType>(hit.ConditionType, out var c)
+           && (userConditionMet ?? (!ConditionResolution.IsUserAssumed(c) && ResolveAutoCondition(c, hit.ConditionValue, stats)));
+
+    /// <summary>(M45 loop 9) The damage types one hit lands as, met or not (tests).</summary>
+    internal static IReadOnlyList<ComboDamageType> HitTypesForAudit(SkillHit hit, bool conditionMet)
+        => TypeShares(hit, 1, 0, conditionMet).Select(s => s.Type).ToList();
+
+    /// <summary>(M45 loop 23) The type shares of one resolved hit the way a combo emits them - split, met
+    /// type and true conversion (the fidelity dump's per-type totals).</summary>
+    internal static IReadOnlyList<(double Damage, ComboDamageType Type)> TypeSharesForAudit(SkillHit hit, double damage,
+        ChampionData champion, string slot, ActivePlayerStats stats, int level, bool? conditionMet)
+        => TypeShares(hit, damage, 0, ConditionHolds(hit, conditionMet, stats),
+                TrueShareOf(hit, champion, slot, stats, level, conditionMet))
+            .Select(s => (s.Damage, s.Type)).ToList();
+
+    /// <summary>(M45 loop 9) Whether a conditional hit resolves its MET half - the same reading
+    /// TryBuildHitShapeCore makes (the node's knob, else an auto-resolvable condition from live stats).</summary>
+    private static bool ConditionHolds(SkillHit hit, bool? userConditionMet, ActivePlayerStats stats)
+        => hit.IsConditional && Enum.TryParse<ConditionType>(hit.ConditionType, out var c)
+           && (userConditionMet ?? (!ConditionResolution.IsUserAssumed(c) && ResolveAutoCondition(c, hit.ConditionValue, stats)));
 
     private static ComboDamageType MapHitType(HitDamageType type) => type switch
     {
@@ -2052,7 +2994,9 @@ public sealed class ComboRunner : IDisposable
     /// <see cref="ComboExecuteType.None"/> so every existing (non-%HP) item proc is unaffected.</summary>
     private readonly record struct ItemProc(
         string ItemId, double Raw, HitDamageType Type,
-        ComboExecuteType ExecuteType = ComboExecuteType.None, double ExecutePercent = 0);
+        ComboExecuteType ExecuteType = ComboExecuteType.None, double ExecutePercent = 0,
+        // (M45 loop 50) lethality from this proc on (Voltaic Cyclosword charged by moving, at the chip)
+        double ArmorPenFlatFrom = 0);
 
     /// <summary>Melee/ranged classification threshold for item procs whose value differs by attack
     /// type (Blade of the Ruined King, Titanic Hydra). Data Dragon's <c>attackrange</c> field clusters
@@ -2091,8 +3035,8 @@ public sealed class ComboRunner : IDisposable
 
         var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
         for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        foreach (var effect in ItemEffectDb.GetAll(active.ItemIds[j].ToString()))
         {
-            var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
             // Only the build-wide triggers resolve here; the conditional ones (first ability, second
             // hit, damage threshold) are ResolveConditionalProcs', and an active burst is attached by
             // hand. Anything else used to fall through to the spellblade slot below.
@@ -2110,7 +3054,7 @@ public sealed class ComboRunner : IDisposable
             {
                 ItemHpPercentBasis.TargetCurrent => BuildTargetHpItemProc(effect, champion),
                 ItemHpPercentBasis.CasterMax => BuildCasterHpItemProc(effect, champion, snap.Stats),
-                _ => ComputeItemProc(effect, resolver, snap.Stats, level) is double raw
+                _ => ComputeItemProc(effect, resolver, snap.Stats, level, champion) is double raw
                     ? new ItemProc(effect.ItemId, raw, effect.DamageType)
                     : null,
             };
@@ -2132,23 +3076,30 @@ public sealed class ComboRunner : IDisposable
     /// mitigated total).</summary>
     private static ConditionalProcs ResolveConditionalProcs(GameSnapshot snap, ChampionData champion, int level, double defenderMaxHp)
     {
-        var result = new ConditionalProcs(new List<ItemProc>(), new List<ItemProc>(), new List<(ItemProc, double)>());
+        var result = new ConditionalProcs(new List<ItemProc>(), new List<ItemProc>(), new List<(ItemProc, double)>(), new List<ItemProc>(),
+            new List<ItemProc>());
         var active = ResolveActive(snap);
         if (active is null) return result;
         var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
         for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        foreach (var effect in ItemEffectDb.GetAll(active.ItemIds[j].ToString()))
         {
-            var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
-            if (effect is not { Trigger: ItemTrigger.OnFirstAbility or ItemTrigger.OnSecondHit or ItemTrigger.AfterDamageThreshold })
+            if (effect is not { Trigger: ItemTrigger.OnFirstAbility or ItemTrigger.OnSecondHit or ItemTrigger.AfterDamageThreshold
+                    or ItemTrigger.OnEveryAbility or ItemTrigger.OnFirstDamage })
                 continue;
+            bool melee = IsMelee(champion);
+            // (M45 loop 48) a ranged holder's own calc (Muramana) or share (Bastionbreaker's 50%)
+            var own = !melee && effect.RangedCalc is { } rangedCalc ? effect with { Calc = rangedCalc } : effect;
             double? raw = effect.HpPercentBasis == ItemHpPercentBasis.TargetMax
-                ? (IsMelee(champion) ? effect.MeleeHpPercent : effect.RangedHpPercent) * defenderMaxHp
-                : ComputeItemProc(effect, resolver, snap.Stats, level);
+                ? (melee ? effect.MeleeHpPercent : effect.RangedHpPercent) * defenderMaxHp
+                : ComputeItemProc(own, resolver, snap.Stats, level, champion) * (melee || effect.RangedCalc is not null ? 1 : effect.RangedMultiplier);
             if (raw is not > 0) continue;
             var proc = new ItemProc(effect.ItemId, raw.Value * effect.Multiplier, effect.DamageType);
             switch (effect.Trigger)
             {
                 case ItemTrigger.OnFirstAbility: result.FirstAbility.Add(proc); break;
+                case ItemTrigger.OnEveryAbility: result.EveryAbility.Add(proc); break;
+                case ItemTrigger.OnFirstDamage: result.FirstDamage.Add(proc); break;
                 case ItemTrigger.OnSecondHit: result.SecondHit.Add(proc); break;
                 default:
                     if (effect.ThresholdTargetMaxHpPercent is > 0 and var share)
@@ -2161,21 +3112,34 @@ public sealed class ComboRunner : IDisposable
 
     /// <summary>(2026-10-17) The owned items that fire at the "모든 아이템" chip, resolved: a BIN calc x
     /// its multiplier, or a melee/ranged share of the target's current HP (Voltaic Cyclosword).</summary>
-    private static List<ItemProc> ResolveItemsNodeProcs(GameSnapshot snap, ChampionData champion, int level)
+    private static List<ItemProc> ResolveItemsNodeProcs(GameSnapshot snap, ChampionData champion, int level, double defenderMaxHp = 0)
     {
         var procs = new List<ItemProc>();
         var active = ResolveActive(snap);
         if (active is null) return procs;
         var resolver = BuildItemStatResolver(snap.Stats, champion, level, ItemLethality(snap));
         for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        foreach (var effect in ItemEffectDb.GetAll(active.ItemIds[j].ToString()))
         {
-            var effect = ItemEffectDb.Get(active.ItemIds[j].ToString());
             if (effect is not { Trigger: ItemTrigger.ItemsNode }) continue;
             if (effect.HpPercentBasis == ItemHpPercentBasis.TargetCurrent)
             {
-                if (BuildTargetHpItemProc(effect, champion) is { } hp) procs.Add(hp);
+                // (M45 loop 50) an energized attack grants its lethality however it was charged (Voltaic Cyclosword)
+                if (BuildTargetHpItemProc(effect, champion) is { } hp)
+                    procs.Add(hp with { ArmorPenFlatFrom = (IsMelee(champion) ? effect.MeleeLethalityAfter : effect.RangedLethalityAfter) ?? 0 });
             }
-            else if (ComputeItemProc(effect, resolver, snap.Stats, level) is double raw && raw > 0)
+            else if (effect.HpPercentBasis == ItemHpPercentBasis.CasterMax)
+            {
+                // (M45 loop 48) Titanic Hydra's active: a share of the holder's own max health
+                if (BuildCasterHpItemProc(effect, champion, snap.Stats) is { } own) procs.Add(own);
+            }
+            else if (effect.HpPercentBasis == ItemHpPercentBasis.TargetMax)
+            {
+                // (M45 loop 49) Redemption: a share of the target's max health
+                if ((IsMelee(champion) ? effect.MeleeHpPercent : effect.RangedHpPercent) is > 0 and var share && defenderMaxHp > 0)
+                    procs.Add(new ItemProc(effect.ItemId, share * defenderMaxHp * effect.Multiplier, effect.DamageType));
+            }
+            else if (ComputeItemProc(effect, resolver, snap.Stats, level, champion) is double raw && raw > 0)
                 procs.Add(new ItemProc(effect.ItemId,
                     raw * effect.Multiplier * (IsMelee(champion) ? 1 : effect.RangedMultiplier), effect.DamageType));
         }
@@ -2183,7 +3147,73 @@ public sealed class ComboRunner : IDisposable
     }
 
     private sealed record ConditionalProcs(List<ItemProc> FirstAbility, List<ItemProc> SecondHit,
-        List<(ItemProc Proc, double TargetMaxHpShare)> Threshold);
+        List<(ItemProc Proc, double TargetMaxHpShare)> Threshold, List<ItemProc> EveryAbility, List<ItemProc> FirstDamage);
+
+    /// <summary>(M45 loop 49) The owned items' effects of one trigger.</summary>
+    private static IEnumerable<ItemEffect> ItemEffects(GameSnapshot snap, ItemTrigger trigger)
+    {
+        if (ResolveActive(snap) is not { } active) yield break;
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+            foreach (var effect in ItemEffectDb.GetAll(active.ItemIds[j].ToString()))
+                if (effect.Trigger == trigger)
+                    yield return effect;
+    }
+
+    /// <summary>(M45 loop 49) Black Cleaver / Bloodletter's Curse: each damage instance of the item's kind stacks the shred
+    /// (physical damage: armor; magic damage from abilities and passives: magic resist), up to its stacks, for the hits
+    /// after it.</summary>
+    private static bool ApplyStackingShred(List<ComboNode> nodes, GameSnapshot snap)
+    {
+        bool changed = false;
+        foreach (var e in ItemEffects(snap, ItemTrigger.StackingShred))
+        {
+            int stacks = 0;
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var n = nodes[i];
+                bool damaging = n.Damage > 0 || n.RatioAD > 0 || n.RatioAP > 0 || n.ExecuteType != ComboExecuteType.None;
+                bool kind = e.ShredsMagicResist
+                    ? n.DamageType == ComboDamageType.Magic && n.NodeType != ComboNodeType.Aa && !n.IsAttack
+                      && !n.Id.Contains("#item", StringComparison.Ordinal)
+                    : n.DamageType == ComboDamageType.Physical;
+                if (!damaging || !kind) continue;
+                double shred = Math.Min(++stacks, e.MaxStacks!.Value) * e.ShredPerStack!.Value;
+                nodes[i] = e.ShredsMagicResist
+                    ? n with { MrShredAfter = Math.Max(n.MrShredAfter, shred) }
+                    : n with { ArmorShredAfter = Math.Max(n.ArmorShredAfter, shred) };
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /// <summary>(M45 loop 49) Immortal Path: a whole-combo amp while my live health is above its share.</summary>
+    private static double SelfHealthAmp(GameSnapshot snap)
+    {
+        double amp = 1;
+        foreach (var e in ItemEffects(snap, ItemTrigger.SelfHealthAmp))
+            if (snap.Stats.MaxHealth > 0 && snap.Stats.CurrentHealth > e.HealthAbovePercent!.Value * snap.Stats.MaxHealth)
+                amp *= 1 + (e.AmpPercent ?? 0);
+        return amp;
+    }
+
+    /// <summary>(M45 loop 49) The Collector: the share of max health below which my damage executes, 0 without one.</summary>
+    private static double ExecuteBelowFraction(GameSnapshot snap)
+        => ItemEffects(snap, ItemTrigger.ExecuteBelow).Select(e => e.ExecuteBelowPercent ?? 0).DefaultIfEmpty(0).Max();
+
+    /// <summary>(M45 loop 48) Energized attacks an ability readies (Voltaic Cyclosword): the proc and the lethality it
+    /// grants after.</summary>
+    private static List<(ItemProc Proc, double LethalityAfter)> ResolveEnergizedProcs(GameSnapshot snap, ChampionData champion)
+    {
+        var procs = new List<(ItemProc, double)>();
+        if (ResolveActive(snap) is not { } active) return procs;
+        bool melee = IsMelee(champion);
+        for (int j = 0; j < active.ItemCount && j < active.ItemIds.Length; j++)
+        foreach (var effect in ItemEffectDb.GetAll(active.ItemIds[j].ToString()))
+            if (effect.Trigger == ItemTrigger.EnergizedAfterAbility && BuildTargetHpItemProc(effect, champion) is { } p)
+                procs.Add((p, (melee ? effect.MeleeLethalityAfter : effect.RangedLethalityAfter) ?? 0));
+        return procs;
+    }
 
     /// <summary>(2026-10-17) Stormsurge-style procs: when the executed combo dealt at least the share
     /// of the target's max HP, append the proc after the last node and execute again. Returns the
@@ -2312,6 +3342,10 @@ public sealed class ComboRunner : IDisposable
             DamageType = MapHitType(proc.Type),
             ExecuteType = proc.ExecuteType,
             ExecutePercent = proc.ExecutePercent,
+            // (M45 loop 45) copied from the attack node, it kept the attack's crit; an item's on-hit does not crit (Dusk
+            // and Dawn's spellblade scales by crit chance in its own calc)
+            NoCrit = true,
+            ArmorPenFlatFrom = proc.ArmorPenFlatFrom, // (M45 loop 50) its own, never the attack's (trap 2.14)
         });
     }
 
@@ -2319,9 +3353,15 @@ public sealed class ComboRunner : IDisposable
     /// stats, or null when it references data that can't be resolved (dropped, never crash).</summary>
     // (2026-10-17) championLevel: item calcs scale by level too (Gunblade 175 -> 253); it was never
     // passed, so a ByCharLevel part always read level 1.
-    private static double? ComputeItemProc(ItemEffect eff, Func<int, int?, double> resolver, ActivePlayerStats stats, int level)
+    // (M45 loop 50) champion: its base mana, so a bonus-mana part reads the bonus (Actualizer).
+    private static double? ComputeItemProc(ItemEffect eff, Func<int, int?, double> resolver, ActivePlayerStats stats, int level,
+        ChampionData champion)
     {
-        try { return FormulaInterpreter.Evaluate(eff.Skill, eff.Calc, rank: 1, resolver, stats.ResourceMax, championLevel: Math.Clamp(level, 1, 18)); }
+        try
+        {
+            return FormulaInterpreter.Evaluate(eff.Skill, eff.Calc, rank: 1, resolver, stats.ResourceMax,
+                championLevel: Math.Clamp(level, 1, 18), casterBaseResource: SkillDamage.BaseResource(champion, level));
+        }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException or NotSupportedException)
         {
             return null;
@@ -2342,9 +3382,11 @@ public sealed class ComboRunner : IDisposable
     private static Func<int, int?, double> BuildItemStatResolver(ActivePlayerStats stats, ChampionData champion, int level,
         double lethality = 0)
     {
-        double baseAd = champion.BaseStats.Ad + champion.StatsPerLevel.Ad * (Math.Max(1, level) - 1);
+        // (M45 loop 50) Along the stat-growth curve, as SkillDamage.BuildStatResolver: a straight line over-stated the base
+        // at middle levels (Sheen's 100% base AD, bonus AD / health under-counted).
+        double baseAd = LevelGrowth.Stat(champion.BaseStats.Ad, champion.StatsPerLevel.Ad, level);
         double bonusAd = Math.Max(0.0, stats.AttackDamage - baseAd);
-        double baseHp = champion.BaseStats.Hp + champion.StatsPerLevel.Hp * (Math.Max(1, level) - 1);
+        double baseHp = LevelGrowth.Stat(champion.BaseStats.Hp, champion.StatsPerLevel.Hp, level);
         double bonusHp = Math.Max(0.0, stats.MaxHealth - baseHp);
         return (statId, statFormula) => statId switch
         {
@@ -2415,6 +3457,16 @@ public sealed class ComboRunner : IDisposable
                 && SkillDamageDb.GetDurationScaledHit(championId, slot) is { MaxDurationSeconds: > 0 } dh)
             {
                 next = next with { UserHitDurationSeconds = dh.MaxDurationSeconds };
+                nodeChanged = true;
+            }
+            // (M45 loop 7) A repeat-hit count with a tooltip cap (Syndra R's extra spheres, Yuumi R's later
+            // waves): its unset default is 0, the floor, so only the MAX direction is pre-filled.
+            if (maximize && node.UserAttackCount is null
+                && SkillDamageDb.GetPerAttackHit(championId, slot) is { } ah
+                && (ah.MaxAttackCount > 0 || !string.IsNullOrEmpty(ah.MaxAttackCountDataValue)))
+            {
+                // (M45 loop 27) a BIN-count cap is applied where the hit resolves (it needs the rank); any count past it clamps
+                next = next with { UserAttackCount = ah.MaxAttackCount ?? 99 };
                 nodeChanged = true;
             }
             // Distance/charge share the one UserDistanceFraction knob (M28 §1): min-exposure -> 0
@@ -2639,6 +3691,13 @@ public sealed class ComboRunner : IDisposable
     // (last-known designated-target stats). All helpers it calls (ResolveActive/ResolveTarget/
     // BuildDefenderFor/BuildAttacker/ResolveChampionId) are static, so this transition is call-compatible;
     // the sole caller (ComputeAndPublish) is already an instance method, so its call site is unchanged.
+    private static bool HasChampion(GameSnapshot snap, string champion)
+    {
+        for (int i = 0; i < snap.PlayerCount; i++)
+            if (string.Equals(snap.Players[i].ChampionName, champion, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
     private ExecutionContext BuildContext(
         GameSnapshot snap, SavedCombo saved, TargetMode mode, string manualTarget,
         UserRuneConfig runeConfig, ConfigManager config, string comboId, TargetHealthTracker? targetHealthTracker,
@@ -2651,6 +3710,10 @@ public sealed class ComboRunner : IDisposable
 
         var attacker = BuildAttacker(snap, championId, buildConfig);
         var active = ResolveActive(snap);
+        // (2026-10-19) On the preview's sample game a pin from a real game usually names a champion
+        // the sample does not have — target the same-lane enemy instead of a 1000 HP dummy.
+        bool previewGame = IsPreviewGame(snap);
+        if (previewGame && mode == TargetMode.Manual && !HasChampion(snap, manualTarget)) mode = TargetMode.Auto;
         // Resolve the target ONCE (override → same-position → first-living) so the defender the
         // damage is computed against and the champion name shown on the card are the SAME target.
         var target = ResolveTarget(snap, active, mode, manualTarget);
@@ -2667,12 +3730,13 @@ public sealed class ComboRunner : IDisposable
         // level and add it on top of any API-reported flat pen.
         attacker = attacker with
         {
-            ArmorPenFlat = attacker.ArmorPenFlat + LethalityFlatPen(active, buildConfig, championId, targetLevel),
+            ArmorPenFlat = attacker.ArmorPenFlat + LethalityFlatPen(active, buildConfig, championId, targetLevel, snap.Stats.PhysicalLethality),
             // (loop 178) % armor pen (Last Whisper line): the Live Client API's armorPenetrationPercent
             // MAY already carry it (unlike lethality it's a direct multiplier), so we take the MAX of the
             // API value and the item-computed % — never adding on top (that would double-count when the
             // API already reports it), but still covering the case where the API omits item % pen.
             ArmorPenPercent = Math.Max(attacker.ArmorPenPercent, ItemPercentArmorPen(active, buildConfig, championId)),
+            ExecuteBelowMaxHpFraction = ExecuteBelowFraction(snap), // (M45 loop 49) The Collector
         };
         usingSnapshotTarget = false;
         designatedCleared = false; // (loop 119) the "적 사망 초기화" state is removed — see last-seen cache below
@@ -2693,7 +3757,9 @@ public sealed class ComboRunner : IDisposable
         // state instead of a 0/0 fallback — the user's "죽어도/안 보여도 저장된 스텟 기준" requirement.
         // (Level/items stay live on the scoreboard while dead/out-of-vision, so the present-but-dead case
         // already uses fresh numbers; this cache only covers the truly-gone row.)
-        if (mode == TargetMode.Manual && !string.IsNullOrWhiteSpace(manualTarget))
+        // (2026-10-19) Not for a preview run: a pin made on the preview's sample enemies would
+        // otherwise hand their stats to a real game where that champion is absent.
+        if (mode == TargetMode.Manual && !string.IsNullOrWhiteSpace(manualTarget) && !previewGame)
         {
             if (target is not null && !defenderIsFallback)
             {
@@ -2735,13 +3801,21 @@ public sealed class ComboRunner : IDisposable
         // set) classifies as not-melee here, the opposite default IsMelee itself documents for its
         // own edge case, since this is a fallback affecting a rune bonus rather than an item proc's
         // own melee/ranged split, and 0 is a safer (smaller) ranged-side default for an unknown case.
+        // (2026-10-19, user report) The target's own items that cut attack damage (Plated Steelcaps).
+        // Its items are on the public scoreboard (P1); a frozen virtual target keeps its own stats.
+        if (target is not null && !usingSnapshotTarget)
+            defender = defender with
+            {
+                AttackDamageTakenMultiplier = ItemEffectDb.IncomingAttackMultiplier(target.ItemIds, target.ItemCount),
+            };
+
         var casterChampion = ChampionRepository.Get(championId);
         double casterMaxHealth = snap.Stats.MaxHealth;
         bool casterIsMelee = casterChampion is not null && IsMelee(casterChampion);
 
         return new ExecutionContext(championId, attacker, defender, runeConfig,
             CasterMaxHealth: casterMaxHealth, CasterIsMelee: casterIsMelee,
-            DamageAmp: GiantSlayerAmp(snap, target, defender, !defenderIsFallback && !usingSnapshotTarget));
+            DamageAmp: GiantSlayerAmp(snap, target, defender, !defenderIsFallback && !usingSnapshotTarget) * SelfHealthAmp(snap));
     }
 
     /// <summary>The combo's champion id: the ACTIVE player's live champion when resolvable
@@ -3100,7 +4174,7 @@ public sealed class ComboRunner : IDisposable
             // Empty rune config = pure skill/AA/passive damage (no Electrocute/Comet/etc. contamination).
             var runeConfig = new UserRuneConfig(Array.Empty<string>());
             var context = BuildContext(snap, saved, mode, manualTarget, runeConfig, _config, string.Empty,
-                _targetHealthTracker,
+                IsPreviewGame(snap) ? null : _targetHealthTracker,
                 out string targetChampion, out bool defenderIsFallback, out _, out int _, out _);
             if (string.IsNullOrEmpty(targetChampion)) return null; // no living/designated target
 
@@ -3270,14 +4344,16 @@ public sealed class ComboRunner : IDisposable
     /// scoreboard + the hypothetical build), scaled by target level per Riot's lethality definition:
     /// <c>lethality × (0.6 + 0.4 × min(targetLevel,18)/18)</c> — mirrors <see cref="KillableCalculator"/>.
     /// Returns 0 when there's no lethality, no static data, or no resolved target. Never throws.</summary>
-    private static double LethalityFlatPen(ScoreboardEntry? active, ConfigManager? config, string championId, int targetLevel)
+    private static double LethalityFlatPen(ScoreboardEntry? active, ConfigManager? config, string championId, int targetLevel,
+        double liveLethality = 0)
     {
         var data = StaticData;
-        if (data is null) return 0;
+        if (data is null) return Math.Max(0, liveLethality);
 
-        double lethality = 0;
+        // (M45 loop 49) the live stat, when reported, is the owned part (items, runes, buffs); the planned build adds
+        double lethality = Math.Max(0, liveLethality);
         int lethItems = 0; // (loop 179 diag)
-        if (active is not null)
+        if (active is not null && liveLethality <= 0)
             for (int i = 0; i < active.ItemCount && i < active.ItemIds.Length; i++)
             {
                 double leth = data.GetItem(active.ItemIds[i])?.Lethality ?? 0;
@@ -3501,8 +4577,15 @@ public sealed record KillTimingRow(int Level, double MyDamage, double EnemyMaxHp
 
 /// <summary>(M43) One candidate item: my combo's damage on <paramref name="TargetChampion"/> before
 /// and after buying it.</summary>
-public sealed record NextItemRow(string ItemId, int Gold, double Before, double After, double TargetMaxHp, string TargetChampion)
+public sealed record NextItemRow(string ItemId, int Gold, double Before, double After, double TargetMaxHp, string TargetChampion,
+    bool Tank = false)
 {
+    /// <summary>(M46) A tank row: how many percentage points of my max HP the enemies' combined combos lose with the item.</summary>
+    public double ShareCutPoints => (Before - After) * 100;
+
+    /// <summary>(M46) The same, per 1,000 gold.</summary>
+    public double ShareCutPer1000Gold => Gold > 0 ? ShareCutPoints / Gold * 1000 : 0;
+
     public double GainPercent => Before > 0 ? (After - Before) / Before * 100 : 0;
 
     /// <summary>Damage added per 1,000 gold.</summary>

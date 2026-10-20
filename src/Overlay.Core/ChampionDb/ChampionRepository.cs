@@ -153,6 +153,9 @@ public static class ChampionRepository
                 // (loop 551) Base AD — without it the preview AA was 0 and live bonus-AD
                 // ratios over-counted by the whole base (see ChampionSummaryStats.Ad).
                 Ad = stats?.Ad ?? 0,
+                // (M45 loop 50) Base move speed and mana: bonus move speed / bonus mana are the live total minus these.
+                Ms = stats?.Ms ?? 0,
+                Mp = stats?.Mp ?? 0,
             },
             StatsPerLevel = new ChampionStatsPerLevel
             {
@@ -160,6 +163,7 @@ public static class ChampionRepository
                 Armor = stats?.ArmorPerLevel ?? 0,
                 Mr = stats?.MrPerLevel ?? 0,
                 Ad = stats?.AdPerLevel ?? 0,
+                Mp = stats?.MpPerLevel ?? 0,
             },
             Skills = skills,
         };

@@ -20,5 +20,6 @@
       }
     ]
   },
-  "R": { "hits": [ { "type": "Magic", "calc": "MinorDamageTooltip", "count": 1 } ], "tags": ["AoeUltimate"] }
+  "_noteStormR": "(2026-10-19, M45 loop 8) A bola that travels at least 25% of its range also creates the ice storm: TotalDamageTooltip to every affected enemy - Upgraded condition (the empowered throw), unmet = the bola only.",
+  "R": { "hits": [ { "type": "Magic", "calc": "MinorDamageTooltip", "count": 1 }, { "type": "Magic", "conditionType": "Upgraded", "metCalc": "TotalDamageTooltip", "count": 1 } ], "tags": ["AoeUltimate"] }
 }

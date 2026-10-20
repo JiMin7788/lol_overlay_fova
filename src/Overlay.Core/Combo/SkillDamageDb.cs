@@ -141,6 +141,38 @@ public static class SkillDamageDb
     /// <summary>(loop 554) FLAT AD-buff companion — the DataValue is real AD added as-is (Twitch R
     /// "BonusAD" 30/45/60), unlike <see cref="GetAdBuffDataValue"/> whose value is a fraction of
     /// total AD. Null for a slot/champion not curated this way. Never throws.</summary>
+    /// <summary>(M45 loop 33) A curse that makes magic damage taken deal an extra share as true damage (Amumu's
+    /// Cursed Touch: DamageAmp of all pre-mitigation magic damage), curated on the passive slot, and the slots whose
+    /// hits apply it ("AA" = basic attacks). Null when the champion has none.</summary>
+    public static (string DataValue, string[] AppliedBy)? GetMagicTrueAmp(string championId)
+    {
+        var champion = Load(championId);
+        return champion is not null && champion.TryGetValue("P", out var s) && !string.IsNullOrEmpty(s.MagicTrueAmpDataValue)
+            ? (s.MagicTrueAmpDataValue!, s.MagicTrueAmpAppliedBy ?? new[] { "AA" })
+            : null;
+    }
+
+    /// <summary>(M45 loop 44) The DataValue, on the passive slot, by which this champion's critical strikes deal less (Jhin's
+    /// Whisper: "Jhin's critical strikes deal @CritReductionPercent*100@% less damage"). Null when the champion has none.</summary>
+    public static string? GetCritReduction(string championId)
+    {
+        var champion = Load(championId);
+        return champion is not null && champion.TryGetValue("P", out var s) && !string.IsNullOrEmpty(s.CritReductionDataValue)
+            ? s.CritReductionDataValue : null;
+    }
+
+    /// <summary>(M45 loop 37) A stored-damage execute curated on the passive slot (Mel's Overwhelm: each damaging hit
+    /// stores PassiveStackDamage on top of PassiveFlatDamage; once the store exceeds the target's health the next hit
+    /// consumes it) - its two calcs, the spell they live on, and the card's label. Null when the champion has none.</summary>
+    public static (string FlatCalc, string PerStackCalc, string? BinSpell, string? Label)? GetStoredExecute(string championId)
+    {
+        var champion = Load(championId);
+        return champion is not null && champion.TryGetValue("P", out var s)
+               && !string.IsNullOrEmpty(s.StoredExecuteFlatCalc) && !string.IsNullOrEmpty(s.StoredExecutePerStackCalc)
+            ? (s.StoredExecuteFlatCalc!, s.StoredExecutePerStackCalc!, s.StoredExecuteBinSpell, s.StoredExecuteLabel)
+            : null;
+    }
+
     public static string? GetAdBuffFlatDataValue(string championId, string slot)
     {
         var champion = Load(championId);
@@ -161,7 +193,21 @@ public static class SkillDamageDb
     /// curated on a slot, or null when none. Used by the combo editor's "몇 대" (attack-count) control
     /// to decide whether to offer it on a node (parallel to <see cref="GetDurationScaledHit"/>).</summary>
     public static SkillHit? GetPerAttackHit(string championId, string slot)
-        => GetHits(championId, slot)?.FirstOrDefault(h => !string.IsNullOrEmpty(h.PerAttackCalc));
+        => GetHits(championId, slot)?.FirstOrDefault(h => !string.IsNullOrEmpty(h.PerAttackCalc) || h.PerAttackBasicAttack)
+           ?? AttackShapeFor(championId, slot)?.FirstOrDefault(h => !string.IsNullOrEmpty(h.PerAttackCalc));
+
+    /// <summary>(M45 loop 18) The champion's attack-shape hits when <paramref name="slot"/> is a basic-attack
+    /// node ("AA"), else null.</summary>
+    public static IReadOnlyList<SkillHit>? AttackShapeFor(string championId, string slot)
+        => slot.Equals("AA", StringComparison.OrdinalIgnoreCase) ? GetAttackShape(championId) : null;
+
+    /// <summary>(M45 loop 18) The P hits flagged <see cref="SkillHit.AttackShape"/>, or null when the
+    /// champion's basic attack is the ordinary total-AD hit.</summary>
+    public static IReadOnlyList<SkillHit>? GetAttackShape(string championId)
+    {
+        var shape = GetHits(championId, "P")?.Where(h => h.AttackShape).ToList();
+        return shape is { Count: > 0 } ? shape : null;
+    }
 
     /// <summary>(M24 P3/P7) The first distance/charge-scaled hit (<see cref="SkillHit.IsDistanceScaled"/>,
     /// e.g. Hecarim E, Fizz R, Nidalee Q) curated on a slot, or null when none. Used by the combo
@@ -189,7 +235,9 @@ public static class SkillDamageDb
            // knob has to be offered on the attack that consumes the nails.
            ?? BonusHit(championId, slot, StackKnobbed);
 
-    private static bool StackKnobbed(SkillHit h) => h.StackScaled || h.IsStackTiered;
+    private static bool StackKnobbed(SkillHit h) => h.StackScaled || h.IsStackTiered || !string.IsNullOrEmpty(h.PerStackCalc)
+                                                   || !string.IsNullOrEmpty(h.PerStackMultiplierDataValue)
+                                                   || h.PerStack; // (M45 loop 42) Varus W's Blight, on the detonating ability
 
     /// <summary>(M28 §1 "binary conditional hit" — docs/modules/M28_NODE_OPTION_UX.md) The first
     /// conditional-bonus hit (<see cref="SkillHit.IsConditional"/>) curated on a slot, or null when
@@ -207,10 +255,18 @@ public static class SkillDamageDb
     /// it.</para></summary>
     public static SkillHit? GetConditionalHit(string championId, string slot)
         => GetHits(championId, slot)?.FirstOrDefault(UsableConditional)
+           ?? AttackShapeFor(championId, slot)?.FirstOrDefault(UsableConditional)
            ?? ConditionalBonusHit(championId, slot);
 
     private static bool UsableConditional(SkillHit h)
-        => h.IsConditional && Enum.TryParse<ConditionType>(h.ConditionType, out _);
+        => (h.IsConditional || !string.IsNullOrEmpty(h.MetMultiplierDataValue) // (M45 loop 6) Ryze Q's Flux
+            || h.TrueShareWhenMet // (M45 loop 23) Gwen Q's centre
+            || h.MissingHpBonusWhenMet // (M45 loop 26) Hwei QW vs isolated / immobilized
+            || !string.IsNullOrEmpty(h.MetMultiplierCalc) // (M45 loop 35) Shaco Q from behind
+            || !string.IsNullOrEmpty(h.MetPenaltyCalc) // (M45 loop 41) Kled dismounted
+            || h.LandsOnNthAttack is > 0 // (M45 loop 42) Ivern R's consecutive-attack shockwave
+            || h.MetDamageAmp is > 0) // (M45 loop 42) Nidalee's Takedown on a Hunted target
+           && Enum.TryParse<ConditionType>(h.ConditionType, out _);
 
     /// <summary>(loop 479) The same search over the RIDERS that attach to this slot rather than its own
     /// hits — a conditional bonus effect, e.g. Jhin's fourth shot, which is a %missing-health rider on
@@ -323,44 +379,7 @@ public static class SkillDamageDb
             {
                 var path = Path.Combine(DefaultDir, championId + ".json");
                 if (File.Exists(path))
-                {
-                    // Parse values as raw JsonElement so metadata keys like "_note" (a string,
-                    // not a slot object) don't break deserialization; only object-valued,
-                    // non-underscore keys are treated as skill slots.
-                    var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(path), JsonOptions);
-                    if (raw is not null)
-                    {
-                        parsed = new Dictionary<string, CuratedSlot>(StringComparer.OrdinalIgnoreCase);
-                        foreach (var (slot, value) in raw)
-                        {
-                            if (slot.StartsWith('_') || value.ValueKind != JsonValueKind.Object) continue;
-                            var slotJson = value.Deserialize<SkillSlotJson>(JsonOptions);
-                            if (slotJson is null) continue;
-                            var hits = slotJson.Hits ?? Array.Empty<SkillHit>();
-                            var bonus = slotJson.BonusEffects ?? Array.Empty<SkillBonusEffect>();
-                            var tags = slotJson.Tags ?? Array.Empty<string>();
-                            int castCount = slotJson.CastCount is > 1 ? slotJson.CastCount.Value : 1;
-                            // Keep the slot when it carries direct hits, bonus effects, tags, and/or
-                            // an icon (a slot object with none of the four is metadata-only and
-                            // ignored). Tags alone (e.g. a pure-utility shred-only skill with no
-                            // direct damage hit) must still be kept — see SkillDamageDb.GetSlotTags.
-                            //
-                            // (loop 480) An ICON alone is a deliberate "show this cast" — Hwei's WQ
-                            // and WW are a movement boon and a shield, real casts with real
-                            // cooldowns and no damage at all. Dropping them for having no number
-                            // would be the same erasure the muse split exists to undo.
-                            // (loop 539) …or an AD buff alone: Aatrox R deals no damage itself, so
-                            // its entry carries only adBuffDataValue and must still be kept.
-                            if (hits.Length > 0 || bonus.Length > 0 || tags.Length > 0
-                                || !string.IsNullOrEmpty(slotJson.Icon)
-                                || !string.IsNullOrEmpty(slotJson.AdBuffDataValue)
-                                || !string.IsNullOrEmpty(slotJson.AdBuffFlatDataValue))
-                                parsed[slot] = new CuratedSlot(hits, bonus, castCount, tags, slotJson.Icon,
-                                    slotJson.SelfAttachable ?? true, slotJson.AdBuffDataValue,
-                                    slotJson.AdBuffFlatDataValue);
-                        }
-                    }
-                }
+                    parsed = Parse(File.ReadAllText(path));
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
             {
@@ -370,6 +389,57 @@ public static class SkillDamageDb
             Cache[championId] = parsed;
             return parsed;
         }
+    }
+
+    /// <summary>(M45 loop 15) Test-only: a champion's curation from a JSON fixture instead of the data
+    /// file, through the same parser - so a mechanism test keeps its fixture when the real data moves on
+    /// (the pre-rework Malzahar W "Null Zone" literal zone the M24 tests are built on).</summary>
+    internal static void LoadForTests(string championId, string json)
+    {
+        lock (Gate) Cache[championId] = Parse(json);
+    }
+
+    private static Dictionary<string, CuratedSlot>? Parse(string json)
+    {
+        // Parse values as raw JsonElement so metadata keys like "_note" (a string, not a slot object) don't
+        // break deserialization; only object-valued, non-underscore keys are treated as skill slots.
+        var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, JsonOptions);
+        if (raw is null) return null;
+        var parsed = new Dictionary<string, CuratedSlot>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (slot, value) in raw)
+        {
+            if (slot.StartsWith('_') || value.ValueKind != JsonValueKind.Object) continue;
+            var slotJson = value.Deserialize<SkillSlotJson>(JsonOptions);
+            if (slotJson is null) continue;
+            var hits = slotJson.Hits ?? Array.Empty<SkillHit>();
+            var bonus = slotJson.BonusEffects ?? Array.Empty<SkillBonusEffect>();
+            var tags = slotJson.Tags ?? Array.Empty<string>();
+            int castCount = slotJson.CastCount is > 1 ? slotJson.CastCount.Value : 1;
+            // Keep the slot when it carries direct hits, bonus effects, tags, and/or
+            // an icon (a slot object with none of the four is metadata-only and
+            // ignored). Tags alone (e.g. a pure-utility shred-only skill with no
+            // direct damage hit) must still be kept — see SkillDamageDb.GetSlotTags.
+            //
+            // (loop 480) An ICON alone is a deliberate "show this cast" — Hwei's WQ
+            // and WW are a movement boon and a shield, real casts with real
+            // cooldowns and no damage at all. Dropping them for having no number
+            // would be the same erasure the muse split exists to undo.
+            // (loop 539) …or an AD buff alone: Aatrox R deals no damage itself, so
+            // its entry carries only adBuffDataValue and must still be kept.
+            if (hits.Length > 0 || bonus.Length > 0 || tags.Length > 0
+                || !string.IsNullOrEmpty(slotJson.Icon)
+                || !string.IsNullOrEmpty(slotJson.AdBuffDataValue)
+                || !string.IsNullOrEmpty(slotJson.AdBuffFlatDataValue)
+                || !string.IsNullOrEmpty(slotJson.MagicTrueAmpDataValue)
+                || !string.IsNullOrEmpty(slotJson.StoredExecuteFlatCalc)
+                || !string.IsNullOrEmpty(slotJson.CritReductionDataValue))
+                parsed[slot] = new CuratedSlot(hits, bonus, castCount, tags, slotJson.Icon,
+                    slotJson.SelfAttachable ?? true, slotJson.AdBuffDataValue,
+                    slotJson.AdBuffFlatDataValue, slotJson.MagicTrueAmpDataValue, slotJson.MagicTrueAmpAppliedBy,
+                    slotJson.StoredExecuteFlatCalc, slotJson.StoredExecutePerStackCalc, slotJson.StoredExecuteBinSpell,
+                    slotJson.StoredExecuteLabel, slotJson.CritReductionDataValue);
+        }
+        return parsed;
     }
 
     /// <summary>Test-only reset so unit tests don't leak the lazy cache between cases.</summary>
@@ -420,6 +490,31 @@ public static class SkillDamageDb
         [JsonPropertyName("adBuffFlatDataValue")]
         public string? AdBuffFlatDataValue { get; init; }
 
+        /// <summary>(M45 loop 33) See <see cref="SkillDamageDb.GetMagicTrueAmp"/>.</summary>
+        [JsonPropertyName("magicTrueAmpDataValue")]
+        public string? MagicTrueAmpDataValue { get; init; }
+
+        /// <summary>(M45 loop 44) See <see cref="SkillDamageDb.GetCritReduction"/>.</summary>
+        [JsonPropertyName("critReductionDataValue")]
+        public string? CritReductionDataValue { get; init; }
+
+        /// <summary>(M45 loop 33) See <see cref="SkillDamageDb.GetMagicTrueAmp"/>.</summary>
+        [JsonPropertyName("magicTrueAmpAppliedBy")]
+        public string[]? MagicTrueAmpAppliedBy { get; init; }
+
+        /// <summary>(M45 loop 37) See <see cref="SkillDamageDb.GetStoredExecute"/>.</summary>
+        [JsonPropertyName("storedExecuteFlatCalc")]
+        public string? StoredExecuteFlatCalc { get; init; }
+
+        [JsonPropertyName("storedExecutePerStackCalc")]
+        public string? StoredExecutePerStackCalc { get; init; }
+
+        [JsonPropertyName("storedExecuteBinSpell")]
+        public string? StoredExecuteBinSpell { get; init; }
+
+        [JsonPropertyName("storedExecuteLabel")]
+        public string? StoredExecuteLabel { get; init; }
+
         /// <summary>(loop 175) Optional CommunityDragon game-asset icon path for this slot, used by the
         /// combo editor's palette to show a real ability icon for EXTRA (transform-form) slots whose
         /// icon isn't in Data Dragon's base P/Q/W/E/R set — e.g. Jayce "QCannon" -&gt;
@@ -437,7 +532,10 @@ public static class SkillDamageDb
     /// "tags" key to <c>Array.Empty&lt;string&gt;()</c> before constructing this). Hits/BonusEffects/
     /// Tags may all be empty (a slot with only bonus effects, or only tags and no direct hits, is
     /// still kept — see <see cref="SkillDamageDb.Load"/>).</summary>
-    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable, string? AdBuffDataValue = null, string? AdBuffFlatDataValue = null);
+    private readonly record struct CuratedSlot(SkillHit[] Hits, SkillBonusEffect[] BonusEffects, int CastCount, string[] Tags, string? Icon, bool SelfAttachable, string? AdBuffDataValue = null, string? AdBuffFlatDataValue = null,
+        string? MagicTrueAmpDataValue = null, string[]? MagicTrueAmpAppliedBy = null,
+        string? StoredExecuteFlatCalc = null, string? StoredExecutePerStackCalc = null, string? StoredExecuteBinSpell = null,
+        string? StoredExecuteLabel = null, string? CritReductionDataValue = null);
 }
 
 /// <summary>A champion-intrinsic bonus damage source curated on a skill slot: extra hits that
@@ -470,10 +568,85 @@ public sealed class SkillBonusEffect
     /// <para>Uncapped is wrong for most of them and was a known over-count: a plain ability-slot
     /// on-hit fires on EVERY auto after that ability was cast, so a Q-A-A-A combo charged Rengar's
     /// single stab three times. Evelynn's curation note had already recorded the same defect against
-    /// her 3-proc cap. Ignored for a P-slot or AlwaysOn effect, which genuinely do fire on every
-    /// attack.</para></summary>
+    /// her 3-proc cap. Ignored for an AlwaysOn ability-slot effect, which genuinely fires on every
+    /// attack. (M45 loop 20) A P-slot effect honors it when set: a passive on a cooldown (Zed, Gangplank)
+    /// procs once in a burst combo.</para></summary>
     [JsonPropertyName("maxProcs")]
     public int MaxProcs { get; init; }
+
+    /// <summary>(M45 loop 5) Fires only on every Nth trigger of the combo — Braum's passive stuns on
+    /// the 4th stack, Vel'Koz's on the 3rd. Stacks carried into the combo are unknown, so the resolved
+    /// number assumes none and the range ceiling assumes N-1 (the Kraken Slayer convention). 0 = every.</summary>
+    [JsonPropertyName("procEvery")]
+    public int ProcEvery { get; init; }
+
+    /// <summary>(M45 loop 5) Fires on every trigger once N have happened — Volibear's passive at 5
+    /// stacks. Same unknown-prior-stacks convention as <see cref="ProcEvery"/>. 0 = from the first.</summary>
+    [JsonPropertyName("procFrom")]
+    public int ProcFrom { get; init; }
+
+    /// <summary>(M45 loop 42) Ability casts that also COUNT toward an on-hit rider's <see cref="ProcEvery"/>, on the
+    /// same counter as the attacks, and carry the proc when theirs is the Nth hit: "every third Attack or Ability"
+    /// (Gnar W, Ekko P, Akshan P), Vault Breaker's Denting Blows stack (Vi W). One per cast however often the cast hits
+    /// - a floor.</summary>
+    [JsonPropertyName("countsAbilities")]
+    public string[]? CountsAbilities { get; init; }
+
+    /// <summary>(M45 loop 42) A combo that places this slot's node states the procs itself - Gnar's W node is one Hyper
+    /// proc (the measured golden row) - so the automatic cadence stays off in it.</summary>
+    [JsonPropertyName("manualSlot")]
+    public string? ManualSlot { get; init; }
+
+    /// <summary>(M45 loop 42) The rider stops once any of these slots has been cast: another form's casts (Mini Gnar's
+    /// passive does not proc while he is Mega, and when he reverts is unknown, so it is not counted after).</summary>
+    [JsonPropertyName("endedBy")]
+    public string[]? EndedBy { get; init; }
+
+    /// <summary>(M45 loop 8) An on-hit rider that only the attack right after a spell carries - any
+    /// spell, re-armed by each cast and spent by the attack (Lucian's Lightslinger second shot). The
+    /// passive-slot counterpart of an ability-slot empowered attack, which only its own cast arms.</summary>
+    [JsonPropertyName("afterAnyAbility")]
+    public bool AfterAnyAbility { get; init; }
+
+    /// <summary>(M45 loop 43) How many attacks one cast arms an <see cref="AfterAnyAbility"/> rider for - Taric's Bravado,
+    /// "After using an Ability, Taric's next 2 Attacks". 0 / 1 = the attack right after the cast.</summary>
+    [JsonPropertyName("attacksPerArm")]
+    public int AttacksPerArm { get; init; }
+
+    /// <summary>(M45 loop 10) An on-ability rider its OWN slot's cast arms and the next ability spends -
+    /// a mark another ability detonates (LeBlanc Q's sigil). It never fires on the cast that placed it.
+    /// (M45 loop 43) <see cref="ArmedBy"/> names other casts that place it too (Vex's E applies the P's Gloom).</summary>
+    [JsonPropertyName("consumedByNextAbility")]
+    public bool ConsumedByNextAbility { get; init; }
+
+    /// <summary>(M45 loop 25) An on-hit rider the Nth ability cast arms, spent by the next attack: Sona's
+    /// Power Chord after 3 casts. Casts before the combo are unknown, so the resolved number assumes none and
+    /// the range ceiling assumes N-1 (the Kraken convention). 0 = not cast-armed.</summary>
+    [JsonPropertyName("castsToArm")]
+    public int CastsToArm { get; init; }
+
+    /// <summary>(M45 loop 25) An on-hit rider that stores one charge per ability cast, up to this many, all
+    /// spent by the next attack - one proc each (Seraphine's notes, MaxNotes 4). Only the combo's own casts
+    /// count (allies' are unknown). 0 = not charged by casts.</summary>
+    [JsonPropertyName("castCharges")]
+    public int CastCharges { get; init; }
+
+    /// <summary>(M45 loop 43) The stored <see cref="CastCharges"/> are spent ONE per attack, not all by the next one - Riven's
+    /// Runic Blade and Ambessa's Drakehound's Step: each cast stores a charge (up to the cap), each attack spends one.
+    /// A node that folds several casts (<c>castCount</c>, Riven Q) stores one per cast.</summary>
+    [JsonPropertyName("chargePerAttack")]
+    public bool ChargePerAttack { get; init; }
+
+    /// <summary>(M45 loop 25) The ability letters whose casts count toward <see cref="CastsToArm"/> /
+    /// <see cref="CastCharges"/> - Sona's basic abilities only (<c>["Q", "W", "E"]</c>). Null = any ability.</summary>
+    [JsonPropertyName("armedBy")]
+    public string[]? ArmedBy { get; init; }
+
+    /// <summary>(M45 loop 29) A cast-armed rider that fires only when the LAST arming cast was one of these letters -
+    /// Sona's Power Chord takes the last song's form (Q last: the Staccato chord instead). Its count still resets
+    /// with its siblings'. Null = whichever cast armed it.</summary>
+    [JsonPropertyName("lastArmingCast")]
+    public string[]? LastArmingCast { get; init; }
 
     /// <summary>Whether this effect can ride a node in <paramref name="slot"/> ("AA" for a basic
     /// attack). An explicit <see cref="AppliesTo"/> decides; otherwise the TRIGGER does, which is the
@@ -608,6 +781,37 @@ public sealed class SkillHit
     [JsonPropertyName("splitType")]
     public HitDamageType? SplitType { get; init; }
 
+    /// <summary>(M45 loop 9) The damage type of a conditional hit's MET half when it differs from
+    /// <see cref="Type"/>: Rek'Sai E's max-Fury bite is true damage, Sett W's centre punch true where
+    /// the sides are physical. Null = the met half keeps <see cref="Type"/>.</summary>
+    [JsonPropertyName("metType")]
+    public HitDamageType? MetType { get; init; }
+
+    /// <summary>(M45 loop 23) The share of this hit CONVERTED to true damage, the rest keeping
+    /// <see cref="Type"/>: Camille Q2's level-scaled DamageConversionPercentage (a calc) or Gwen Q's centre
+    /// TrueDamageConversion (a DataValue, the >=1-is-a-percent reading). Set at most one.</summary>
+    [JsonPropertyName("trueShareCalc")]
+    public string? TrueShareCalc { get; init; }
+
+    /// <summary>(M45 loop 23) See <see cref="TrueShareCalc"/>.</summary>
+    [JsonPropertyName("trueShareDataValue")]
+    public string? TrueShareDataValue { get; init; }
+
+    /// <summary>(M45 loop 23) The conversion applies only when the hit's <see cref="ConditionType"/> holds
+    /// (Gwen Q: the snip's centre - a SweetSpot box); the number itself does not change.</summary>
+    [JsonPropertyName("trueShareWhenMet")]
+    public bool TrueShareWhenMet { get; init; }
+
+    /// <summary>(M45 loop 32) The converted share's damage type when it is not true damage - Yone's second attack
+    /// deals MagicDamageSplit of itself as MAGIC. Null = true damage (Camille, Gwen).</summary>
+    [JsonPropertyName("shareType")]
+    public HitDamageType? ShareType { get; init; }
+
+    /// <summary>(M45 loop 32) On an attack-shape hit: the conversion applies to every Nth attack of the combo only
+    /// (Yone P: every second). The combo's first attack is counted as the first (prior attacks are unknown).</summary>
+    [JsonPropertyName("shareEveryNthAttack")]
+    public int ShareEveryNthAttack { get; init; }
+
     [JsonPropertyName("calc")]
     public string Calc { get; init; } = string.Empty;
 
@@ -618,6 +822,36 @@ public sealed class SkillHit
     /// set it, and on any champion whose P is not curated this way.</summary>
     [JsonPropertyName("replacesBasicAttack")]
     public bool ReplacesBasicAttack { get; init; }
+
+    /// <summary>(M45 loop 18) A P hit that IS this champion's basic attack, every attack (not only after a
+    /// spell like <see cref="ReplacesBasicAttack"/>): Ashe's crit-folded Frost Shot, Zeri's magic attack,
+    /// Graves' bullets. The AA node resolves these instead of total AD; it crits only if the hit
+    /// <see cref="CanCrit"/>. Knobs on the AA node (condition, hit count) reach them.</summary>
+    [JsonPropertyName("attackShape")]
+    public bool AttackShape { get; init; }
+
+    /// <summary>(M45 loop 20) "This Ability acts like an Attack: it applies On-hit effects" (Yasuo / Yone Q,
+    /// Gangplank Q): the cast carries the champion's always-on on-hit riders and the build's on-hit items,
+    /// as a basic attack would. Not the empowered-next-attack riders or spellblade.</summary>
+    [JsonPropertyName("appliesOnHit")]
+    public bool AppliesOnHit { get; init; }
+
+    /// <summary>(M45 loop 47) The effectiveness this hit's on-hit effects apply at ("applies On-Hit effects at
+    /// @OnHitRatio*100@% damage": Katarina R's daggers, Urgot W's shots, Bel'Veth E's strikes): a DataValue, or DataValues
+    /// joined by '*' (Master Yi Q's later strikes: BaseOnHitMultiplier*SubsequentHitMultiplier). Null = 100%.</summary>
+    [JsonPropertyName("onHitEffectivenessDataValue")]
+    public string? OnHitEffectivenessDataValue { get; init; }
+
+    /// <summary>(M45 loop 47) How many times the hit applies on-hit effects when that is not its count (Warwick R: "3
+    /// distinct times over its duration"; Renekton W's strikes, curated as one total). 0 = its count, or for a per-attack
+    /// hit the node's counted attacks.</summary>
+    [JsonPropertyName("onHitStrikes")]
+    public int OnHitStrikes { get; init; }
+
+    /// <summary>(M45 loop 21) The hit's shred applies only when its condition holds (Renekton E: the Fury
+    /// Bonus Dice removes armor, the plain one does not).</summary>
+    [JsonPropertyName("shredWhenMet")]
+    public bool ShredWhenMet { get; init; }
 
     /// <summary>(M22 multi-form) Optional BIN spell leaf-name whose <c>mSpellCalculations</c> holds
     /// this hit's <see cref="Calc"/> (and any %HP/flat/per-second calc) — for a transform/stance/
@@ -657,7 +891,47 @@ public sealed class SkillHit
     /// <summary>True when this hit is distance/charge-scaled (both <see cref="MinCalc"/> and
     /// <see cref="MaxCalc"/> are set).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool IsDistanceScaled => !string.IsNullOrEmpty(MinCalc) && !string.IsNullOrEmpty(MaxCalc);
+    public bool IsDistanceScaled => (!string.IsNullOrEmpty(MinCalc) && !string.IsNullOrEmpty(MaxCalc))
+                                    || ChargeLinear // (M45 loop 42) Briar E
+                                    || !string.IsNullOrEmpty(HpPercentMaxCalc); // (M45 loop 51) Kled R
+
+    /// <summary>(M45 loop 42) The hit's <see cref="Calc"/> is its FULL-charge number, landing x the charge knob's fraction
+    /// (<see cref="ComboNode.UserDistanceFraction"/>, 0-1); unset reads full charge, the anchor it resolved to before
+    /// (Briar E: "deals up to Damage based on time charged"). Linear from 0: the uncharged floor the wiki gives (one
+    /// 0.025 s step, 2.5% of the maximum) is in neither the BIN nor the tooltip, so the knob's 0 end is that much low.</summary>
+    [JsonPropertyName("chargeLinear")]
+    public bool ChargeLinear { get; init; }
+
+    /// <summary>(M45 loop 51) A %HP hit's fraction at the far end of its distance / charge knob
+    /// (<see cref="ComboNode.UserDistanceFraction"/>): <see cref="HpPercentCalc"/> is the knob's 0 end and the unset anchor,
+    /// this its 1 end, linear between (Kled R: "MinimumDamageTooltip to MaximumChargeDamage max Health ... based on
+    /// distance traveled" - a form box could only say one end or the other).</summary>
+    [JsonPropertyName("hpPercentMaxCalc")]
+    public string? HpPercentMaxCalc { get; init; }
+
+    /// <summary>(M45 loop 51) The hit happens only at full charge: while the node's charge knob is set below 1 it is not
+    /// there at all (Briar E's wall damage: "When fully charged, the scream Knocks Back enemies, dealing WallHitDamage to
+    /// those who hit a wall"). Unset reads the slot's full-charge anchor, so the hit stays.</summary>
+    [JsonPropertyName("fullChargeOnly")]
+    public bool FullChargeOnly { get; init; }
+
+    /// <summary>(M45 loop 51) Further facts the node's ONE box asserts for this hit's met number (RECURRING_TRAPS 1.4) - each
+    /// a user-assumed <see cref="ConditionType"/> name. Udyr's awakened lightning strikes six times on an ISOLATED target
+    /// ("strikes bounce to other nearby targets"), so its Upgraded box also asserts VsIsolated. The engine reads the box;
+    /// the badge's tooltip names these, so the user knows what a click claims.</summary>
+    [JsonPropertyName("alsoAssumes")]
+    public string[]? AlsoAssumes { get; init; }
+
+    /// <summary>(M45 loop 42) The tooltip's LITERAL increase, as a fraction, while the hit's condition holds - Riot prints it
+    /// as text, not a placeholder, and no BIN value carries it (Nidalee's Takedown on a Hunted target: "deals 30%
+    /// increased damage"). <see cref="MetDamageAmpTooltip"/> names that tooltip; tools/tooltip_audit checks the number
+    /// against its text, so a patch that moves it fails the audit instead of drifting.</summary>
+    [JsonPropertyName("metDamageAmp")]
+    public double? MetDamageAmp { get; init; }
+
+    /// <summary>(M45 loop 42) The tooltip key whose text states <see cref="MetDamageAmp"/>.</summary>
+    [JsonPropertyName("metDamageAmpTooltip")]
+    public string? MetDamageAmpTooltip { get; init; }
 
     /// <summary>(M25 §11.G) The condition gating a CONDITIONAL-BONUS hit — the
     /// <see cref="Overlay.Core.Combo.ConditionType"/> name ("ResourceGte", "VsIsolated", "VsDebuffed",
@@ -692,6 +966,11 @@ public sealed class SkillHit
     [JsonPropertyName("metCalc")]
     public string? MetCalc { get; init; }
 
+    /// <summary>(M45 loop 7) The MET half as a plain rank-indexed BIN DataValue when there is no calc for
+    /// it (Evelynn E's EmpoweredDamage), the conditional twin of <see cref="FlatDataValue"/>.</summary>
+    [JsonPropertyName("metFlatDataValue")]
+    public string? MetFlatDataValue { get; init; }
+
     /// <summary>(loop 479) The MET value as a %HP FRACTION rather than a flat number — the same role
     /// <see cref="MetCalc"/> plays, for a condition whose empowered half is a percentage of the
     /// target's health (Jhin's fourth shot: 15/20/25% of MISSING health; Udyr's Awakened claw: a
@@ -704,6 +983,11 @@ public sealed class SkillHit
     /// 15% of the target's health. Set at most ONE of the two.</para></summary>
     [JsonPropertyName("metHpPercentCalc")]
     public string? MetHpPercentCalc { get; init; }
+
+    /// <summary>(M45 loop 23) The MET half as a %HP DataValue rather than a calc (Zaahen E's edge:
+    /// PercentHPDamage of max health as magic damage) - the same shape as <see cref="MetHpPercentCalc"/>.</summary>
+    [JsonPropertyName("metHpPercentDataValue")]
+    public string? MetHpPercentDataValue { get; init; }
 
     /// <summary>(§40 loop 548) CEILING companion to <see cref="MetHpPercentCalc"/> for a MET fraction
     /// that additionally scales with the triggering cast's CHARGE: the resolved fraction interpolates
@@ -753,11 +1037,76 @@ public sealed class SkillHit
     [JsonPropertyName("missingHpBonusDataValue")]
     public string? MissingHpBonusDataValue { get; init; }
 
+    /// <summary>(M45 loop 26) The missing-health growth applies only when the hit's <see cref="ConditionType"/>
+    /// holds (Hwei QW: isolated or immobilized targets); otherwise the hit is its plain base.</summary>
+    [JsonPropertyName("missingHpBonusWhenMet")]
+    public bool MissingHpBonusWhenMet { get; init; }
+
+    /// <summary>(M45 loop 40) The missing-health growth as the EXTRA damage at none left (a calc), the tooltip's own
+    /// "increases the damage up to X" (Hwei Q's Tooltip_QWBonusDamage) - the same live shape as
+    /// <see cref="MissingHpBonusDataValue"/>, its scalar read as calc / base.</summary>
+    [JsonPropertyName("missingHpBonusCalc")]
+    public string? MissingHpBonusCalc { get; init; }
+
+    /// <summary>(M45 loop 26) A calc whose value multiplies the hit as is (no percent reading): Aphelios R's
+    /// CritDamageModCalc (its crit expectation, 1 + 0.3 x crit chance x (crit damage - 1)), Syndra W's
+    /// TOOLTIPONLYPassiveBonusPercent (the empowered cast's extra true share).</summary>
+    [JsonPropertyName("damageMultiplierCalc")]
+    public string? DamageMultiplierCalc { get; init; }
+
+    /// <summary>(M45 loop 35) A calc multiplier applied only when the hit's <see cref="ConditionType"/> holds - a
+    /// GUARANTEED crit at the tooltip's own multiplier (Shaco Q from behind: QCritDamageMod). The hit then does not
+    /// also roll the random crit.</summary>
+    [JsonPropertyName("metMultiplierCalc")]
+    public string? MetMultiplierCalc { get; init; }
+
+    /// <summary>(M45 loop 41) A calc share the hit LOSES when its condition holds - it deals 1 - calc of itself (Kled's
+    /// dismounted attacks: DismountedAttackPenalty less to champions).</summary>
+    [JsonPropertyName("metPenaltyCalc")]
+    public string? MetPenaltyCalc { get; init; }
+
+    /// <summary>(M45 loop 36) The crit's EXTRA as a calc - a crit deals (1 + calc) x normal instead of the usual
+    /// multiplier (Graves P: CritDamageMult = 0.5 x (crit damage - 1)).</summary>
+    [JsonPropertyName("critExtraCalc")]
+    public string? CritExtraCalc { get; init; }
+
+    /// <summary>(M45 loop 38) The hit exists only when this ability was cast EARLIER in the combo - a summon that
+    /// cast created (Wukong Q's clone attack needs his W decoy). A combo-sequence fact, not an assumption.</summary>
+    [JsonPropertyName("requiresPriorCast")]
+    public string? RequiresPriorCast { get; init; }
+
+    /// <summary>(M45 loop 39) A repeat hit worth the champion's own attack (total AD) each, on the count knob - a pet
+    /// that mirrors him (Shaco's R clone at CloneAADamagePercent). The share comes from the multiplier fields.</summary>
+    [JsonPropertyName("perAttackBasicAttack")]
+    public bool PerAttackBasicAttack { get; init; }
+
+    /// <summary>(M45 loop 38) The spell <see cref="DamageMultiplierDataValue"/> lives on when it is not the hit's own
+    /// (Wukong's clone share CloneDamageMod is on W while the Q bonus is on Q).</summary>
+    [JsonPropertyName("damageMultiplierBinSpell")]
+    public string? DamageMultiplierBinSpell { get; init; }
+
+    /// <summary>(M45 loop 36) The hit lands only when the attack crits: its expected value is its crit number times
+    /// the crit chance, and it does not roll again (Graves' two extra crit bullets, Yunara's crit bonus).</summary>
+    [JsonPropertyName("critOnly")]
+    public bool CritOnly { get; init; }
+
+    /// <summary>(M45 loop 44) On an on-hit rider: when its condition holds on an attack node, that ATTACK critically strikes
+    /// for sure instead of rolling the expected crit - Jhin's fourth shot ("always critically strikes"), whose box is this
+    /// rider's.</summary>
+    [JsonPropertyName("guaranteedCritWhenMet")]
+    public bool GuaranteedCritWhenMet { get; init; }
+
+    /// <summary>(M45 loop 36) The hit is this calc's fraction of the champion's total AD - a share of the attack itself
+    /// (Yunara P: Calc_Damage_Amp of the critical strike).</summary>
+    [JsonPropertyName("attackDamageFractionCalc")]
+    public string? AttackDamageFractionCalc { get; init; }
+
     /// <summary>True when this hit is a conditional-bonus hit (both <see cref="ConditionType"/> and
     /// <see cref="MetCalc"/> are set).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsConditional => !string.IsNullOrEmpty(ConditionType)
-                                && (!string.IsNullOrEmpty(MetCalc) || !string.IsNullOrEmpty(MetHpPercentCalc));
+                                && (!string.IsNullOrEmpty(MetCalc) || !string.IsNullOrEmpty(MetHpPercentCalc)
+                                    || !string.IsNullOrEmpty(MetFlatDataValue) || !string.IsNullOrEmpty(MetHpPercentDataValue));
 
     /// <summary>(M25 §11.G) True when this hit's <see cref="Calc"/> carries a BuffCounter per-stack term
     /// (e.g. Nasus Q Siphoning-Strike stacks) that the user's stack knob
@@ -917,6 +1266,21 @@ public sealed class SkillHit
     [JsonPropertyName("perSecondCalc")]
     public string? PerSecondCalc { get; init; }
 
+    /// <summary>(M45 loop 11) A flat per-second rate read from a plain BIN DataValue when no calc holds it
+    /// (Amumu W's BaseDamage 10 per second - its only calc is the 0.5 s tick). Same exposure knob as
+    /// <see cref="PerSecondCalc"/>.</summary>
+    [JsonPropertyName("perSecondDataValue")]
+    public string? PerSecondDataValue { get; init; }
+
+    /// <summary>(M45 loop 16) "Deals a minimum of X": the hit's floor, a calc (Ornn W TotalMinimumDamage) or a
+    /// DataValue (Dr. Mundo Q MinimumDamage, Vayne W DamageFloor). A max-health share takes it at once; a
+    /// current-health execute carries it to M05, which compares it with the target's health there.</summary>
+    [JsonPropertyName("minDamageCalc")]
+    public string? MinDamageCalc { get; init; }
+
+    [JsonPropertyName("minDamageDataValue")]
+    public string? MinDamageDataValue { get; init; }
+
     /// <summary>(§27 Nasus R) Name of a BIN <c>mSpellCalculations</c>/DataValue giving this hit's
     /// %-of-MAX-HP rate for a persistent DoT — the BIN-SOURCED, rank-scaled sibling of the literal
     /// <see cref="PerSecondHpPercent"/>. Motivating case: Nasus R (Fury of the Sands)'s
@@ -1024,6 +1388,69 @@ public sealed class SkillHit
     [JsonPropertyName("maxDurationSeconds")]
     public double? MaxDurationSeconds { get; init; }
 
+    /// <summary>(M45 loop 7) The most repeat hits the tooltip allows on one target for a
+    /// <see cref="PerAttackCalc"/> hit (Syndra R: 4 spheres beyond the first 3; Yuumi R: 4 waves after the
+    /// first). Clamps the node's count knob and is the range's max-exposure value; unset = no cap, and
+    /// the range does not widen on that axis. A literal like <see cref="MaxDurationSeconds"/>; metric F
+    /// checks it wherever the tooltip prints the summed maximum.</summary>
+    [JsonPropertyName("maxAttackCount")]
+    public int? MaxAttackCount { get; init; }
+
+    /// <summary>(M45 loop 27) A rank-indexed BIN count capping the repeat-hit knob, plus
+    /// <see cref="MaxAttackCountOffset"/> (-1 when the slot's first hit is curated on its own): Xerath R's
+    /// NumberOfShots (4/5/6), Akshan R's NumberOfBullets (5/6/7). <see cref="MaxAttackCount"/> also caps when set.</summary>
+    [JsonPropertyName("maxAttackCountDataValue")]
+    public string? MaxAttackCountDataValue { get; init; }
+
+    /// <summary>(M45 loop 27) See <see cref="MaxAttackCountDataValue"/>.</summary>
+    [JsonPropertyName("maxAttackCountOffset")]
+    public int MaxAttackCountOffset { get; init; }
+
+    /// <summary>(M45 loop 42) The <see cref="PerAttackCalc"/> hit lands ONCE, on the node's Nth counted attack, and
+    /// with a <see cref="ConditionType"/> only while it holds (Ivern R: Daisy's 3rd CONSECUTIVE attack on one champion
+    /// launches TotalShockwaveDamage). A later landing is not counted: whether the 6th or the 7th attack launches the
+    /// next one is ShockwaveCD against Daisy's attack speed, which no data carries.</summary>
+    [JsonPropertyName("landsOnNthAttack")]
+    public int? LandsOnNthAttack { get; init; }
+
+    /// <summary>(M45 loop 27) Each repeat of a <see cref="PerAttackCalc"/> hit gains this calc once per EARLIER hit of
+    /// the cast, the slot's first included: the k repeats add calc x k(k+1)/2 (Xerath R's Arcane Perfection - a
+    /// missile that hits a champion empowers the following ones, not itself).</summary>
+    [JsonPropertyName("rampPerCountCalc")]
+    public string? RampPerCountCalc { get; init; }
+
+    /// <summary>(M45 loop 7) A bonus calc added once per stack on the node's stack knob, on top of the
+    /// hit's own number (Yasuo E's BonusDamagePerStack). Unset knob = 0 stacks.</summary>
+    [JsonPropertyName("perStackCalc")]
+    public string? PerStackCalc { get; init; }
+
+    /// <summary>(M45 loop 31) The hit's stacks, when the node's stack knob is unset, are the combo's own EARLIER
+    /// damage instances (attack and ability hits before this node) - Mel R's per-Overwhelm-stack term, which
+    /// every damaging hit applies. Stacks from before the combo are unknown and not counted.</summary>
+    [JsonPropertyName("stacksFromPriorHits")]
+    public bool StacksFromPriorHits { get; init; }
+
+    /// <summary>(M45 loop 42) The hit's number is ONE stack's: it lands x the node's stack knob, at most
+    /// <see cref="MaxStacksDataValue"/> / <see cref="MaxStacks"/>. An unset knob reads the CAP - the full detonation the
+    /// hit stood for before the knob existed (Varus W's Blight: PercentHPPerStack per stack, up to 3; the measured
+    /// GoldenVarusCompositionTests rows are 3-stack detonations), the same anchor Varus Q's unset charge keeps.</summary>
+    [JsonPropertyName("perStack")]
+    public bool PerStack { get; init; }
+
+    /// <summary>(M45 loop 7) The BIN DataValue capping <see cref="PerStackCalc"/>'s stacks (Yasuo E MaxStacks).</summary>
+    [JsonPropertyName("maxStacksDataValue")]
+    public string? MaxStacksDataValue { get; init; }
+
+    /// <summary>(M45 loop 12) A fraction of the hit added per stack on the node's stack knob (Darius R:
+    /// +20% per Hemorrhage), the multiplicative twin of <see cref="PerStackCalc"/>.</summary>
+    [JsonPropertyName("perStackMultiplierDataValue")]
+    public string? PerStackMultiplierDataValue { get; init; }
+
+    /// <summary>(M45 loop 12) The stack cap as a literal when the BIN holds it on another spell (Darius's 5
+    /// Hemorrhage stacks live on his passive). <see cref="MaxStacksDataValue"/> wins when both are set.</summary>
+    [JsonPropertyName("maxStacks")]
+    public int? MaxStacks { get; init; }
+
     /// <summary>GUARANTEED exposure seconds for a duration-scaled hit whose target CANNOT escape the
     /// zone during that window — an ability that ROOTS/immobilizes on impact (Mel E "Solar Snare").
     /// Unlike an escapable zone, this exposure is not an inference beyond Last Seen (P2): the mechanic
@@ -1036,6 +1463,12 @@ public sealed class SkillHit
     [JsonPropertyName("guaranteedSeconds")]
     public double? GuaranteedSeconds { get; init; }
 
+    /// <summary>(M45 loop 25) A finale that lands only after this many seconds of the node's exposure knob -
+    /// Fiddlesticks W's missing-health burst at the end of its 2 s drain. Below that (unset = 0 s, P2) the hit
+    /// is dropped; the range ceiling's full exposure reaches it.</summary>
+    [JsonPropertyName("requiresExposureSeconds")]
+    public double? RequiresExposureSeconds { get; init; }
+
     /// <summary>True when this hit is a duration-scaled, user-controlled partial-damage hit (see
     /// <see cref="PerSecondHpPercent"/>) rather than an assumed-landed single hit. Inferred from BOTH
     /// <see cref="PerSecondHpPercent"/> and <see cref="MaxDurationSeconds"/> being set — the two
@@ -1046,9 +1479,26 @@ public sealed class SkillHit
     /// plus a max duration qualifies.</summary>
     [JsonIgnore]
     public bool IsDurationScaled =>
-        (PerSecondHpPercent is > 0 || !string.IsNullOrEmpty(PerSecondCalc)
+        (PerSecondHpPercent is > 0 || !string.IsNullOrEmpty(PerSecondCalc) || !string.IsNullOrEmpty(PerSecondDataValue)
          || !string.IsNullOrEmpty(PerSecondHpPercentDataValue)
-         || !string.IsNullOrEmpty(PerSecondHpPercentCalc)) && MaxDurationSeconds is > 0;
+         || !string.IsNullOrEmpty(PerSecondHpPercentCalc) || !string.IsNullOrEmpty(TotalOverDurationCalc)) && MaxDurationSeconds is > 0;
+
+    /// <summary>(M45 loop 28) A calc that is the WHOLE duration's damage, dealt evenly over
+    /// <see cref="MaxDurationSeconds"/> (Jayce's Lightning Field: Damage over Duration) - the exposure knob takes
+    /// its share. The BIN has no per-second calc for these.</summary>
+    [JsonPropertyName("totalOverDurationCalc")]
+    public string? TotalOverDurationCalc { get; init; }
+
+    /// <summary>(M45 loop 28) <see cref="DamagePenaltyDataValue"/> applies to the repeats AFTER the first of a
+    /// <see cref="PerAttackCalc"/> hit (Taliyah E: "stones beyond the first deal 25% less").</summary>
+    [JsonPropertyName("penaltyAfterFirst")]
+    public bool PenaltyAfterFirst { get; init; }
+
+    /// <summary>(M45 loop 28) The hit's damage at FULL missing health, the growth linear between (Samira P: "increased
+    /// up to EmpoweredMeleeDamageTooltip based on the target's missing Health") - the same live shape as
+    /// <see cref="MissingHpBonusDataValue"/>, its scalar read as max / base - 1.</summary>
+    [JsonPropertyName("missingHpMaxCalc")]
+    public string? MissingHpMaxCalc { get; init; }
 
     /// <summary>(M27) True when this curated hit can crit — abilities can't crit by default (only
     /// auto-attacks, via <see cref="Overlay.Core.Combo.ComboEngine"/>'s own AA-only rule); this ORs in
@@ -1064,6 +1514,92 @@ public sealed class SkillHit
     /// hit (AA) byte-identical (see DamageEngine.CritFactor's backward-compat proof).</summary>
     [JsonPropertyName("critDamageScalar")]
     public double CritDamageScalar { get; init; } = 1.0;
+
+    /// <summary>(2026-10-19) BIN calc for this hit's damage WHEN IT CRITS — what the tooltip's
+    /// "can critically strike for @X@" names (Garen E: CriticalDamage = TotalDamage × (1 + CritMod ×
+    /// (critDamage − 1)), 130% at the 200% base). Every ability crits for its own amount, so the
+    /// ratio comes from the game data instead of a curated <see cref="CritDamageScalar"/>: the runner
+    /// evaluates both calcs and derives the scalar the engine applies. Requires
+    /// <see cref="CanCrit"/>. Null = use <see cref="CritDamageScalar"/>.</summary>
+    [JsonPropertyName("critCalc")]
+    public string? CritCalc { get; init; }
+
+    /// <summary>(2026-10-19) BIN calc for the EXTRA damage a crit adds (Master Yi Q's CritBonus, "can
+    /// critically strike for an additional @CritBonus@"): crit = this hit's damage + it. Used when the
+    /// tooltip states the crit as a bonus instead of a total; requires <see cref="CanCrit"/>.</summary>
+    [JsonPropertyName("critBonusCalc")]
+    public string? CritBonusCalc { get; init; }
+
+    /// <summary>(2026-10-19) The non-crit counterpart of <see cref="CritCalc"/> when this hit's own calc
+    /// is a different quantity (Miss Fortune R: the hit is the whole channel, TotalPhysicalDamage,
+    /// while the crit is stated per wave, CritDamagePerWave of PhysicalDamagePerWave).</summary>
+    [JsonPropertyName("critBaseCalc")]
+    public string? CritBaseCalc { get; init; }
+
+    /// <summary>(2026-10-19) This hit is an attack, or part of one — an empowered next attack such as
+    /// Garen Q. A target's Plated Steelcaps reduces it like a basic attack. A folded swing
+    /// (<see cref="BasicAttack"/>) and every hit of its slot count as attacks without this flag.</summary>
+    [JsonPropertyName("isAttack")]
+    public bool IsAttack { get; init; }
+
+    /// <summary>(2026-10-19) BIN DataValue for an armor shred this hit applies (a fraction: Garen E
+    /// ShredAmount 0.25). Later hits of the combo take it into account.</summary>
+    [JsonPropertyName("armorShredDataValue")]
+    public string? ArmorShredDataValue { get; init; }
+
+    /// <summary>(2026-10-19) BIN DataValue for which landing of this hit applies the shred (Garen E
+    /// StacksToShred 6: the sixth strike). Null = the first. Applies to every shred field of the hit.</summary>
+    [JsonPropertyName("armorShredAfterHitsDataValue")]
+    public string? ArmorShredAfterHitsDataValue { get; init; }
+
+    /// <summary>(M45 loop 4) BIN DataValue for a MAGIC RESIST percent shred (Kog'Maw Q ShredAmount 12-32 =
+    /// 12-32%). Percent DataValues are read with the engine's &gt;=1-is-a-percentage rule and their sign
+    /// dropped (Nasus E stores -0.3), the same as <see cref="ArmorShredDataValue"/>.</summary>
+    [JsonPropertyName("mrShredDataValue")]
+    public string? MrShredDataValue { get; init; }
+
+    /// <summary>(M45 loop 4) BIN DataValues for FLAT armor / magic resist shred in points (Corki E ShredMax
+    /// -10..-20, Rengar R ArmorShred). Sign dropped.</summary>
+    [JsonPropertyName("armorShredFlatDataValue")]
+    public string? ArmorShredFlatDataValue { get; init; }
+
+    [JsonPropertyName("mrShredFlatDataValue")]
+    public string? MrShredFlatDataValue { get; init; }
+
+    /// <summary>(M45 loop 6) BIN DataValue this hit's damage is multiplied by (a later hit on the same
+    /// target dealing "X% damage") — read with the &gt;=1-is-a-percentage rule.</summary>
+    [JsonPropertyName("damageMultiplierDataValue")]
+    public string? DamageMultiplierDataValue { get; init; }
+
+    /// <summary>(M45 loop 6) BIN DataValue for "X% LESS damage" on this hit (Taliyah Q's later stones,
+    /// Nautilus E's later waves): damage × (1 − X). Percent rule as above, sign dropped.</summary>
+    [JsonPropertyName("damagePenaltyDataValue")]
+    public string? DamagePenaltyDataValue { get; init; }
+
+    /// <summary>(M45 loop 6) Per-copy ramp inside one cast: the k-th of this hit's <see cref="Count"/>
+    /// copies (k from 0) deals × (1 + k × DV) — Kennen R's bolts, each "increased by X% for each hit the
+    /// enemy has already suffered". Distinct from <see cref="RampDataValue"/>, which ramps a later CAST.</summary>
+    [JsonPropertyName("rampPerCountDataValue")]
+    public string? RampPerCountDataValue { get; init; }
+
+    /// <summary>(M45 loop 6) When this hit's <see cref="ConditionType"/> holds, its whole damage is
+    /// multiplied by (1 + DV) — Ryze Q against a Flux-marked target (the bonus lives in Ryze R's data, so
+    /// <see cref="MetMultiplierBinSpell"/> names that spell). Unmet = the plain hit.</summary>
+    [JsonPropertyName("metMultiplierDataValue")]
+    public string? MetMultiplierDataValue { get; init; }
+
+    [JsonPropertyName("metMultiplierBinSpell")]
+    public string? MetMultiplierBinSpell { get; init; }
+
+    /// <summary>(M45 loop 4) A hit that deals nothing itself and only carries a shred (Evelynn W's mark
+    /// removes magic resist). It resolves to a 0-damage node so later nodes see the shred.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsShredOnly =>
+        string.IsNullOrEmpty(Calc) && string.IsNullOrEmpty(FlatDataValue) && string.IsNullOrEmpty(HpPercentDataValue)
+        && string.IsNullOrEmpty(HpPercentCalc) && HpPercent == 0 && !BasicAttack && string.IsNullOrEmpty(PerSecondCalc)
+        && string.IsNullOrEmpty(MetCalc) && string.IsNullOrEmpty(MetHpPercentCalc)
+        && (!string.IsNullOrEmpty(ArmorShredDataValue) || !string.IsNullOrEmpty(MrShredDataValue)
+            || !string.IsNullOrEmpty(ArmorShredFlatDataValue) || !string.IsNullOrEmpty(MrShredFlatDataValue));
 
     /// <summary>(§27 (B), dynamic low-HP on-hit) When set (0-1), this hit is DYNAMICALLY gated on the
     /// target's RUNNING hypothetical HP: it contributes damage only once the combo's own damage has

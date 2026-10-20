@@ -5,15 +5,18 @@
   "Q": {
     "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
   },
+  "_noteAttackW": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
+  "_noteRidesW": "(2026-10-20, M45 loop 43) Nether Blade's passive rides Kassadin's ATTACKS ('Passive: Kassadin's Attacks deal an additional OnHitDamage'): an always-on on-hit. It was an on-ability rider that added it to every cast and to no attack.",
   "W": {
-    "hits": [ { "type": "Magic", "calc": "ActiveDamage", "count": 1 } ],
-    "bonusEffects": [ { "trigger": "onAbility", "hits": [ { "type": "Magic", "calc": "OnHitDamage", "count": 1 } ] } ]
+    "hits": [ { "type": "Physical", "basicAttack": true, "count": 1 }, { "isAttack": true, "type": "Magic", "calc": "ActiveDamage", "count": 1 } ],
+    "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "hits": [ { "type": "Magic", "calc": "OnHitDamage", "count": 1 } ] } ]
   },
   "E": {
     "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
   },
+  "_noteStackR": "(2026-10-19, M45 loop 8) Each earlier Riftwalk within RStackDuration adds BonusDamage, up to MaxStacks - the node stack knob (unset = 0, the first cast).",
   "R": {
     "tags": ["Stacking", "AoeUltimate"],
-    "hits": [ { "type": "Magic", "calc": "BaseDamage", "count": 1 } ]
+    "hits": [ { "type": "Magic", "calc": "BaseDamage", "count": 1, "perStackCalc": "BonusDamage", "maxStacksDataValue": "MaxStacks" } ]
   }
 }

@@ -38,6 +38,9 @@ public static class FormulaInterpreter
     /// rank as <paramref name="rank"/> (correct for per-rank DataValues) but champion level here; for the
     /// passive "P" the two coincide. Null (default) falls back to <paramref name="rank"/>, preserving the
     /// prior single-index behavior for direct callers that don't supply it.</param>
+    /// <param name="casterBaseResource">(M45 loop 50) The caster's BASE max mana at its level. A resource part whose
+    /// <c>mStatFormula</c> is 2 reads the bonus (<paramref name="casterResource"/> minus this: Ryze Q / W / E,
+    /// Actualizer), 1 reads this. Null (default) keeps the max for direct callers that do not know the base.</param>
     public static double Evaluate(
         SkillData skill,
         string calculationName,
@@ -45,16 +48,17 @@ public static class FormulaInterpreter
         Func<int, int?, double> statResolver,
         double casterResource = 0,
         int stackCount = 0,
-        int? championLevel = null)
+        int? championLevel = null,
+        double? casterBaseResource = null)
     {
         if (!skill.SpellCalculations.TryGetValue(calculationName, out var calc))
             throw new KeyNotFoundException($"No spell calculation named '{calculationName}'");
-        return EvaluateCalculation(skill, calc, rank, statResolver, casterResource, stackCount, championLevel, depth: 0);
+        return EvaluateCalculation(skill, calc, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth: 0);
     }
 
     private static double EvaluateCalculation(
         SkillData skill, GameCalculation calc, int rank, Func<int, int?, double> statResolver,
-        double casterResource, int stackCount, int? championLevel, int depth)
+        double casterResource, double? casterBaseResource, int stackCount, int? championLevel, int depth)
     {
         if (depth > 16)
             throw new InvalidOperationException("GameCalculation reference cycle detected");
@@ -63,18 +67,18 @@ public static class FormulaInterpreter
         {
             if (!skill.SpellCalculations.TryGetValue(refName, out var referenced))
                 throw new KeyNotFoundException($"GameCalculationModified references unknown calculation '{refName}'");
-            double baseValue = EvaluateCalculation(skill, referenced, rank, statResolver, casterResource, stackCount, championLevel, depth + 1);
+            double baseValue = EvaluateCalculation(skill, referenced, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth + 1);
             // Apply mMultiplier when present (e.g. Ahri W MultiFireDamage = SingleFireDamage ×
             // RepeatDamageMod); absent ⇒ pass the referenced calc through unscaled.
             return calc.Multiplier is { } mul
-                ? baseValue * EvaluatePart(skill, mul, rank, statResolver, casterResource, stackCount, championLevel, depth)
+                ? baseValue * EvaluatePart(skill, mul, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth)
                 : baseValue;
         }
 
         var total = 0.0;
         foreach (var part in calc.FormulaParts)
         {
-            total += EvaluatePart(skill, part, rank, statResolver, casterResource, stackCount, championLevel, depth);
+            total += EvaluatePart(skill, part, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth);
         }
         // A plain (non-Modified) GameCalculation can also carry mMultiplier (e.g. Skarner
         // passive PercentHealthDamage ×0.01) — apply it unconditionally whenever present,
@@ -82,14 +86,14 @@ public static class FormulaInterpreter
         // place mMultiplier was applied, silently dropping it here).
         if (calc.Multiplier is { } totalMul)
         {
-            total *= EvaluatePart(skill, totalMul, rank, statResolver, casterResource, stackCount, championLevel, depth);
+            total *= EvaluatePart(skill, totalMul, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth);
         }
         return total;
     }
 
     private static double EvaluatePart(
         SkillData skill, CalculationPart part, int rank, Func<int, int?, double> statResolver,
-        double casterResource, int stackCount, int? championLevel, int depth)
+        double casterResource, double? casterBaseResource, int stackCount, int? championLevel, int depth)
     {
         // (M25 §12③) "based on level" parts index by CHAMPION LEVEL, not ability rank. For a P slot the
         // caller already passes champion level as rank so they coincide; for Q/W/E/R this uses the real
@@ -110,11 +114,11 @@ public static class FormulaInterpreter
                 return (part.Coefficient ?? 0) * statResolver(part.Stat ?? 0, part.StatFormula);
 
             case CalculationPart.Kind.SumOfSubParts:
-                return part.SubParts.Sum(p => EvaluatePart(skill, p, rank, statResolver, casterResource, stackCount, championLevel, depth));
+                return part.SubParts.Sum(p => EvaluatePart(skill, p, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth));
 
             case CalculationPart.Kind.ProductOfSubParts:
                 return part.SubParts.Aggregate(
-                    1.0, (acc, p) => acc * EvaluatePart(skill, p, rank, statResolver, casterResource, stackCount, championLevel, depth));
+                    1.0, (acc, p) => acc * EvaluatePart(skill, p, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth));
 
             // (M25 §11.G) A per-stack term: (mCoefficient | mDataValue lookup) × the caller-supplied
             // live buff-stack count (0 by default = the conservative un-stacked floor, so a formula
@@ -138,6 +142,10 @@ public static class FormulaInterpreter
                 // against Lissandra's passive TotalDamage (Level1Value=120,
                 // InitialBonusPerLevel=20, breakpoint @13 rate=30): level 18 = 120 + 20*11 +
                 // 30*6 = 520, matching the champion's published 120–520 tooltip range.
+                // (M45 loop 23) A breakpoint ALWAYS replaces the rate - a bare {mLevel: N} (the BIN omits a 0)
+                // stops the growth there. Read as "keep the rate", Tahm Kench's passive reached 95 at level 18
+                // where the wiki says 5-60, Senna's Mist 18% (1-10%), Camille's conversion 108% (40-100%),
+                // Renata's Leverage 3.3% (1-2%).
                 var value = part.Level1Value ?? 0;
                 var rate = part.InitialBonusPerLevel ?? 0;
                 var sortedBreakpoints = part.Breakpoints.OrderBy(b => b.Level).ToList();
@@ -147,7 +155,7 @@ public static class FormulaInterpreter
                     while (bpIndex < sortedBreakpoints.Count && sortedBreakpoints[bpIndex].Level <= lvl)
                     {
                         var bp = sortedBreakpoints[bpIndex];
-                        if (bp.PerLevelRate is { } newRate) rate = newRate;
+                        rate = bp.PerLevelRate ?? 0;
                         if (bp.AdditionalBonus is { } bump) value += bump;
                         bpIndex++;
                     }
@@ -160,7 +168,11 @@ public static class FormulaInterpreter
             {
                 var start = part.InterpolationStart ?? 0;
                 var end = part.InterpolationEnd ?? 0;
-                var t = Math.Clamp((levelIndex - 1) / 17.0, 0.0, 1.0);
+                double n = Math.Clamp(levelIndex, 1, 18) - 1;
+                // (M45 loop 15) the stat-growth curve when the BIN asks for it, else a straight line
+                var t = part.InterpolationByStatProgression
+                    ? n * (0.7025 + 0.0175 * n) / 17.0
+                    : Math.Clamp((levelIndex - 1) / 17.0, 0.0, 1.0);
                 return start + (end - start) * t;
             }
 
@@ -186,6 +198,10 @@ public static class FormulaInterpreter
                 // flag), so caster MAX mana is used — the value the caller threads in as
                 // casterResource (ActivePlayerStats.ResourceMax). E.g. Ryze Q/W/E each add
                 // ~2-3% of max mana this way.
+                // (M45 loop 50) It does carry one: mStatFormula 2 = BONUS mana (Ryze Q / W / E - "bonus mana" in the
+                // tooltip; Actualizer, Seraph's), 1 = base, as on every stat part. No flag = max (Kassadin, Muramana).
+                if (casterBaseResource is double baseRes && part.StatFormula is 1 or 2)
+                    return (part.Coefficient ?? 0) * (part.StatFormula == 2 ? Math.Max(0.0, casterResource - baseRes) : baseRes);
                 return (part.Coefficient ?? 0) * casterResource;
 
             case CalculationPart.Kind.ByCharLevelFormula:
@@ -212,7 +228,7 @@ public static class FormulaInterpreter
                 if (part.SubPart is not { } subPart)
                     throw new NotSupportedException("StatBySubPartCalculationPart missing mSubpart");
                 return statResolver(part.Stat ?? 0, part.StatFormula)
-                    * EvaluatePart(skill, subPart, rank, statResolver, casterResource, stackCount, championLevel, depth);
+                    * EvaluatePart(skill, subPart, rank, statResolver, casterResource, casterBaseResource, stackCount, championLevel, depth);
             }
 
             case CalculationPart.Kind.NamedDataValueByCharLevel:
@@ -236,7 +252,7 @@ public static class FormulaInterpreter
                     throw new KeyNotFoundException(
                         $"SpellCalculationRef names unknown calculation '{part.SpellCalculationKey}'");
                 return EvaluateCalculation(skill, referenced, rank, statResolver, casterResource,
-                    stackCount, championLevel, depth + 1);
+                    casterBaseResource, stackCount, championLevel, depth + 1);
             }
 
             default:

@@ -11,7 +11,8 @@
       { "type": "Magic", "calc": "SecondDamage", "count": 1 }
     ]
   },
-  "W": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Magic", "calc": "PassiveBonusDamageCalc", "count": 1 } ] } ] },
+  "_noteCadenceW": "(2026-10-20, M45 loop 42) Shapesplitter passive: every 3rd attack (procEvery 3), a passive - not a rider the W cast arms, which then rode every attack after it.",
+  "W": { "bonusEffects": [ { "trigger": "onHit", "alwaysOn": true, "procEvery": 3, "hits": [ { "type": "Magic", "calc": "PassiveBonusDamageCalc", "count": 1 } ] } ] },
   "E": { "hits": [ { "type": "Magic", "calc": "BaseDamage", "count": 1 } ] },
   "R": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W CloneDamageTimer(0.75) is a clone-behavior TIMER, not a damage term. Benign."

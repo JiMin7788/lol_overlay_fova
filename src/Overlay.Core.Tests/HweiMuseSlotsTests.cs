@@ -100,7 +100,10 @@ public class HweiMuseSlotsTests : IDisposable
 
     /// <summary>Runs a sequence of slot keys; <paramref name="exposureSeconds"/> fills the duration
     /// knob on every node that has one.</summary>
-    private double Run(double? exposureSeconds, params string[] slots)
+    private double Run(double? exposureSeconds, params string[] slots) => Run(exposureSeconds, null, slots);
+
+    /// <summary>(M45 loop 26) <paramref name="met"/> fills every node's condition box (QW's isolated / immobilized).</summary>
+    private double Run(double? exposureSeconds, bool? met, params string[] slots)
     {
         using var config = new ConfigManager(_configPath);
         var engine = new ComboEngine(new DamageEngine(), new RuneEngine());
@@ -112,7 +115,7 @@ public class HweiMuseSlotsTests : IDisposable
                 NodeType: slots[i] == "AA" ? ComboNodeType.Aa : ComboNodeType.Skill,
                 Name: slots[i], Cooldown: 0, Mana: 0, Damage: 0,
                 DamageType: ComboDamageType.Magic, RatioAD: 0, RatioBonusAD: 0, RatioAP: 0,
-                CastTime: 0, Delay: 0, TravelTime: 0) with { UserHitDurationSeconds = exposureSeconds });
+                CastTime: 0, Delay: 0, TravelTime: 0) with { UserHitDurationSeconds = exposureSeconds, UserConditionMet = met });
         editor.SaveCombo(draft.Id);
 
         using var runner = new ComboRunner(engine, config, Snap);
@@ -137,10 +140,12 @@ public class HweiMuseSlotsTests : IDisposable
         // Same two casts, opposite order. Severing Bolt fired into a healthy target is its base
         // number; fired after R has taken a chunk off, the same cast hits harder. Nothing else in
         // this pair is order-dependent, so the whole difference is the amplification.
-        double boltFirst = Run(null, "QW", "R");
-        double boltLast = Run(null, "R", "QW");
+        // (M45 loop 26) Only an isolated / immobilized target: the box ticked. Unticked, the order does not matter.
+        double boltFirst = Run(null, true, "QW", "R");
+        double boltLast = Run(null, true, "R", "QW");
         Assert.True(boltLast > boltFirst + 1,
             $"QW did not scale with missing health: bolt-first {boltFirst:0.##}, bolt-last {boltLast:0.##}");
+        Assert.Equal(Run(null, false, "QW", "R"), Run(null, false, "R", "QW"), 2);
 
         // …and it is bounded by the wiki's multiplier rather than unbounded: at rank 5 the bonus
         // tops out at 3.5x the base, which no partial-health target can exceed.

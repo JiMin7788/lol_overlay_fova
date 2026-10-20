@@ -54,6 +54,30 @@ public static class ItemEffectDb
     public static ItemEffect? Get(string itemId)
         => Load().TryGetValue(itemId, out var e) ? e : null;
 
+    /// <summary>(M45 loop 48) Every effect of one item: its own entry, then those keyed "id#name" (Muramana's ability
+    /// damage beside its on-hit, Titanic Hydra's active beside its on-hit). Empty when none is covered.</summary>
+    public static IReadOnlyList<ItemEffect> GetAll(string itemId)
+    {
+        var all = Load();
+        var list = new List<ItemEffect>();
+        if (all.TryGetValue(itemId, out var main)) list.Add(main);
+        foreach (var (key, e) in all)
+            if (key.StartsWith(itemId + "#", StringComparison.Ordinal)) list.Add(e);
+        return list;
+    }
+
+    /// <summary>(2026-10-19) Multiplier on attack damage taken by a champion holding these items
+    /// (Plated Steelcaps: 0.9), 1 when none reduces it. The strongest applies.</summary>
+    public static double IncomingAttackMultiplier(int[]? itemIds, int count)
+    {
+        double multiplier = 1.0;
+        if (itemIds is null) return multiplier;
+        for (int i = 0; i < count && i < itemIds.Length; i++)
+            if (Get(itemIds[i].ToString()) is { Trigger: ItemTrigger.IncomingAttackReduction, ReductionPercent: > 0 } e)
+                multiplier = Math.Min(multiplier, 1.0 - e.ReductionPercent!.Value);
+        return multiplier;
+    }
+
     /// <summary>All covered item effects (test/introspection helper).</summary>
     public static IReadOnlyCollection<ItemEffect> All() => Load().Values;
 
@@ -102,6 +126,16 @@ public static class ItemEffectDb
                 AmpPercent = Number(obj, "ampPercent"),
                 RangedAmpPercent = Number(obj, "rangedAmpPercent"),
                 RangedMultiplier = Number(obj, "rangedMultiplier") is > 0 and var rm ? rm : 1,
+                // (M45 loop 48) a ranged holder's own calc (Muramana's RangedItemCalcValue) and the lethality an
+                // energized attack grants (Voltaic Cyclosword)
+                RangedCalc = obj.TryGetProperty("rangedCalc", out var rc) && rc.ValueKind == JsonValueKind.String ? rc.GetString() : null,
+                MeleeLethalityAfter = Number(obj, "meleeLethalityAfter"),
+                RangedLethalityAfter = Number(obj, "rangedLethalityAfter"),
+                // (M45 loop 49) a spellblade that leaves the target taking more (Bloodsong's Maim)
+                MeleeAmpAfterPercent = Number(obj, "meleeAmpAfterPercent"),
+                RangedAmpAfterPercent = Number(obj, "rangedAmpAfterPercent"),
+                // (M45 loop 50) a chip amp computed from the entry's spell (Actualizer); ampPercent stays its floor
+                AmpCalc = obj.TryGetProperty("ampCalc", out var ac) && ac.ValueKind == JsonValueKind.String ? ac.GetString() : null,
             };
             return true;
         }
@@ -121,19 +155,46 @@ public static class ItemEffectDb
             var name = obj.TryGetProperty("name", out var n) ? (n.GetString() ?? itemId) : itemId;
 
             // ── (2026-10-17) no-calc items: a chip-only amp, Giant Slayer, a first-attack crit ──
-            if (trigger is ItemTrigger.ItemsNodeAmp or ItemTrigger.GiantSlayer or ItemTrigger.FirstAttackCrit)
+            if (trigger is ItemTrigger.ItemsNodeAmp or ItemTrigger.GiantSlayer or ItemTrigger.FirstAttackCrit
+                or ItemTrigger.IncomingAttackReduction or ItemTrigger.StackingShred or ItemTrigger.ExecuteBelow
+                or ItemTrigger.SelfHealthAmp or ItemTrigger.UltimateCrits)
             {
                 var bare = new SkillData { Key = itemId, Name = name };
+                // (M45 loop 50) a chip amp may carry its BIN calc (Actualizer's ManaCalc reads bonus mana)
+                if (obj.TryGetProperty("spell", out var ampSpell))
+                {
+                    var ab = ChampionBinParser.ParseSpell(ampSpell);
+                    bare = new SkillData
+                    {
+                        Key = itemId, Name = name, DataValues = ab.DataValues, SpellCalculations = ab.SpellCalculations,
+                        EffectAmounts = ab.EffectAmounts,
+                    };
+                }
                 effect = new ItemEffect(itemId, trigger, type, bare, Calc: string.Empty,
                     GiantSlayerBasis: obj.TryGetProperty("giantSlayerBasis", out var gb) && gb.ValueKind == JsonValueKind.String
                         ? gb.Deserialize<ItemGiantSlayerBasis>(JsonOptions) : null,
                     GiantSlayerCapHp: Number(obj, "giantSlayerCapHp"),
-                    CritDamageScalar: Number(obj, "critDamageScalar"));
+                    CritDamageScalar: Number(obj, "critDamageScalar"),
+                    ReductionPercent: Number(obj, "reductionPercent"),
+                    // (M45 loop 49) stacking shred, an execute threshold, a healthy-holder amp, the ultimate's crits
+                    ShredPerStack: Number(obj, "shredPerStack"), MaxStacks: (int?)Number(obj, "maxStacks"),
+                    ShredsMagicResist: obj.TryGetProperty("shredsMagicResist", out var smr) && smr.ValueKind == JsonValueKind.True,
+                    ExecuteBelowPercent: Number(obj, "executeBelowPercent"),
+                    HealthAbovePercent: Number(obj, "healthAbovePercent"),
+                    Attacks: (int?)Number(obj, "attacks"),
+                    // (M45 loop 50) Fiendhunter Bolts' true damage on an attack that crits by itself
+                    BonusTrueShare: Number(obj, "bonusTrueShare"));
                 return trigger switch
                 {
                     ItemTrigger.ItemsNodeAmp => Number(obj, "ampPercent") is > 0 && obj.TryGetProperty("ampScope", out _),
                     ItemTrigger.GiantSlayer => Number(obj, "ampPercent") is > 0 && effect.GiantSlayerBasis is not null
                         && effect.GiantSlayerCapHp is > 0,
+                    // (2026-10-19) A DEFENDER item: the holder takes this much less from attacks.
+                    ItemTrigger.IncomingAttackReduction => Number(obj, "reductionPercent") is > 0 and < 1,
+                    ItemTrigger.StackingShred => effect.ShredPerStack is > 0 and < 1 && effect.MaxStacks is > 0,
+                    ItemTrigger.ExecuteBelow => effect.ExecuteBelowPercent is > 0 and < 1,
+                    ItemTrigger.SelfHealthAmp => Number(obj, "ampPercent") is > 0 && effect.HealthAbovePercent is > 0 and < 1,
+                    ItemTrigger.UltimateCrits => effect.CritDamageScalar is > 0 && effect.Attacks is > 0,
                     _ => effect.CritDamageScalar is > 0,
                 };
             }
@@ -289,18 +350,28 @@ public static class ItemEffectDb
 /// burn); <see cref="AfterDamageThreshold"/> = once the combo has dealt a share of the target's max HP
 /// (Stormsurge). Each fires at most once per combo.</summary>
 /// <para><see cref="ItemsNode"/> (2026-10-17, user decision): effects whose firing the combo cannot
-/// settle — actives (Gunblade, Rocketbelt, Hydra/Stridebreaker), energized attacks (Stormrazor, Rapid
-/// Firecannon, Statikk Shiv, Voltaic Cyclosword), Malignance's ground — fire only where the user puts
+/// settle — actives (Gunblade, Rocketbelt, Hydra/Stridebreaker, Titanic Hydra), energized attacks (Stormrazor, Rapid
+/// Firecannon, Statikk Shiv; Voltaic Cyclosword moved to <see cref="EnergizedAfterAbility"/> in M45 loop 48 - an ability
+/// readies it), Malignance's ground — fire only where the user puts
 /// the "모든 아이템" chip (<see cref="Combo.ComboEditor.ItemsNodeId"/>): every such item owned, once.
 /// <see cref="ItemsNodeAmp"/> = a damage amp (Riftmaker, Abyssal Mask, Shadowflame, Shojin) the same chip
 /// turns on for every node from it onward. <see cref="GiantSlayer"/> = Dominik's/Perplexity's amp, settled
 /// by the two health pools and applied to the whole combo. <see cref="FirstAttackCrit"/> = Sundered Sky:
 /// the combo's first attack crits.</para>
-public enum ItemTrigger { OnHit, Spellblade, StackThenConsume, ManualActiveBurst, OnSecondHit, OnFirstAbility, AfterDamageThreshold, ItemsNode, ItemsNodeAmp, GiantSlayer, FirstAttackCrit }
+/// <para>(M45 loop 48) <see cref="OnEveryAbility"/> = once per damaging ability cast (Muramana's Shock on abilities).
+/// <see cref="EnergizedAfterAbility"/> = an ability's damage readies the next attack (Voltaic Cyclosword's Galvanize):
+/// the first attack after each damaging cast.</para>
+/// <para>(M45 loop 49) <see cref="OnFirstDamage"/> = the first damaging hit of any kind (Scout's Slingshot, Hextech
+/// Alternator). <see cref="StackingShred"/> = each damage instance of the item's kind stacks a resist shred (Black Cleaver,
+/// Bloodletter's Curse). <see cref="ExecuteBelow"/> = the holder's damage executes below a share of max health (The
+/// Collector). <see cref="SelfHealthAmp"/> = a whole-combo amp while the holder is above a share of its health (Immortal
+/// Path). <see cref="UltimateCrits"/> = attacks after the ultimate crit for a share of the crit (Fiendhunter Bolts).</para>
+public enum ItemTrigger { OnHit, Spellblade, StackThenConsume, ManualActiveBurst, OnSecondHit, OnFirstAbility, AfterDamageThreshold, ItemsNode, ItemsNodeAmp, GiantSlayer, FirstAttackCrit, IncomingAttackReduction,
+    OnEveryAbility, EnergizedAfterAbility, OnFirstDamage, StackingShred, ExecuteBelow, SelfHealthAmp, UltimateCrits }
 
 /// <summary>(2026-10-17) Which hits an item amp scales: every hit, magic hits, magic and true hits, or
 /// ability/passive hits (Shojin).</summary>
-public enum ItemAmpScope { All, Magic, MagicAndTrue, Ability }
+public enum ItemAmpScope { All, Magic, MagicAndTrue, Ability, Attack }
 
 /// <summary>(2026-10-17) Giant Slayer's measure: the target's bonus health (Dominik's) or how much more
 /// max health the target has than me (Perplexity).</summary>
@@ -355,4 +426,9 @@ public sealed record ItemEffect(
     double Multiplier = 1, double? ThresholdTargetMaxHpPercent = null,
     ItemAmpScope? AmpScope = null, double? AmpPercent = null, double? RangedAmpPercent = null,
     ItemGiantSlayerBasis? GiantSlayerBasis = null, double? GiantSlayerCapHp = null,
-    double? CritDamageScalar = null, double RangedMultiplier = 1);
+    double? CritDamageScalar = null, double RangedMultiplier = 1,
+    double? ReductionPercent = null,
+    string? RangedCalc = null, double? MeleeLethalityAfter = null, double? RangedLethalityAfter = null,
+    double? ShredPerStack = null, int? MaxStacks = null, bool ShredsMagicResist = false, double? ExecuteBelowPercent = null,
+    double? HealthAbovePercent = null, int? Attacks = null, double? MeleeAmpAfterPercent = null, double? RangedAmpAfterPercent = null,
+    string? AmpCalc = null, double? BonusTrueShare = null);

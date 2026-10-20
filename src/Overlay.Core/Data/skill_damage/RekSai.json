@@ -5,9 +5,10 @@
   "_noteW": "W (Unburrow, burrowed-form dismount burst): 'UnburrowDamage' = NamedDataValue(BaseDamage) + StatByNamedDataValue(APRatio=0.8, mStat unset -> AP). An initial WebFetch of leagueoflegends.fandom.com/wiki/Rek'Sai/LoL showed stale/contradictory text describing this as '(+80% bonus AD)' Physical damage -- but that page's content did not match the BIN's mStat-absent (=AP) calc structure, and Rek'Sai's kit is otherwise 100% bonus-AD scaling (Q/E/R), which made a lone AP-scaling ability internally suspicious. A follow-up WebSearch against wiki.leagueoflegends.com's own live ability template confirmed Unburrow is genuinely MAGIC damage with an AP ratio -- the fandom mirror's text was simply outdated/mismatched. BIN structure (Magic, AP-scaling) is correct as originally auto-picked; no change made. W (unburrowed 'Burrow', going underground) has zero damage of its own -- correctly not represented.",
   "_noteE": "E (Furious Bite, unburrowed): 'BaseDamageCalculation' = NamedDataValue(BaseDamage) + StatByNamedDataValue(BonusAD=0.6, mStat=2/mStatFormula=2=bonus AD) -- standard AD-scaling bite, Physical confirmed by wiki and by the explicit bonus-AD stat formula. A max-Fury variant exists ('EmpoweredDamageCalculation', a GameCalculationModified referencing BaseDamageCalculation with an EmpoweredRatio multiplier, converting to guaranteed-floor True damage per the wiki) but is conditional on Fury being fully stacked, not guaranteed every cast -- left uncurated, same conservative precedent as Volibear's conditional bite empowerment in a prior batch. E (burrowed 'Tunnel', dash + create tunnel entrances) has zero damage of its own -- correctly not represented.",
   "_noteR": "R (Void Rush): 'RBaseDamageCalc' = NamedDataValue(RBaseDamage) + StatByNamedDataValue(ADRatio=1.0, mStat=2/mStatFormula=2=bonus AD) is the flat+AD impact term (Physical). The separate DataValue 'PercentHealthDamage' ([10,15,20,25,30,35,40], whole-percent encoding >=1.0, auto-normalized by SkillDamage.ResolveHpPercent) is the '+15/20/25% of target's MAXIMUM health' term -- BASIS CORRECTED 2026-07-24: the loop-39 note claimed '20/25/30% missing health', which misread the rank alignment (bin indices 2-4 instead of 1-3) AND the basis; live wiki verbatim 'Physical Damage: 150 / 250 / 350 (+ 100% bonus AD) (+ 15 / 20 / 25% of target's maximum health)' agrees with bin[1:4]=15/20/25, evidence: curation_evidence/RekSai.json (crosscheck: RBaseDamage MATCH). hpBasis=Max, tagged PercentMaxHp. Slot tagged BurstCeiling: Void Rush (dash + bonus-AD base + max-HP scaling, all in one cast) is Rek'Sai's clearest single highest-realistic-burst tool.",
+  "_noteTypeQ": "(2026-10-20, M45 loop 24) Prey Seeker deals MAGIC damage: the 16.20 tooltip, and the wiki's V14.4 'Damage type changed to magic from physical' (the _noteQ sources predate it).",
   "Q": {
     "hits": [
-      { "type": "Physical", "calc": "BurrowDamageTooltip", "count": 1 }
+      { "type": "Magic", "calc": "BurrowDamageTooltip", "count": 1 }
     ]
   },
   "W": {
@@ -15,9 +16,10 @@
       { "type": "Magic", "calc": "UnburrowDamage", "count": 1 }
     ]
   },
+  "_noteFuryE": "(2026-10-19, M45 loop 9) At max Fury the bite deals EmpoweredDamageCalculation TRUE damage instead - ResourceGte 100 (live fury), metType True.",
   "E": {
     "hits": [
-      { "type": "Physical", "calc": "BaseDamageCalculation", "count": 1 }
+      { "type": "Physical", "calc": "BaseDamageCalculation", "count": 1, "conditionType": "ResourceGte", "conditionValue": 100, "metCalc": "EmpoweredDamageCalculation", "metType": "True" }
     ]
   },
   "R": {
@@ -28,9 +30,11 @@
     ],
     "tags": ["BurstCeiling"]
   },
+  "_noteAttackQUnburrowed": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
+  "_noteRidesQUnburrowed": "(2026-10-20, M45 loop 43) Queen's Wrath: the next 3 Attacks each deal TotalDamageTooltip ('Rek'Sai's next 3 Attacks ... deal an additional') - count 3, as Shen Q / Xin Zhao Q / Cho'Gath E; it counted one.",
   "QUnburrowed": {
     "hits": [
-      { "type": "Physical", "calc": "TotalDamageTooltip", "binSpell": "Q", "count": 1 }
+      { "isAttack": true, "type": "Physical", "calc": "TotalDamageTooltip", "binSpell": "Q", "count": 3 }
     ]
   },
   "_noteQUnburrowed": "M22 Phase 2 (loop 60): Q's UNBURROWED form (Queen's Wrath) added as a separate skill, resolving 'TotalDamageTooltip' on the same RekSaiQ spell as the base (burrowed Prey Seeker) Q -- binSpell='Q'. Per _noteQ, this AD-ratio calc matches the live wiki value (30/35/40/45/50% AD) almost exactly, so the loop-39 doubt about a missing flat base is resolved by that wiki match (the unused UnburrowedBaseDamage DataValue is vestigial). Physical. CAVEAT (honest): modeled count=1 as a single Queen's Wrath value; if the live tooltip represents per-empowered-attack rather than a total, real full-empowerment output is higher -- conservative (understate) direction, safe for a kill-confirm floor, flagged for a wiki recheck. Base burrowed Q (Prey Seeker) remains the 'Q' slot; these are mutually-exclusive stances the user picks explicitly."

@@ -14,11 +14,13 @@
       }
     ]
   },
+  "_noteCadenceE": "(2026-10-20, M45 loop 42) Stacked Deck: every 4th attack (procEvery 4), not every attack - it rode them all.",
   "E": {
     "bonusEffects": [
       {
         "trigger": "onHit",
         "alwaysOn": true,
+        "procEvery": 4,
         "hits": [
           {
             "type": "Magic",

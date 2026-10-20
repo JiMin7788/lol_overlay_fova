@@ -131,10 +131,40 @@ public static class GoldEstimate
         return true;
     }
 
+    /// <summary>Scoreboard role order, the order lane rows are returned in.</summary>
+    public static readonly IReadOnlyList<string> Roles = new[] { "TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY" };
+
+    /// <summary>(2026-10-19) Per-lane gold matchups: for each role where BOTH teams have a player
+    /// with that <see cref="ScoreboardEntry.Position"/>, the two players' estimates (same formula as
+    /// <see cref="TryCompute"/>). Empty when positions are not reported — the Live Client only fills
+    /// them in ranked/draft, and pairing by scoreboard order instead would be a guess (P2).</summary>
+    public static IReadOnlyList<LaneGoldEstimate> ByRole(GameSnapshot snapshot)
+    {
+        var result = new List<LaneGoldEstimate>(Roles.Count);
+        if (snapshot is null || !snapshot.HasData) return result;
+        string activeTeam = FindActiveTeam(snapshot);
+        if (activeTeam.Length == 0) return result;
+
+        foreach (var role in Roles)
+        {
+            double? ally = null, enemy = null;
+            for (int i = 0; i < snapshot.PlayerCount; i++)
+            {
+                ScoreboardEntry p = snapshot.Players[i];
+                if (p.ChampionName.Length == 0 || !string.Equals(p.Position, role, StringComparison.OrdinalIgnoreCase)) continue;
+                double g = EstimatePlayerGold(p.CreepScore, p.Kills, p.Assists, snapshot.GameTime, p.ItemIds, p.ItemCount);
+                if (string.Equals(p.Team, activeTeam, StringComparison.Ordinal)) ally ??= g;
+                else enemy ??= g;
+            }
+            if (ally is { } a && enemy is { } e) result.Add(new LaneGoldEstimate(role, a, e));
+        }
+        return result;
+    }
+
     /// <summary>Resolves the active player's team by matching <see cref="GameSnapshot.ActivePlayerRiotId"/>
     /// against scoreboard rows (the reliable id — see <see cref="ScoreboardEntry.RiotId"/>'s doc),
     /// falling back to the legacy SummonerName match. Empty string if neither resolves.</summary>
-    private static string FindActiveTeam(GameSnapshot snapshot)
+    internal static string FindActiveTeam(GameSnapshot snapshot)
     {
         if (snapshot.ActivePlayerRiotId.Length > 0)
         {
@@ -165,3 +195,15 @@ public static class GoldEstimate
 /// explicit field (rather than an implicit convention) so a future consumer cannot forget the
 /// P2 estimate label.</summary>
 public readonly record struct TeamGoldEstimate(double AllyGold, double EnemyGold, double Diff, bool IsEstimate);
+
+/// <summary>One lane's gold matchup from <see cref="GoldEstimate.ByRole"/> — an estimate, like the
+/// team totals. <see cref="Role"/> is the Live Client position ("TOP" … "UTILITY").</summary>
+public readonly record struct LaneGoldEstimate(string Role, double AllyGold, double EnemyGold)
+{
+    public double Diff => AllyGold - EnemyGold;
+}
+
+/// <summary>What the overlay's global-gold panel draws: team totals plus the lanes that could be
+/// paired (possibly none). <see cref="AllyIsBlue"/>: the active player is on the blue side (Live
+/// Client team "ORDER"); the panel labels the sides blue/red like League's scoreboard.</summary>
+public sealed record GlobalGoldView(TeamGoldEstimate Team, IReadOnlyList<LaneGoldEstimate> Lanes, bool AllyIsBlue);

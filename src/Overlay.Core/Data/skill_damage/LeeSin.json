@@ -20,6 +20,7 @@
       }
     ]
   },
-  "E": { "hits": [ { "type": "Physical", "calc": "InitialDamage", "count": 1 } ] },
+  "_noteTypeE": "(2026-10-19, M45 loop 9) Type set to Magic from the tooltip - Tempest: 'magic damage'.",
+  "E": { "hits": [ { "type": "Magic", "calc": "InitialDamage", "count": 1 } ] },
   "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "Damage", "count": 1 } ] }
 }

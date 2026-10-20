@@ -1,10 +1,12 @@
 {
   "_noteRUpgrade": "R DEATHS DAUGHTER (loop 485, closing the sweep-triage row). The triage note called DeathsDaughterBaseDamage a purchased-upgrade state the Live Client API does not expose and left it out - correct then, because there was no way to state an upgrade. ConditionType.Upgraded is that now, and the term is a real calc, not a bare DataValue: DeathsDaughterDamage = DeathsDaughterBaseDamage (120/210/300 at R ranks 1-3) + 30% AP, the centre cannonball the Silver Serpent upgrade adds on top of the barrage. Curated as a second hit with no baseline - an un-upgraded R has no centre cannonball at all - so the floor is the barrage exactly as before and the checkbox adds the upgrade. Which upgrades were bought is a shop decision the API does not report, so it is the users to state.",
   "_note": "Curated (T3.x passive pass; P damage type corrected M26 stage-4). P (Trial by Fire): basic attacks apply a burning-oil DoT that deals TRUE damage -- wiki verbatim '50 - 250 (based on level) (+ 100% bonus AD) bonus true damage over 2.5 seconds' (damageType True in curation_evidence/Gangplank.json; the earlier 'Magic' pick was an unsourced assumption, the BIN calc carries no type info). TotalDamage = level-interpolated base 50→250 + 1.0x bonus AD (ADRatio DV = 1.0), GangplankPassive.mSpellCalculations -- matches the wiki numbers exactly. Curated as a P bonusEffect trigger onHit (assistive approximation of the per-second burn, applied once per landed hit, same conservative modeling as Warwick/Mordekaiser). Q/R kept as the auto first-pass physical/magic picks.",
+  "_noteTrialP": "(2026-10-19, M45 loop 20) Trial by Fire procs on a cooldown, so once in a burst combo (maxProcs 1, now honored on a P rider); it rode every attack. Parrrley applies on-hit effects other than Trial by Fire (appliesOnHit; a capped rider is not carried).",
   "P": {
     "bonusEffects": [
       {
         "trigger": "onHit",
+        "maxProcs": 1,
         "hits": [
           {
             "type": "True",
@@ -15,15 +17,23 @@
       }
     ]
   },
+  "_noteCritQ": "(2026-10-19, user: skills crit only when the tooltip says so, each for its own amount) Parrrley: can crit. BIN ShotCrit = ShotDamage x (1 + CritDamageMod x (critDamage - 1)). Source: CommunityDragon lol.stringtable (latest, 2026-10-19) tooltip + the cached BIN calc.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "ShotDamage",
-        "count": 1
+        "count": 1,
+        "canCrit": true,
+        "critCalc": "ShotCrit",
+        "appliesOnHit": true
       }
     ]
   },
+  "_noteBarrelE": "(2026-10-19, M45 loop 8) A keg deals the destroying attack's damage (the AA / Q node) plus BonusDamageToChampions to champions - the E node carries the bonus; the 40% armor pierce is not modeled (P2).",
+  "E": { "hits": [ { "type": "Physical", "flatDataValue": "BonusDamageToChampions", "count": 1 } ] },
+  "_noteTypeR": "(2026-10-19, M45 loop 9) Type set to True from the tooltip - Death's Daughter: 'true damage'.",
+  "_noteWavesR": "(2026-10-19, M45 loop 22) Cannon Barrage fires TotalWavesTooltip (12) waves over ZoneDuration: the first plus later waves on the count knob, up to 11 (TotalDamageTooltip at the cap).",
   "R": {
     "tags": [
       "AoeUltimate"
@@ -34,8 +44,9 @@
         "calc": "OneWaveDamage",
         "count": 1
       },
+      { "type": "Magic", "perAttackCalc": "OneWaveDamage", "maxAttackCount": 11, "count": 1 },
       {
-        "type": "Magic",
+        "type": "True",
         "conditionType": "Upgraded",
         "metCalc": "DeathsDaughterDamage",
         "count": 1

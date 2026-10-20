@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600">
-    <Grid Margin="4">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -12,25 +12,23 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="TitleLabel" Grid.Row="0" Text="유저검색" Style="{StaticResource TitleText}" />
+        <!-- No page title: the window header already says "유저검색" (it used to repeat it, larger). -->
 
         <!-- Search bar. MinHeight + centered content (from ThemedTextBox) keeps descenders and
-             tall Hangul from clipping at the bottom. -->
-        <Grid Grid.Row="1" Margin="0,18,0,0">
+             tall Hangul from clipping at the bottom. Theme height, like every other input. -->
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="SearchBox" Grid.Column="0" Height="46" Padding="12,10"
-                     VerticalContentAlignment="Center"
+            <TextBox x:Name="SearchBox" Grid.Column="0"
                      Tag="소환사명 입력" KeyDown="SearchBox_KeyDown" />
             <Button x:Name="SearchButton" Grid.Column="1" Content="검색" Style="{StaticResource PrimaryButton}"
-                    Height="46" Width="96" Margin="12,0,0,0" Click="SearchButton_Click" />
+                    MinWidth="96" Margin="8,0,0,0" Click="SearchButton_Click" />
         </Grid>
 
         <!-- Status / help message -->
-        <TextBlock x:Name="StatusMessage" Grid.Row="2" Style="{StaticResource BodyText}"
-                   Foreground="{StaticResource TextDim}" Margin="0,16,0,0" />
+        <TextBlock x:Name="StatusMessage" Grid.Row="2" Style="{StaticResource HintText}" Margin="0,12,0,0" />
 
         <!-- Results -->
         <ItemsControl x:Name="Results" Grid.Row="3" Margin="0,16,0,0">

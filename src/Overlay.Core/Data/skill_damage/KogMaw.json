@@ -5,8 +5,9 @@
   "_noteP": "Curated (T3.x-ext passive pass, unchanged). P (Icathian Surprise): on death, Kog'Maw explodes for MAGIC damage to nearby enemies (KogMawIcathianSurpriseReady.mSpellCalculations 'PassiveDamage' = pure ByCharLevelInterpolation 140->650, no stat scaling at all). Curated as a standalone P hit (on-death, not an on-hit/on-ability proc).",
     "_noteP_attach": "SELF-ATTACHABLE FALSE (loop 476, user asked what this bonus effect even was). Icathian Surprise is an ON-DEATH explosion - _noteP already said so - but the editor wraps any P-slot direct damage as an attachable bonus, so it was being offered as something to hang under a skill. It is not a rider on anything; it fires when Kog Maw dies. Still addable as its own P node, which is the honest way to include it in a combo.",
   "P": { "selfAttachable": false, "hits": [ { "type": "Magic", "calc": "PassiveDamage", "count": 1 } ] },
+  "_noteShredQ": "(2026-10-19, M45 loop 4) Shred wired from the tooltip: Caustic Spittle shreds ShredAmount% armor and MR; later nodes of the combo hit the reduced resistance.",
   "Q": {
-    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
+    "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1, "armorShredDataValue": "ShredAmount", "mrShredDataValue": "ShredAmount" } ]
   },
   "W": {
     "tags": ["PercentMaxHp"],
@@ -15,8 +16,9 @@
   "E": {
     "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ]
   },
+  "_noteLowR": "(2026-10-19, M45 loop 11) Was MaxDamageCalc always. Living Artillery deals BaseDamageCalc plus TooltipMissingHealthDamageAmp% per 1% missing health (the target-health-read shape), and MaxDamageCalc instead below 40% health - HpBelow condition.",
   "R": {
     "tags": ["BurstCeiling", "AoeUltimate"],
-    "hits": [ { "type": "Magic", "calc": "MaxDamageCalc", "count": 1 } ]
+    "hits": [ { "type": "Magic", "calc": "BaseDamageCalc", "count": 1, "missingHpBonusDataValue": "TooltipMissingHealthDamageAmp", "conditionType": "HpBelow", "conditionValue": 0.4, "metCalc": "MaxDamageCalc" } ]
   }
 }

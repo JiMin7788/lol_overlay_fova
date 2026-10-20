@@ -36,14 +36,10 @@ internal sealed class KillTimingCard : Border
         _compute = compute;
         Visibility = Visibility.Collapsed;
         Margin = new Thickness(0, 8, 0, 0);
-        Padding = new Thickness(10, 8, 10, 8);
-        CornerRadius = new CornerRadius(6);
-        BorderThickness = new Thickness(1);
-        SetResourceReference(BackgroundProperty, "SurfaceHi");
-        SetResourceReference(BorderBrushProperty, "Border");
+        SetResourceReference(StyleProperty, "CardInset");
 
         var title = new TextBlock { Text = "킬각 타이밍 · 상대", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-        title.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+        title.SetResourceReference(StyleProperty, "FieldLabel");
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(title);
         header.Children.Add(_enemyRow);
@@ -53,11 +49,9 @@ internal sealed class KillTimingCard : Border
         {
             Text = "파랑 = 상대 체력이 이 % 아래면 내 풀콤으로 킬 · 빨강 = 내 체력이 이 % 아래면 상대 풀콤에 죽음\n"
                  + "아이템·룬 없음, 점멸만 있음, 스킬은 일반적인 선마 순서 기준 추정",
-            FontSize = 11,
             Margin = new Thickness(0, 4, 0, 0),
-            TextWrapping = TextWrapping.Wrap,
         };
-        caption.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        caption.SetResourceReference(StyleProperty, "HintText");
 
         var stack = new StackPanel();
         stack.Children.Add(header);
@@ -143,7 +137,7 @@ internal sealed class KillTimingCard : Border
         _chart.Children.Clear();
         if (rows.Count == 0)
         {
-            _summary.Text = "이 조합은 계산할 수 없습니다.";
+            _summary.Text = "이 조합은 계산할 수 없어요. 한쪽 챔피언의 추천 콤보나 스탯 데이터가 아직 없습니다.";
             return;
         }
 
@@ -182,8 +176,8 @@ internal sealed class KillTimingCard : Border
         _summary.Text = $"풀피에서 원콤 — 나: {FirstFull(r => r.MyKillPercent)} · {name}: {FirstFull(r => r.EnemyKillPercent)}";
     }
 
-    private static readonly Brush MineBrush = new SolidColorBrush(Color.FromRgb(0x4C, 0x8D, 0xFF));
-    private static readonly Brush TheirsBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x48, 0x4D));
+    private static readonly Brush MineBrush = (Brush)Application.Current.FindResource("Ally");
+    private static readonly Brush TheirsBrush = (Brush)Application.Current.FindResource("Enemy");
 
     private static Polyline Series(IEnumerable<Point> points, Brush brush)
         => new() { Points = new PointCollection(points), Stroke = brush, StrokeThickness = 2 };
@@ -198,7 +192,8 @@ internal sealed class KillTimingCard : Border
 
     private static TextBlock Label(string text, double x, double y)
     {
-        var label = new TextBlock { Text = text, FontSize = 9 };
+        var label = new TextBlock { Text = text };
+        label.SetResourceReference(TextBlock.FontSizeProperty, "FontMicro");
         label.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
         Canvas.SetLeft(label, x);
         Canvas.SetTop(label, y);

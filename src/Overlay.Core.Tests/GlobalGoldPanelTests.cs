@@ -100,6 +100,8 @@ public class GlobalGoldPanelTests
 
             Assert.NotNull(hud);
             Assert.Contains("추정", hud);
+            // The sample's active player is on ORDER — the blue side the panel labels "블루팀".
+            Assert.True(panel.LatestView is { AllyIsBlue: true }, "LatestView should mark the ally team as blue");
         }
         finally
         {

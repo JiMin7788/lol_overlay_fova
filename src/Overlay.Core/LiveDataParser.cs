@@ -155,6 +155,8 @@ public static class LiveDataParser
             else if (reader.ValueTextEquals("attackSpeed"u8)) { reader.Read(); st.AttackSpeed = NumD(ref reader); }
             // Penetration flat fields: additive, no unit ambiguity.
             else if (reader.ValueTextEquals("armorPenetrationFlat"u8)) { reader.Read(); st.ArmorPenetrationFlat = NumD(ref reader); }
+            // (M45 loop 49) lethality from items, runes and buffs, as the game counts it
+            else if (reader.ValueTextEquals("physicalLethality"u8)) { reader.Read(); st.PhysicalLethality = NumD(ref reader); }
             else if (reader.ValueTextEquals("magicPenetrationFlat"u8)) { reader.Read(); st.MagicPenetrationFlat = NumD(ref reader); }
             // Percent penetration fields — loop-38 fix (CONFIRMED live, was a flagged/unverified
             // assumption): the Live Client API reports these as a MULTIPLIER on remaining
@@ -182,7 +184,9 @@ public static class LiveDataParser
             // needed here (unlike armorPenetrationPercent/magicPenetrationPercent above),
             // critChance is already the 0-1 fraction AttackerStat.CriticalChance expects.
             else if (reader.ValueTextEquals("critChance"u8)) { reader.Read(); st.CritChance = NumD(ref reader); }
-            else if (reader.ValueTextEquals("critDamage"u8)) { reader.Read(); st.CritDamage = NumD(ref reader); }
+            // (2026-10-19) critDamage, unlike critChance, is in PERCENT: a live game reported 200.0.
+            // Read raw, the Max track's guaranteed crit multiplied every crit-capable hit by 200.
+            else if (reader.ValueTextEquals("critDamage"u8)) { reader.Read(); st.CritDamage = NumD(ref reader) / 100.0; }
             else { reader.Read(); if (reader.TokenType is JsonTokenType.StartObject or JsonTokenType.StartArray) reader.Skip(); }
         }
     }

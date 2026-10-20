@@ -5,9 +5,11 @@
       { "type": "Magic", "calc": "QDamageCalc", "count": 1 }
     ]
   },
+  "_noteAttackW": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
   "W": {
     "hits": [
-      { "type": "Physical", "calc": "TotalBonusDamage", "count": 1 },
+      { "type": "Physical", "basicAttack": true, "count": 1 },
+      { "isAttack": true, "type": "Physical", "calc": "TotalBonusDamage", "count": 1 },
       { "type": "Physical", "calc": "ThunderclapSplash", "count": 1 }
     ]
   },

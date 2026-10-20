@@ -42,10 +42,11 @@
     ]
   },
   "RSpiderling": { "hits": [ { "type": "Magic", "perAttackCalc": "SpiderlingTotalDamage", "binSpell": "R", "count": 1 } ] },
+  "_noteOnHitQSpider": "(2026-10-20, M45 loop 47) Venomous Bite applies on-hit effects once to the target.",
   "QSpider": {
     "icon": "assets/characters/elise/hud/icons2d/elisespiderq.png",
     "hits": [
-      { "type": "Magic", "flatDataValue": "BaseDamage", "binSpell": "EliseSpiderQCast", "count": 1 },
+      { "type": "Magic", "flatDataValue": "BaseDamage", "binSpell": "EliseSpiderQCast", "count": 1, "appliesOnHit": true },
       { "type": "Magic", "hpPercentCalc": "MissingHPDamage", "hpBasis": "Missing", "binSpell": "EliseSpiderQCast", "count": 1, "tags": ["PercentMissingHp"] }
     ]
   },

@@ -77,6 +77,24 @@ public class EnemyJunglerSpottedDetectorTests : IDisposable
         Assert.Equal("적 정글이 감지되었습니다 (EnemyJungler)", speech.Text);
     }
 
+    /// <summary>(2026-10-19) While minimap vision is capturing, the presence tracker announces the
+    /// same sighting with a location — this detector must stay quiet (one event, one card).</summary>
+    [Fact]
+    public void ItemChange_OnEnemyJungler_Suppressed_WhileMinimapVisionCaptures()
+    {
+        GameSnapshot snap = Snapshot(100.0, ("EnemyJungler", "Jgl#KR1", "CHAOS", "JUNGLE"));
+        var (ui, voice) = Subscribe();
+        using var detector = new EnemyJunglerSpottedDetector(() => snap, suppressWhen: () => true);
+        detector.Start();
+
+        EventBus.EventBus.Publish("GAME.ITEM_CHANGED",
+            new ItemChangedPayload("EnemyJungler", Array.Empty<ItemSlot>()), "Test");
+
+        WaitForUiCount(ui, 1); // returns after the timeout; nothing should arrive
+        lock (ui) Assert.Empty(ui);
+        lock (voice) Assert.Empty(voice);
+    }
+
     [Fact]
     public void CsChange_OnEnemyJungler_RaisesAlert()
     {

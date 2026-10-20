@@ -1,6 +1,7 @@
 {
   "_note": "Curated per-skill combo-damage map. See docs/reports/agent/combo_damage_model_report.md.",
-  "Q": { "hits": [ { "type": "Physical", "calc": "RocketDamage", "count": 1 } ] },
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
+  "Q": { "hits": [ { "isAttack": true, "type": "Physical", "calc": "RocketDamage", "count": 1 } ] },
   "W": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
   "E": { "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
   "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Physical", "calc": "DamageFloor", "minCalc": "DamageFloor", "maxCalc": "DamageMax", "count": 1 }, { "type": "Physical", "hpPercentDataValue": "PercentDamage", "hpBasis": "Missing", "count": 1, "tags": ["PercentMissingHp"] } ], "_noteR": "M24 P3 DistanceScaled (loop 102): Super Mega Death Rocket deals 10%->100% by distance travelled. calc:DamageFloor kept as resolved default (near-range = conservative = value identity, zero regression); range [DamageFloor(near), DamageMax(far)] via UserDistanceFraction. NOTE: the rocket also adds %target-missing-HP (Jinx R 'gets stronger the farther it travels' AND scales with the target's missing HP) — the distance ramp is modeled here; the missing-HP bonus is NOT separately curated (would need a compound shape), so this is a documented under-estimate at the far end." },

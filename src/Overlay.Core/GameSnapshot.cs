@@ -229,6 +229,9 @@ public struct ActivePlayerStats
     // every hit regardless of the target's real armor/MR). Carried by the existing
     // `dest.Stats = Stats` value-copy and cleared by `Stats = default`.
     public double ArmorPenetrationFlat;
+    // (M45 loop 49) championStats.physicalLethality: every source the game counts - items, runes, active buffs
+    // (seen live: 10 with The Collector). 0 = not reported or none; the item data is the fallback.
+    public double PhysicalLethality;
     public double ArmorPenetrationPercent;
     public double MagicPenetrationFlat;
     public double MagicPenetrationPercent;
@@ -239,11 +242,10 @@ public struct ActivePlayerStats
     // lists both fields verbatim under championStats. CritChance is a 0-1 fraction (0.25
     // = 25% crit chance), same convention DamageEngine.AttackerStat.CriticalChance already
     // expects — no unit conversion needed at the parse boundary (unlike the percent-pen
-    // fields above). CritDamage's exact real-game convention (total multiplier, e.g. 2.0 for
-    // 200%, vs. some other unit) is NOT independently confirmed live in this sandbox (no
-    // dotnet SDK / no live game to sample); DamageEngine treats 0 as "not reported" and
-    // falls back to its own documented 1.75 constant rather than trusting an unverified
-    // interpretation of a nonzero-but-unconfirmed value's units. UNVERIFIED by compiler.
+    // fields above). CritDamage is the TOTAL multiplier (2.0 = 200%). (2026-10-19) Confirmed
+    // live: the API reports it in percent (200.0), so LiveDataParser divides by 100. (M45 loop 45) It carries the
+    // champion's own crit modifier: Jhin with Infinity Edge reads 172.5 = (200 + 30) x 0.75 (his 25% reduction). DamageEngine
+    // still treats 0 as "not reported" and falls back to its own documented 1.75 constant.
     public double CritChance;
     public double CritDamage;
 

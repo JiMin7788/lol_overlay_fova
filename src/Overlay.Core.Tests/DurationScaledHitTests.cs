@@ -41,6 +41,7 @@ public class DurationScaledHitTests : IDisposable
         RuneRepository.ResetForTests();
         ChampionRepository.ResetForTests();
         SkillDamageDb.ResetForTests();
+        SkillDamageDb.LoadForTests("Malzahar", NullZoneFixture.Json); // (M45 loop 15) the pre-rework W zone
 
         _dir = Path.Combine(Path.GetTempPath(), "DurationScaledHitTests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
@@ -182,7 +183,9 @@ public class DurationScaledHitTests : IDisposable
         // per-second rate is a BIN calc name (perSecondCalc="Damage"), NOT a %HP fraction, so
         // PerSecondHpPercent stays null while IsDurationScaled must still be true (the flat sibling
         // of the Malzahar-W %HP path). This is pure loader/shape verification (no BIN eval needed).
-        var q = Assert.Single(SkillDamageDb.GetHits("Heimerdinger", "Q")!);
+        // (M45 loop 23) the turret's charged shot is a second hit, on the count knob
+        var q = SkillDamageDb.GetHits("Heimerdinger", "Q")![0];
+        Assert.Equal("DamageBeam", SkillDamageDb.GetHits("Heimerdinger", "Q")![1].PerAttackCalc);
         Assert.Equal("Damage", q.PerSecondCalc);
         Assert.Null(q.PerSecondHpPercent);
         Assert.Equal(6.0, q.MaxDurationSeconds!.Value);
@@ -243,6 +246,11 @@ public class DurationScaledHitTests : IDisposable
     public void Loader_ParsesBinSourcedHpPercentDoT_NasusR()
     {
         SkillDamageDb.ResetForTests();
+        // (M45 loop 17) The real Nasus R now reads the calc (DamageCalc = AoeDamagePercent + an AP ratio the
+        // DataValue alone dropped); the DataValue-sourced shape this test covers stays as a fixture.
+        Assert.Equal("DamageCalc", Assert.Single(SkillDamageDb.GetHits("Nasus", "R")!).PerSecondHpPercentCalc);
+        SkillDamageDb.LoadForTests("Nasus", "{ \"R\": { \"hits\": [ { \"type\": \"Magic\", "
+            + "\"perSecondHpPercentDataValue\": \"AOEDamagePercent\", \"maxDurationSeconds\": 15.0 } ] } }");
 
         var r = Assert.Single(SkillDamageDb.GetHits("Nasus", "R")!);
         Assert.Equal("AOEDamagePercent", r.PerSecondHpPercentDataValue); // BIN DataValue, rank-scaled

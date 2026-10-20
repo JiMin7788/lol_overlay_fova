@@ -28,7 +28,6 @@ public partial class UserSearchView : UserControl
 
     private void ApplyLanguage()
     {
-        TitleLabel.Text = Localization.L("search.title");
         SearchBox.Tag = Localization.L("search.placeholder");
         SearchButton.Content = Localization.L("search.button");
         // Only reset the help text when no search result is currently shown.

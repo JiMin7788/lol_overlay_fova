@@ -311,6 +311,16 @@ public sealed class OverlayConfig
     [JsonPropertyName("positions")]
     public Dictionary<string, PositionConfig> Positions { get; set; } = new();
 
+    /// <summary>(2026-10-19) Per-element size multiplier on top of <see cref="Scale"/>, keyed like
+    /// <see cref="Positions"/>; set from the overlay preview's size bars. Missing key = 1.0.</summary>
+    [JsonPropertyName("elementScale")]
+    public Dictionary<string, double> ElementScale { get; set; } = new();
+
+    /// <summary>(2026-10-19) 간단히 보기: compact combo/skill cards — no armor/MR header, no HP gauge;
+    /// damage, skill icons and a minimal portrait only. Default off (the full cards).</summary>
+    [JsonPropertyName("compactCards")]
+    public bool CompactCards { get; set; }
+
     /// <summary>One-time minimap calibration for the minimap-anchored timers (inhibitor / Nexus-turret /
     /// enemy-return). The Live Client API and game.cfg cannot yield the minimap's exact on-screen pixel
     /// rect (MinimapScale→pixel is undocumented), so the user aligns a box over their minimap ONCE in
@@ -330,9 +340,24 @@ public sealed class OverlayConfig
     [JsonPropertyName("comboOverlayHotkey")]
     public string? ComboOverlayHotkey { get; set; }
 
-    /// <summary>Chord that shows the skill overlay. Null = the client default (Alt+2).</summary>
+    /// <summary>Chord that shows the skill overlay. Null = the client default (ALT+`; (M46, user request) was Alt+2).</summary>
     [JsonPropertyName("skillOverlayHotkey")]
     public string? SkillOverlayHotkey { get; set; }
+
+    /// <summary>(2026-10-20, user request) Chord that shows/hides the global gold panel. Null or "TAB" = the panel
+    /// follows League's scoreboard (Tab), as before; any other chord toggles it on its own.</summary>
+    [JsonPropertyName("globalGoldHotkey")]
+    public string? GlobalGoldHotkey { get; set; }
+
+    /// <summary>(M46, user request) Chord that shows/hides the next-item card. Null = P, League's shop key: the card opens
+    /// and closes with the shop.</summary>
+    [JsonPropertyName("nextItemHotkey")]
+    public string? NextItemHotkey { get; set; }
+
+    /// <summary>(M46, user request) What the next-item card ranks by: "damage" (my combo on the target, M43) or "tank"
+    /// (surviving the alive enemies' full combos, M40's estimate).</summary>
+    [JsonPropertyName("nextItemMode")]
+    public string NextItemMode { get; set; } = "damage";
 }
 
 /// <summary>One-time user-aligned minimap rect, stored as fractions of the overlay window so it survives
@@ -375,10 +400,10 @@ public sealed class OverlayItemsConfig
     [JsonPropertyName("globalGold")]
     public ItemToggleConfig GlobalGold { get; set; } = new();
 
-    /// <summary>(loop 125) Same-lane enemy RETURN timer (minimap-left portrait + countdown). Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier).
+    /// <summary>(loop 125) Same-lane enemy RETURN timer (minimap-left portrait + countdown). Default ENABLED again (2026-10-20, user decision: other products ship it; it had been gated pending Riot).
     /// The respawn part is exact (API), the travel part is a move-speed ESTIMATE (marked "~").</summary>
     [JsonPropertyName("laneReturn")]
-    public ItemToggleConfig LaneReturn { get; set; } = new() { Enabled = false };
+    public ItemToggleConfig LaneReturn { get; set; } = new() { Enabled = true };
 
     /// <summary>M30 Enemy Jungler Spotted Alert. Default DISABLED until Riot answers the feature inquiry (1.0 plan, gated tier). Real API field diffs (CS/item
     /// change on the enemy JUNGLE-position row), no coordinate estimate, same honesty basis as
@@ -530,6 +555,11 @@ public sealed class GeneralConfig
     /// Shift+Tab / scoreboard overlap) has been dismissed.</summary>
     [JsonPropertyName("firstRunGuideShown")]
     public bool FirstRunGuideShown { get; set; }
+
+    /// <summary>True once the one-time tray balloon ("Fova is still running in the tray") has been
+    /// shown — closing the window with "start with League" on hides it instead of exiting.</summary>
+    [JsonPropertyName("trayNoticeShown")]
+    public bool TrayNoticeShown { get; set; }
 }
 
 public sealed class CombosConfig

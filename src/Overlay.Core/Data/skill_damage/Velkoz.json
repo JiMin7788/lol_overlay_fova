@@ -1,12 +1,15 @@
 {
   "_note": "Curated (T3.x passive pass). P (Organic Deconstruction): after landing 3 separate spells/attacks on the same champion within a window, they take bonus MAGIC damage (TotalDamage = 0.6x AP + level-interpolated base 35\u2192180, VelkozPassive.mSpellCalculations). Curated as a P bonusEffect trigger onAbility \u2014 an assistive APPROXIMATION applied to every ability cast rather than strictly the 3rd-hit proc (documented, same style as Mordekaiser's Darkness Rise). Q/W/E kept as the auto first-pass magic picks.",
+  "_noteProcP": "(2026-10-19, M45 loop 5) Organic Deconstruction: true damage on the 3rd stack (procEvery 3 over ability hits), not on every ability. Ceiling assumes 2 prior stacks.",
+  "_noteTypeP": "(2026-10-19, M45 loop 9) Type set to True from the tooltip - Organic Deconstruction: 'true damage'.",
   "P": {
     "bonusEffects": [
       {
         "trigger": "onAbility",
+        "procEvery": 3,
         "hits": [
           {
-            "type": "Magic",
+            "type": "True",
             "calc": "TotalDamage",
             "count": 1,
             "tags": [

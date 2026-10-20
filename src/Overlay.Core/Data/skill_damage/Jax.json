@@ -9,10 +9,12 @@
       }
     ]
   },
+  "_noteAttackW": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
   "W": {
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
-        "type": "Magic",
+        "isAttack": true, "type": "Magic",
         "calc": "TotalDamage",
         "count": 1
       }
@@ -35,6 +37,7 @@
     ],
     "tags": ["Stacking"]
   },
+  "_noteCadenceR": "(2026-10-20, M45 loop 42) Grandmaster's Might passive: every third attack (procEvery 3), a passive - not a rider the R cast arms, which then rode every attack after it.",
   "R": {
     "hits": [
       {
@@ -46,6 +49,8 @@
     "bonusEffects": [
       {
         "trigger": "onHit",
+        "alwaysOn": true,
+        "procEvery": 3,
         "hits": [
           {
             "type": "Magic",

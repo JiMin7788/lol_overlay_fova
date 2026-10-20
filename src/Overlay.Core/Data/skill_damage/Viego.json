@@ -5,6 +5,7 @@
   "_noteW": "Spectral Maw: TotalDamage = NamedDataValue(Damage) + StatByNamedDataValue(no mStat -> AP default, APRatio=1.0) = wiki's 'Magic Damage: 80/135/190/245/300 (+100% AP)' exactly (Damage DataValues rank1-5 = 80/135/190/245/300). No crit-scaling term on this calc -- fully resolvable as-is.",
   "_noteR": "Heartbreaker has two wiki-documented damage components. (1) The AOE hit to ALL nearby enemies on arrival ('All targets hit are dealt 120% AD physical damage, increased by 0-70% (+0-21% w/ IE) based on crit chance') maps to BIN 'TotalDamage' = StatByNamedDataValue(mStat=2 TOTAL AD, ADRatio=1.2=120%) wrapped in the SAME crit-scaling mMultiplier pattern as Q (mStat=8 CritMod / mStat=9, unmapped) -- genuinely blocked for the identical reason documented in _noteQ, no hit modeled. (2) The bonus to the single most-wounded enemy champion hit, based on their MISSING health, maps to 'TotalPercentHealth' = NamedDataValue(MaxHealthDamage) + StatByCoefficient(mStat=2, mStatFormula=2 = BONUS AD, coefficient 0.05) -- confirmed against the live Template:Data_Viego/Heartbreaker fetch's rendered tooltip preview 'Physical Damage: 12 / 16 / 20% (+5% per 100 bonus AD) of target's missing health' (matches BIN DataValue MaxHealthDamage rank1-3 = 12/16/20 exactly; R has only 3 ranks). MaxHealthDamage's raw values are percentage-POINTS (12.0, not 0.12) with no mDisplayAsPercent flag on this calc, but SkillDamage.ResolveHpPercentCalc's existing >=1.0-means-whole-percent normalization ('raw >= 1.0 ? raw / 100.0 : raw') already handles this correctly (12 -> 0.12 = 12%; adding 0.05*bonusAD before division correctly folds in the 'per 100 bonus AD' term, e.g. +100 bonus AD -> raw 17 -> 17%), so hpPercentCalc is safe and accurate here without any interpreter change. Modeled hpBasis Missing per the wiki's explicit 'of target's missing health'. CORRECTION (loop 221): R's AoE 'TotalDamage' (pure StatByNamedDataValue(mStat=2 total AD, ADRatio=1.2), no flat base) is now ADDED as a second hit -- same crit-multiplier-resolves-to-1 reasoning as Q above. Matches wiki 'All targets hit are dealt 120% AD physical damage' exactly. Physical, count 1, alongside the existing %missing-health hit on the primary target.",
   "_noteQ_onhit": "TWO ON-HIT EFFECTS EXPLAINED (loop 477, user reported this as a bug). Both are real and they are different mechanics - the curation just had each one gated the wrong way round. Live wiki (wiki.leagueoflegends.com/en-us/Viego, fetched 2026-08-20): Q passive gives bonus on-hit damage based on the target CURRENT health, and separately his damaging abilities apply a mark whose next basic attack against a marked target is empowered to consume the mark on-hit and STRIKE A SECOND TIME. So (1) TotalPercentHealthOnHit is an always-on passive that fires on every attack, not only after Q is cast - alwaysOn true; (2) SecondAttackDamage is the mark consumption, which happens ONCE per mark - maxProcs 1, where it previously rode every attack after Q. KNOWN APPROXIMATION: any damaging ability applies the mark, but the effect is curated under Q, so the engine gates it on Q having been cast. A W/E/R-only opener therefore misses the second strike. The active itself is a single stab and is already the Q slot hit.",
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Blade of the Ruined King: the second strike can critically strike (and applies on-hit effects - not counted again).",
   "Q": {
     "bonusEffects": [
       {
@@ -26,7 +27,8 @@
           {
             "type": "Physical",
             "calc": "SecondAttackDamage",
-            "count": 1
+            "count": 1,
+            "canCrit": true
           }
         ]
       }
@@ -48,6 +50,7 @@
       }
     ]
   },
+  "_noteOnHitR": "(2026-10-20, M45 loop 47) Heartbreaker applies on-hit effects to the primary target.",
   "R": {
     "tags": [
       "BurstCeiling",
@@ -66,7 +69,8 @@
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "appliesOnHit": true
       }
     ]
   }

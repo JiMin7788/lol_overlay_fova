@@ -86,7 +86,10 @@ public static class ChampionSummary
                         // (bonusAS = live total / base − 1) in SkillDamage's mStat=4 mapping.
                         AttackSpeed: GetD(s, "attackspeed"),
                         Ad: GetD(s, "attackdamage"),
-                        AdPerLevel: GetD(s, "attackdamageperlevel"));
+                        AdPerLevel: GetD(s, "attackdamageperlevel"),
+                        Ms: GetD(s, "movespeed"),
+                        Mp: GetD(s, "mp"),
+                        MpPerLevel: GetD(s, "mpperlevel"));
 
                     // Key by both the Data Dragon id (the JSON property name, e.g. "DrMundo")
                     // and the display name (e.g. "Dr. Mundo"); the scoreboard uses the display
@@ -197,7 +200,12 @@ public sealed record ChampionSummaryStats(
     // base AD (bonus = total − 0). The old Talon calc-trace over-count (TODO_ARCHIVE §…112.46
     // vs measured 105) was this bug's growth half.
     double Ad = 0,
-    double AdPerLevel = 0)
+    double AdPerLevel = 0,
+    // (M45 loop 50) The same again: never parsed, so a summary-built champion's base move speed and mana were 0 -
+    // bonus move speed read the total (Janna's Tailwind) and bonus mana the max (Ryze, Actualizer).
+    double Ms = 0,
+    double Mp = 0,
+    double MpPerLevel = 0)
 {
     public double HpAt(int level) => LevelGrowth.Stat(Hp, HpPerLevel, level);
     public double ArmorAt(int level) => LevelGrowth.Stat(Armor, ArmorPerLevel, level);

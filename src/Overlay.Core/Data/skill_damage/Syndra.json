@@ -9,6 +9,7 @@
       }
     ]
   },
+  "_noteShareW": "(2026-10-20, M45 loop 26) The 60-splinter bonus is ThrowDamage x TOOLTIPONLYPassiveBonusPercent as true damage - the same number as PassiveBonusDamage (checked at every audit profile), now through the tooltip's own percent.",
   "W": {
     "hits": [
       {
@@ -19,7 +20,8 @@
       {
         "type": "True",
         "conditionType": "Upgraded",
-        "metCalc": "PassiveBonusDamage",
+        "metCalc": "ThrowDamage",
+        "damageMultiplierCalc": "TOOLTIPONLYPassiveBonusPercent",
         "count": 1
       }
     ]
@@ -33,6 +35,7 @@
       }
     ]
   },
+  "_noteSpheresR": "(2026-10-19, M45 loop 7) MinDamageCalc = the 3 orbiting spheres; up to 4 more nearby spheres ride the hit-count knob (MaxSpheresToUse 7 - MinSpheresToUse 3); at the cap the sum is MaxDamageCalc.",
   "R": {
     "tags": [
       "BurstCeiling"
@@ -42,7 +45,8 @@
         "type": "Magic",
         "calc": "MinDamageCalc",
         "count": 1
-      }
+      },
+      { "type": "Magic", "perAttackCalc": "DamageCalc", "maxAttackCount": 4, "count": 1 }
     ]
   },
   "_noteWUpgrade": "W TRANSCENDENT TOGGLE (loop 479). The prior note called PassiveBonusDamage a genuine ~12% undercount that could not be curated because nothing carried the stack gate. The Upgraded condition is that missing piece. Live wiki (wiki.leagueoflegends.com/en-us/Syndra, fetched 2026-08-21) walks the four thresholds: Q at 40 splinters gains a second charge, E at 80 widens the scatter and adds a slow, R at 100 gains a below-15%-health execute, and 120 grants a flat 15% AP. NONE of those adds damage to a hit. W at 60 is the only one that does: it adds 12% (+2% per 100 AP) bonus TRUE damage, which is exactly the BIN pair TOOLTIPONLYPassiveBonusPercent (0.12 + 0.0002 per AP) and PassiveBonusDamage (ThrowDamage multiplied by it). Curated as a second True hit gated on Upgraded, so an un-upgraded W is unchanged and the toggle adds the true-damage half. Everything else on this champion correctly stays as it was.",

@@ -50,6 +50,11 @@ internal sealed class TrayHost : IDisposable
     /// the League auto-launch), so the caller shows the dashboard right away.</summary>
     public bool ClientAlreadyRunning => _clientWasRunning;
 
+    /// <summary>Windows notification from the tray icon (used once, when closing the window
+    /// first hides Fova to the tray instead of exiting).</summary>
+    public void Notify(string title, string text)
+        => _icon.ShowBalloonTip(5000, title, text, Forms.ToolTipIcon.Info);
+
     private void Poll()
     {
         bool running = IsClientRunning();

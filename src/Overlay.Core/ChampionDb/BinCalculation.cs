@@ -143,7 +143,8 @@ public sealed class CalculationPart
     /// Ekko/Akali) OR a <c>mBonusPerLevelAtAndAfter</c> rate (replaces the running per-level
     /// growth rate from that <c>Level</c> onward — e.g. Diana/Lissandra/Ziggs). Kept as separate
     /// nullable fields rather than merged so <see cref="FormulaInterpreter"/> can apply each
-    /// flavor's own semantics instead of conflating a one-off bump with a rate change.</summary>
+    /// flavor's own semantics instead of conflating a one-off bump with a rate change.
+    /// (M45 loop 23) A null rate is the BIN omitting a 0: the breakpoint still replaces the rate.</summary>
     public IReadOnlyList<(int Level, double? AdditionalBonus, double? PerLevelRate)> Breakpoints { get; init; }
         = Array.Empty<(int, double?, double?)>();
 
@@ -151,6 +152,11 @@ public sealed class CalculationPart
     /// to level 18.</summary>
     public double? InterpolationStart { get; init; }
     public double? InterpolationEnd { get; init; }
+
+    /// <summary>(M45 loop 15) <c>mScaleByStatProgressionMultiplier</c>: the interpolation follows the
+    /// champion stat-growth curve, (n-1)(0.7025 + 0.0175(n-1)) / 17, instead of a straight line - the same
+    /// shape base stats grow by (Malzahar's Voidlings, Yorick's Ghouls, Zeri's uncharged attack).</summary>
+    public bool InterpolationByStatProgression { get; init; }
 
     /// <summary>(§16 P-round) <see cref="Kind.ByCharLevelInterpolationByDataValue"/> — the same
     /// level-1→18 linear interpolation as <see cref="InterpolationStart"/>/<see cref="InterpolationEnd"/>,

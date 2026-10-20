@@ -22,12 +22,12 @@ public sealed class HelpView : UserControl
     private static readonly string[] Sections =
 #if LIGHT
     {
-        "intro", "overlay", "combo", "timers",
+        "intro", "overlay", "troubleshoot", "combo", "timers",
         "champselect", "comp", "spells", "wards", "data", "report", "legal",
     };
 #else
     {
-        "intro", "overlay", "combo", "timers", "minimap",
+        "intro", "overlay", "troubleshoot", "combo", "timers", "minimap",
         "champselect", "comp", "spells", "wards", "search", "data", "report", "legal",
     };
 #endif
@@ -37,6 +37,10 @@ public sealed class HelpView : UserControl
     private const double TextColumn = 680;
 
     private readonly StackPanel _list = new() { Margin = new Thickness(0, 0, 16, 24) };
+
+    /// <summary>Raised by the intro card's [시작 가이드 다시 보기]: the first-run guide is one-shot on
+    /// Home, and this is the way back to it once dismissed.</summary>
+    public event Action? ShowGuideRequested;
 
     public HelpView()
     {
@@ -55,13 +59,11 @@ public sealed class HelpView : UserControl
         var subtitle = new TextBlock
         {
             Text = Localization.L("help.page.subtitle"),
-            FontSize = 12,
-            Margin = new Thickness(0, 0, 0, 14),
-            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 16),
             MaxWidth = TextColumn,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        subtitle.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        subtitle.SetResourceReference(StyleProperty, "HintText");
         _list.Children.Add(subtitle);
 
         foreach (var key in Sections) _list.Children.Add(SectionCard(key));
@@ -70,14 +72,13 @@ public sealed class HelpView : UserControl
         var version = new TextBlock
         {
             Text = "Fova " + BugReport.Version,
-            FontSize = 12,
             Margin = new Thickness(2, 4, 0, 0),
         };
-        version.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        version.SetResourceReference(StyleProperty, "HintText");
         _list.Children.Add(version);
     }
 
-    private static UIElement SectionCard(string key)
+    private UIElement SectionCard(string key)
     {
         var heading = new StackPanel
         {
@@ -101,45 +102,51 @@ public sealed class HelpView : UserControl
         var caption = new TextBlock
         {
             Text = Localization.L($"help.{key}.title"),
-            FontSize = 15,
-            FontWeight = FontWeights.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        caption.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+        caption.SetResourceReference(StyleProperty, "CardTitle");
         heading.Children.Add(caption);
 
+        // BodyText in the primary colour, not TextDim: this is the content of the page, not an
+        // annotation on something else.
         var body = new TextBlock
         {
             Text = Localization.L($"help.{key}.body"),
-            FontSize = 13,
-            TextWrapping = TextWrapping.Wrap,
-            LineHeight = 22,
             MaxWidth = TextColumn,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        // Primary, not TextDim: this is the content of the page, not an annotation on something else.
-        body.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+        body.SetResourceReference(StyleProperty, "BodyText");
 
         var stack = new StackPanel();
         stack.Children.Add(heading);
         stack.Children.Add(body);
+        if (key == "intro") stack.Children.Add(GuideButton());
         if (key == "report") stack.Children.Add(ReportButton());
 
         var card = new Border
         {
             Child = stack,
-            Padding = new Thickness(16, 14, 16, 15),
-            CornerRadius = new CornerRadius(8),
-            BorderThickness = new Thickness(1),
-            Margin = new Thickness(0, 0, 16, 10),
+            Margin = new Thickness(0, 0, 16, 12),
             HorizontalAlignment = HorizontalAlignment.Left,
-            // Same width for every card (text column + padding): they used to shrink to their
-            // text, so short sections made a ragged right edge.
+            // Same width for every card (text column + Card padding + border): they used to
+            // shrink to their text, so short sections made a ragged right edge.
             Width = TextColumn + 34,
         };
-        card.SetResourceReference(Border.BackgroundProperty, "Surface");
-        card.SetResourceReference(Border.BorderBrushProperty, "Border");
+        card.SetResourceReference(StyleProperty, "Card");
         return card;
+    }
+
+    private UIElement GuideButton()
+    {
+        var button = new Button
+        {
+            Content = Localization.L("help.intro.guide"),
+            Margin = new Thickness(0, 12, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        button.SetResourceReference(StyleProperty, "GhostButton");
+        button.Click += (_, _) => ShowGuideRequested?.Invoke();
+        return button;
     }
 
     /// <summary>[버그 신고]: zip of version + recent logs, shown in Explorer, plus a pre-filled
@@ -148,13 +155,11 @@ public sealed class HelpView : UserControl
     {
         var status = new TextBlock
         {
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap,
             MaxWidth = TextColumn,
             Margin = new Thickness(0, 8, 0, 0),
             Visibility = Visibility.Collapsed,
         };
-        status.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
+        status.SetResourceReference(StyleProperty, "HintText");
 
         var button = new Button
         {
@@ -168,10 +173,12 @@ public sealed class HelpView : UserControl
             try
             {
                 status.Text = Localization.F("help.report.done", BugReport.CreateAndOpen());
+                status.SetResourceReference(TextBlock.ForegroundProperty, "TextDim");
             }
             catch (Exception ex)
             {
                 status.Text = Localization.F("help.report.failed", ex.Message);
+                status.SetResourceReference(TextBlock.ForegroundProperty, "Danger");
             }
             status.Visibility = Visibility.Visible;
         };

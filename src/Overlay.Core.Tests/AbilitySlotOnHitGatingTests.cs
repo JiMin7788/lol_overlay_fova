@@ -122,8 +122,9 @@ public class AbilitySlotOnHitGatingTests : IDisposable
         var editor = new ComboEditor(engine, config);
 
         var draft = editor.CreateCombo(championId, "c");
+        int aa = 0; // (M45 loop 42) each further auto its own id - a combo rejects a repeated one
         foreach (var s in slots)
-            editor.AddNode(draft.Id, s == "AA" ? AaNode() : SkillNode(s));
+            editor.AddNode(draft.Id, s == "AA" ? AaNode() with { Id = $"AA_{aa++}" } : SkillNode(s));
         editor.SaveCombo(draft.Id);
 
         using var runner = new ComboRunner(engine, config, () => snap);
@@ -257,8 +258,9 @@ public class AbilitySlotOnHitGatingTests : IDisposable
     public void Kennen_ElectricalSurgePassive_IsAlwaysOn_AppliesToBareAuto()
     {
         // Kennen W's passive half (TotalDamagePassive) is an always-on on-hit (curated alwaysOn,
-        // "same pattern as Warwick P"); it must fire on a plain auto with no W cast. Kennen has no
-        // damaging passive slot, so a bare auto is AD + this one on-hit.
+        // "same pattern as Warwick P"); it must fire with no W cast. Kennen has no damaging passive
+        // slot, so bare autos are AD + this on-hit. (M45 loop 42) "Every 5th Attack": it rode every
+        // auto until procEvery 5, so five bare autos carry it once, on the fifth.
         var kennen = LoadChampionFromBin("Kennen");
         ChampionRepository.Initialize(new[] { kennen });
 
@@ -267,10 +269,11 @@ public class AbilitySlotOnHitGatingTests : IDisposable
         double passive = SkillDamage.ComputeCalcDamage(kennen, "W", "TotalDamagePassive", stats, level)!.Value;
         Assert.True(passive > 1, "Kennen W passive on-hit must resolve to a real value");
 
-        var result = RunCombo("Kennen", new[] { "AA" }, Snapshot("Kennen", stats, level));
+        var result = RunCombo("Kennen", new[] { "AA", "AA", "AA", "AA", "AA" }, Snapshot("Kennen", stats, level));
 
-        Assert.Equal(70.0 + passive, result.TotalDamage, precision: 2);
-        Assert.Equal(2, result.NodeBreakdown.Count);
+        Assert.Equal(5 * 70.0 + passive, result.TotalDamage, precision: 2);
+        Assert.Equal(6, result.NodeBreakdown.Count);
+        Assert.Single(result.NodeBreakdown, n => n.NodeId.Contains("#bonus"));
     }
 
     [Fact]

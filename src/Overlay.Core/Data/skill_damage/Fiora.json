@@ -6,6 +6,9 @@
   "_noteE": "Bladework has ZERO mSpellCalculations in the BIN (only attack-speed/on-hit-conversion DataValues, no discrete damage calc) -- no hits, matches pre-existing omission.",
   "_noteR": "Grand Challenge's own tooltip has no damage classification (only heal leveling) -- it reveals Vitals for P to trigger on, deals no damage itself. A calc 'RDamageTotal' (=PassiveDamageTotal x4) exists but lives inside the PASSIVE's own spell block, not R's, and no wiki text confirms its trigger condition -- left uncurated rather than guessed.",
   "P": { "hits": [ { "type": "True", "hpPercentCalc": "PassiveDamageTotal", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] },
-  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1 } ] },
-  "W": { "hits": [ { "type": "Magic", "calc": "StabDamage", "count": 1 } ] }
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) The Lunge strike applies On-Hit effects.",
+  "Q": { "hits": [ { "type": "Physical", "calc": "TotalDamage", "count": 1, "appliesOnHit": true } ] },
+  "W": { "hits": [ { "type": "Magic", "calc": "StabDamage", "count": 1 } ] },
+  "_noteVitalsR": "(2026-10-20, M45 loop 30) Grand Challenge reveals all four Vitals for a max of RDamageTotal (4 x PassiveDamageTotal) of max health as true damage - struck by her later hits. A VsDebuffed box: ticked = all four struck; unticked = none (the P node is the single passive Vital). R was never curated.",
+  "R": { "hits": [ { "type": "True", "conditionType": "VsDebuffed", "metHpPercentCalc": "RDamageTotal", "binSpell": "P", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] } ] }
 }

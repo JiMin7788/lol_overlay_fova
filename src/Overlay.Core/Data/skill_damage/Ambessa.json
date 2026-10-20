@@ -1,9 +1,10 @@
 {
   "_note": "Curated (T3.x passive pass). P (on-hit empowered strike): basic attacks deal bonus PHYSICAL damage (Calc_OnHit_Damage_Flat = level-interpolated base 5→30 + 0.25x bonus AD, Ambessa's hashed passive spell key {3f70c67a}.mSpellCalculations). Curated as a P bonusEffect trigger onHit. Type inferred Physical from the bonus-AD scaling (consistent with Ambessa's AD kit); Q/W/E/R kept as the auto first-pass physical picks. Q re-verified this pass (loop 221) and CORRECTED -- see _noteQ.",
+  "_noteRidesP": "(2026-10-20, M45 loop 43) Drakehound's Step: each cast initiation grants a charge (max Attack_Buff_Max_Stacks, 3), attacks consume one (chargePerAttack). It rode every attack.",
   "P": {
     "bonusEffects": [
       {
-        "trigger": "onHit",
+        "trigger": "onHit", "castCharges": 3, "chargePerAttack": true,
         "hits": [
           {
             "type": "Physical",
@@ -15,12 +16,15 @@
     ]
   },
   "_noteQ_split": "MULTI-CAST SPLIT + NOTE CORRECTION (loop 471, user request). The four hits were NOT 'base plus an edge-doubled conditional' as the older _noteQ describes - they are the TWO CASTS, each with its flat and its %maxHP term. Read off the BIN: {a7907b77}/{17768f39} modify Calc_Damage_1_(Percent_)Max and {3ce89b9e}/{1442dbe0} modify Calc_Damage_2_(Percent_)Max, and every one is multiplied by its Damage_N_Min_Ratio of 0.5. Those _Max calcs are the DOUBLED values, so the 0.5 brings them back to normal: Damage_1_Base[rank1]=40 x0.5 = 20 and Damage_2_Base[rank1]=50 x0.5 = 25, which is exactly the live wiki (wiki.leagueoflegends.com/en-us/Ambessa, fetched 2026-08-20): Cunning Sweep 20/30/40/50/60 (+30% bonus AD)(+2-3% max HP), Sundering Slam 25/37.5/50/62.5/75 (+45% bonus AD)(+2-3% max HP). Curated as Q (Cunning Sweep) and Q2 (Sundering Slam, binSpell Q); Q + Q2 sums to exactly what the single slot summed to before. STILL NOT CURATED, and now precisely located for the conditional pass: dropping the x0.5 - i.e. using Calc_Damage_N_Max directly - is the doubled damage against an outer-edge hit (cast 1) or the first target struck (cast 2). That is a positional condition, so it belongs behind a user checkbox rather than in every Q.",
+  "_noteSweetQ": "(2026-10-19, M45 loop 7) Cunning Sweep deals the full Calc_Damage_1_Max (+%) at the edge, Sundering Slam the full _2_ calcs to the first enemy hit; every other enemy takes Damage_N_Min_Ratio (50%) - the curated hashes. SweetSpot condition: unmet = the 50% share (P2), met = the full calcs.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "{a7907b77}",
-        "count": 1
+        "count": 1,
+        "conditionType": "SweetSpot",
+        "metCalc": "Calc_Damage_1_Max"
       },
       {
         "type": "Physical",
@@ -29,7 +33,9 @@
         "count": 1,
         "tags": [
           "PercentMaxHp"
-        ]
+        ],
+        "conditionType": "SweetSpot",
+        "metHpPercentCalc": "Calc_Damage_1_Percent_Max"
       }
     ]
   },
@@ -39,7 +45,9 @@
         "type": "Physical",
         "calc": "{3ce89b9e}",
         "count": 1,
-        "binSpell": "Q"
+        "binSpell": "Q",
+        "conditionType": "SweetSpot",
+        "metCalc": "Calc_Damage_2_Max"
       },
       {
         "type": "Physical",
@@ -49,7 +57,9 @@
         "tags": [
           "PercentMaxHp"
         ],
-        "binSpell": "Q"
+        "binSpell": "Q",
+        "conditionType": "SweetSpot",
+        "metHpPercentCalc": "Calc_Damage_2_Percent_Max"
       }
     ]
   },

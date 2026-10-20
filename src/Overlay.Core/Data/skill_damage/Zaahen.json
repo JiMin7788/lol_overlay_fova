@@ -6,10 +6,13 @@
   "_noteE": "Dash ability with a sweet-spot damage bonus. BaseDamageCalc = NamedDataValue(Damage_Base) + 0.5x bonus AD -- the guaranteed hit. A second calc, BonusDamageCalc (= BaseDamageCalc x1.5 SweetSpotDamageMod), exists for a positional sweet spot but is conditional, so only the guaranteed base is curated (consistent with the Xerath W treatment elsewhere in this pass). Physical. ADDITIONAL VERIFICATION (loop 221): a separate DataValue 'PercentHPDamage' (real ranks 4/4.5/5/5.5/6%, not wired to any named calc) was checked against a live wiki fetch -- it is the ability's 'Bonus Magic Damage: 4/4.5/5/5.5/6% of target's maximum health' term, but per the same fetch this ONLY applies on the same conditional outer-edge/sweet-spot hit as BonusDamageCalc (not on the guaranteed inner hit) -- so it is correctly excluded for the identical conditional-hit reason, not an oversight.",
   "_noteR": "Dash/execute ultimate. DamageEndCalc = NamedDataValue(EndDamage, 100-1000) + StatByNamedDataValue(mStat=2, mStatFormula=2 -> 200% bonus AD via BonusADDamageRatio). Physical. Tagged BurstCeiling: the 200% bonus-AD ratio makes this Zaahen's single largest realistic burst hit by a wide margin.",
   "_noteQ_split": "MULTI-CAST SPLIT (loop 471, user request). _noteQ already established what these two calcs are - InitialDamage is the first cast's double strike, SecondHitDamage is the RECAST's separate bonus - but both sat in one Q slot, so the editor could only charge for both and no combo could land the first cast without the recast. Moved the recast to its own selectable slot; binSpell Q keeps it resolving against the same BIN spell object at the same rank. No number changed: Q + Q2 sums to exactly what Q alone summed to before.",
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
+  "_noteRecastQ": "(2026-10-19, M45 loop 20) The recast empowers Zaahen's next attack for SecondHitDamage bonus physical damage - its own node, Q2 (the swing folded in like Q).",
   "Q": {
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "calc": "InitialDamage",
         "count": 1
       }
@@ -17,7 +20,9 @@
   },
   "Q2": {
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
+        "isAttack": true,
         "type": "Physical",
         "calc": "SecondHitDamage",
         "binSpell": "Q",
@@ -39,13 +44,17 @@
       }
     ]
   },
+  "_noteEdgeE": "(2026-10-20, M45 loop 23) Enemies at the slice's edge take BonusDamageCalc (x SweetSpotDamageMod) physical plus PercentHPDamage of their max health as magic damage INSTEAD - a SweetSpot box (unticked = the plain slice).",
   "E": {
     "hits": [
       {
         "type": "Physical",
         "calc": "BaseDamageCalc",
-        "count": 1
-      }
+        "count": 1,
+        "conditionType": "SweetSpot",
+        "metCalc": "BonusDamageCalc"
+      },
+      { "type": "Magic", "conditionType": "SweetSpot", "metHpPercentDataValue": "PercentHPDamage", "hpBasis": "Max", "count": 1, "tags": ["PercentMaxHp"] }
     ]
   },
   "R": {

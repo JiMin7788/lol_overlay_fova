@@ -652,16 +652,17 @@ public sealed class JunglePresenceTracker : IDisposable
     /// <para>The toast is now a <see cref="HUDPayload"/> (not a bare string) so the card can render the
     /// enemy's champion PORTRAIT + a severity color from <paramref name="alert"/>'s Kind/GroupCount —
     /// still on the <c>UI.NOTIFICATION</c> event (the coordinator uses an embedded HUDPayload verbatim;
-    /// see <c>OverlayCoordinator.TryConvert</c>). The id is keyed by kind+champion so an APPEAR and a
-    /// DISAPPEAR (or several disappears) can be on screen at once rather than replacing each other, while
-    /// a re-published identical alert live-updates its own card. <see cref="Message"/> carries the exact
-    /// display text so the wording/role-label logic stays here in one place.</para>
+    /// see <c>OverlayCoordinator.TryConvert</c>). (2026-10-19) The id is keyed by CHAMPION only: an
+    /// enemy's newest state replaces its older card, so "발견" and "사라짐" for the same champion no
+    /// longer sit on screen together; different champions still get their own cards (the overlay caps
+    /// how many show at once). The message carries the exact display text so the wording/role-label
+    /// logic stays here in one place.</para>
     ///
     /// <para><c>UI.ENEMY_PRESENCE</c> (the structured struct) is unchanged — still published for the
     /// pre-recorded voice player (§B) and minimap afterimage renderer (§C).</para></summary>
     private void Raise(EnemyPresenceAlert alert, string message, string cooldownKey)
     {
-        string id = $"UI.NOTIFICATION:{alert.Kind}:{alert.ChampionId}";
+        string id = $"UI.NOTIFICATION:{alert.ChampionId}";
         var hud = new HUDPayload(id, HudType.EnemyPresence,
             new EnemyPresenceHud(message, alert.ChampionId, alert.Kind, alert.GroupCount));
         EventBus.EventBus.Publish("UI.NOTIFICATION", hud, Source);

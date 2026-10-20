@@ -4,6 +4,7 @@
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalDamageTT", "count": 1 } ] },
   "E": { "hits": [ { "type": "Magic", "calc": "TotalDamageTT", "count": 1 } ] },
   "R": { "tags": ["BurstCeiling", "AoeUltimate"], "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] },
-  "_noteP": "APPLIES-TO CURATED (loop 475, user request). Illumination is an onHit effect, but the trigger default (attacks only) understates it while the old no-filter behaviour overstated it - the editor would let it ride Q, W and E as well. Live wiki (wiki.leagueoflegends.com/en-us/Lux, fetched 2026-08-20) states that Lux's basic attacks on-hit AND Final Spark consume the mark, while Q/W/E only APPLY it and never consume it. Exactly two things detonate it, and appliesTo says so.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "appliesTo": ["AA", "R"], "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] }
+  "_noteP_2": "APPLIES-TO CURATED (loop 475, user request). Illumination is an onHit effect, but the trigger default (attacks only) understates it while the old no-filter behaviour overstated it - the editor would let it ride Q, W and E as well. Live wiki (wiki.leagueoflegends.com/en-us/Lux, fetched 2026-08-20) states that Lux's basic attacks on-hit AND Final Spark consume the mark, while Q/W/E only APPLY it and never consume it. Exactly two things detonate it, and appliesTo says so.",
+  "_noteMarkP": "(2026-10-19, M45 loop 10) Illumination rode EVERY attack; a damaging spell places the mark and the next attack consumes it (afterAnyAbility).",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "appliesTo": ["AA", "R"], "afterAnyAbility": true, "hits": [ { "type": "Magic", "calc": "TotalDamage", "count": 1 } ] } ] }
 }

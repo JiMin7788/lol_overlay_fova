@@ -105,7 +105,7 @@ public class RemoteFlagsTests : IDisposable
     }
 
     [Fact]
-    public void PublishedDocument_ForcesTheFourGatedFeaturesOff()
+    public void PublishedDocument_ForcesTheThreeGatedFeaturesOff()
     {
         // The repo-root flags.json is what the app fetches from the public branch.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -116,7 +116,7 @@ public class RemoteFlagsTests : IDisposable
 
         Assert.NotNull(set);
         Assert.Contains("recallTimer", set!);
-        Assert.Contains("laneReturn", set!);
+        Assert.DoesNotContain("laneReturn", set!); // (2026-10-20) back on by the user's decision
         Assert.Contains("enemyJunglerSpotted", set!);
         Assert.Contains("enemyItemAlert", set!);
     }

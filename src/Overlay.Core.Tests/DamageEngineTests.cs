@@ -74,6 +74,21 @@ public class DamageEngineTests
     }
 
     [Fact]
+    public void ExecuteType_CurrentHp_TakesItsFloor_OnceTheTargetIsLow()
+    {
+        // (M45 loop 16) Dr. Mundo Q: max(10% of current health, 30). At 100 HP the floor wins (30 > 10);
+        // the kill threshold falls back from the affine fold (a floor is not affine) to bisection.
+        var defender = new DefenderStat(CurrentHP: 100, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
+        var node = new ComboNode("Q", Damage: 0, RatioAD: 0, RatioAP: 0, DamageType.True,
+            ExecuteType: ExecuteType.CurrentHp, ExecutePercent: 0.1, ExecuteFloor: 30);
+
+        var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, NeutralAttacker, defender));
+
+        Assert.Equal(30.0, result.TotalDamage, 2);
+        Assert.Equal(30.0, result.KillThresholdHP, 1); // any target at or under 30 HP dies to the floor
+    }
+
+    [Fact]
     public void ExecuteType_CurrentHp_RecalculatesAsPercentOfRemainingHP()
     {
         // Node's flat/ratio fields are irrelevant (Damage=0): CurrentHp replaces raw
@@ -336,18 +351,18 @@ public class DamageEngineTests
     }
 
     [Fact]
-    public void FlatPen_CanDriveArmorNegative_AmplifiesDamage()
+    public void FlatPen_NeverDrivesArmorBelowZero()
     {
-        // armor 10, flat pen 50 -> R = 10-50 = -40 (loop 38 fix: flat pen is NOT clamped
-        // at 0, unlike percent pen — matches live League lethality over-penetrating a
-        // low-armor target). Amplified branch: mult = 2 - 100/140. raw = 100 -> 128.57...
+        // armor 10, flat pen 50 -> R = max(0, 10-50) = 0, mult 1.0. (M45 loop 50) Restated from loop 38's "flat pen
+        // over-penetrates" (128.57 here) by the user's Practice Tool rows: AD 173 with 10 lethality hits a 0-armor dummy
+        // for exactly 173, and 263 x 100/105 = 250 at 30 armor with 25 lethality. Only a reduction goes negative.
         var attacker = NeutralAttacker with { ArmorPenFlat = 50 };
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 10, Mr: 0, Shield: 0);
         var node = new ComboNode("N", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Physical);
 
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
-        Assert.Equal(128.57, result.TotalDamage, 2); // 100 * (2 - 100/140)
+        Assert.Equal(100, result.TotalDamage, 2);
     }
 
     [Fact]
@@ -412,9 +427,9 @@ public class DamageEngineTests
     [Fact]
     public void CritRange_HundredPercentCritChance_MinIsNoCrit_MaxIsGuaranteedCrit()
     {
-        // 100% crit chance, CritDamageMultiplier defaults to DamageEngine's own 1.75 constant
+        // 100% crit chance, CritDamageMultiplier defaults to DamageEngine's own 2.0 base
         // (AttackerStat.CritDamageMultiplier left at 0 = "not reported by the API").
-        // raw = 100 (true, no mitigation). Min: no crit -> 100. Max: guaranteed crit -> 175.
+        // raw = 100 (true, no mitigation). Min: no crit -> 100. Max: guaranteed crit -> 200.
         var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 1.0, LifeSteal: 0);
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
         var node = new ComboNode("AA", Damage: 0, RatioAD: 1.0, RatioAP: 0, DamageType.True, CanCrit: true);
@@ -422,11 +437,11 @@ public class DamageEngineTests
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
         Assert.Equal(100.0, result.TotalDamageMin, 2);
-        Assert.Equal(175.0, result.TotalDamageMax, 2);
+        Assert.Equal(200.0, result.TotalDamageMax, 2);
         Assert.Equal(900.0, result.RemainingHPMin, 2);
-        Assert.Equal(825.0, result.RemainingHPMax, 2);
+        Assert.Equal(800.0, result.RemainingHPMax, 2);
         // Blend track (expected value) is unchanged/independent from Min/Max.
-        Assert.Equal(175.0, result.TotalDamage, 2); // 100 * (1 + 1.0*(1.75-1)) = 175
+        Assert.Equal(200.0, result.TotalDamage, 2); // 100 * (1 + 1.0*(2.0-1)) = 200
     }
 
     [Fact]
@@ -440,7 +455,7 @@ public class DamageEngineTests
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
         var nodes = new[]
         {
-            // Q: flat 100 true damage, CanCrit -> Min stays 100, Max becomes 100*1.75=175.
+            // Q: flat 100 true damage, CanCrit -> Min stays 100, Max becomes 100*2.0=200.
             new ComboNode("Q", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.True, CanCrit: true),
             // R: base 100 true + 30% of missing HP at cast time (no crit on this node itself).
             new ComboNode("R", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.True,
@@ -451,12 +466,12 @@ public class DamageEngineTests
 
         // Min track: Q=100 -> remainingHpMin=900. R: missing=1000-900=100; bonus=0.3*100=30;
         // raw=130 -> remainingHpMin = 900-130 = 770.
-        // Max track: Q=175 -> remainingHpMax=825. R: missing=1000-825=175; bonus=0.3*175=52.5;
-        // raw=152.5 -> remainingHpMax = 825-152.5 = 672.5.
+        // Max track: Q=200 -> remainingHpMax=800. R: missing=1000-800=200; bonus=0.3*200=60;
+        // raw=160 -> remainingHpMax = 800-160 = 640.
         Assert.Equal(100.0 + 130.0, result.TotalDamageMin, 2); // 230
-        Assert.Equal(175.0 + 152.5, result.TotalDamageMax, 2); // 327.5
+        Assert.Equal(200.0 + 160.0, result.TotalDamageMax, 2); // 360
         Assert.Equal(770.0, result.RemainingHPMin, 2);
-        Assert.Equal(672.5, result.RemainingHPMax, 2);
+        Assert.Equal(640.0, result.RemainingHPMax, 2);
         Assert.True(result.TotalDamageMax > result.TotalDamageMin);
         Assert.True(result.RemainingHPMax < result.RemainingHPMin);
     }
@@ -464,16 +479,16 @@ public class DamageEngineTests
     [Fact]
     public void CritRange_RealCritDamageMultiplierFromApi_OverridesFallbackConstant()
     {
-        // When AttackerStat.CritDamageMultiplier is a real reported value (e.g. 2.0 from an
-        // Infinity Edge build), the Max track must use it instead of the 1.75 fallback constant.
+        // When AttackerStat.CritDamageMultiplier is a real reported value (e.g. 2.4 from an
+        // Infinity Edge build), the Max track must use it instead of the 2.0 fallback constant.
         var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 1.0,
-            LifeSteal: 0, CritDamageMultiplier: 2.0);
+            LifeSteal: 0, CritDamageMultiplier: 2.4);
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
         var node = new ComboNode("AA", Damage: 0, RatioAD: 1.0, RatioAP: 0, DamageType.True, CanCrit: true);
 
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
-        Assert.Equal(200.0, result.TotalDamageMax, 2); // 100 * 2.0, not 100 * 1.75
+        Assert.Equal(240.0, result.TotalDamageMax, 2); // 100 * 2.4, not 100 * 2.0
     }
 
     // ── M27: per-hit expected-crit scalar (docs/modules/M27_ABILITY_EXPECTED_CRIT.md) ──────────
@@ -482,9 +497,9 @@ public class DamageEngineTests
     public void CritScalar_DefaultOne_IsByteIdenticalToPreExistingAaFormula_ZeroRegression()
     {
         // Explicit CritDamageScalar: 1.0 (the default every pre-existing AA node carries, whether
-        // set explicitly or not) must reproduce the exact pre-M27 numbers: Min=100 (no crit assumed),
-        // Max=175 (100*1.75, guaranteed crit at the fallback constant), Blend=175 (CriticalChance=1.0
-        // collapses Blend to the same 1+1.0*(1.75-1) term as Max here) — see
+        // set explicitly or not) must reproduce the plain AA numbers: Min=100 (no crit assumed),
+        // Max=200 (100*2.0, guaranteed crit at the fallback base), Blend=200 (CriticalChance=1.0
+        // collapses Blend to the same 1+1.0*(2.0-1) term as Max here) — see
         // CritRange_HundredPercentCritChance_MinIsNoCrit_MaxIsGuaranteedCrit, unchanged.
         var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 1.0, LifeSteal: 0);
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
@@ -494,50 +509,50 @@ public class DamageEngineTests
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
         Assert.Equal(100.0, result.TotalDamageMin, 2);
-        Assert.Equal(175.0, result.TotalDamageMax, 2);
-        Assert.Equal(175.0, result.TotalDamage, 2);
+        Assert.Equal(200.0, result.TotalDamageMax, 2);
+        Assert.Equal(200.0, result.TotalDamage, 2);
     }
 
     [Fact]
-    public void CritScalar_PartialScalar040_ScalesBlendAndMaxBonus_MinNeverAffected()
+    public void CritScalar_PartialScalar030_ScalesBlendAndMaxBonus_MinNeverAffected()
     {
-        // s=0.40 (Garen E's curated value), 50% crit chance, no IE (CritDamageMultiplier unreported
-        // -> falls back to the 1.75 constant). raw = 100 true, no mitigation.
+        // s=0.30 (Garen E's BIN CritMod), 50% crit chance, no IE (CritDamageMultiplier unreported
+        // -> falls back to the 2.0 base). raw = 100 true, no mitigation.
         var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 0.5, LifeSteal: 0);
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
         var node = new ComboNode("E", Damage: 0, RatioAD: 1.0, RatioAP: 0, DamageType.True,
-            CanCrit: true, CritDamageScalar: 0.40);
+            CanCrit: true, CritDamageScalar: 0.30);
 
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
         // Min: P2-safe floor — the scalar/crit-chance widen Blend/Max only, never the displayed floor.
         Assert.Equal(100.0, result.TotalDamageMin, 2);
-        // Blend = 100 * (1 + 0.40*0.5*0.75) = 100 * 1.15 = 115 (crit-chance-weighted average).
+        // Blend = 100 * (1 + 0.30*0.5*1.0) = 100 * 1.15 = 115 (crit-chance-weighted average).
         Assert.Equal(115.0, result.TotalDamage, 2);
-        // Max = 100 * (1 + 0.40*(1.75-1)) = 100 * 1.30 = 130 (guaranteed crit assumed regardless of
-        // the real crit CHANCE — only the crit-damage BONUS is scaled by s).
+        // Max = 100 * (1 + 0.30*(2.0-1)) = 100 * 1.30 = 130 — Garen E's tooltip 130% (guaranteed
+        // crit assumed regardless of the real crit CHANCE — only the crit-damage BONUS is scaled by s).
         Assert.Equal(130.0, result.TotalDamageMax, 2);
     }
 
     [Fact]
-    public void CritScalar_PartialScalar040_WithRealCritDamageMultiplier_AmplifiesMaxLikeAaIe()
+    public void CritScalar_PartialScalar030_WithRealCritDamageMultiplier_AmplifiesLikeAaIe()
     {
-        // s=0.40 with a real reported CritDamageMultiplier (e.g. Infinity Edge, 2.0) — M27 §3.3: no
-        // new item logic needed, the scalar multiplies the SAME IE-raised bonus term Max already uses.
+        // s=0.30 with a real reported CritDamageMultiplier (e.g. Infinity Edge, 2.4) — M27 §3.3: no
+        // new item logic needed, the scalar multiplies the SAME IE-raised bonus term an AA uses.
         var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 1.0,
-            LifeSteal: 0, CritDamageMultiplier: 2.0);
+            LifeSteal: 0, CritDamageMultiplier: 2.4);
         var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0);
         var node = new ComboNode("E", Damage: 0, RatioAD: 1.0, RatioAP: 0, DamageType.True,
-            CanCrit: true, CritDamageScalar: 0.40);
+            CanCrit: true, CritDamageScalar: 0.30);
 
         var result = new DamageEngine().Calculate(new DamageCalcInput(new[] { node }, attacker, defender));
 
-        // Max = 100 * (1 + 0.40*(2.0-1)) = 100 * 1.40 = 140, NOT the un-amplified 1.75-based 130.
-        Assert.Equal(140.0, result.TotalDamageMax, 2);
+        // Max = 100 * (1 + 0.30*(2.4-1)) = 100 * 1.42 = 142, NOT the un-amplified base-200% 130.
+        Assert.Equal(142.0, result.TotalDamageMax, 2);
         Assert.Equal(100.0, result.TotalDamageMin, 2);
-        // Blend stays on the 1.75 constant (M27 §7, pre-existing asymmetry, unchanged by this
-        // feature): 100 * (1 + 0.40*1.0*0.75) = 130, independent of the real CritDamageMultiplier.
-        Assert.Equal(130.0, result.TotalDamage, 2);
+        // (2026-10-19) Blend uses the real multiplier too (it used to keep the 1.75 constant, so an
+        // IE reached only the ceiling): at 100% crit chance it equals Max.
+        Assert.Equal(142.0, result.TotalDamage, 2);
     }
 
     [Fact]
@@ -554,5 +569,67 @@ public class DamageEngineTests
         Assert.Equal(20.0, withLifesteal.LifestealHeal, 2); // 0.2 * 100
         Assert.Equal(withoutLifesteal.TotalDamage, withLifesteal.TotalDamage); // unaffected
         Assert.Equal(withoutLifesteal.RemainingHP, withLifesteal.RemainingHP); // unaffected
+    }
+
+    // ── (2026-10-19) in-combo armor shred and attack-damage reduction ───────────────────────────
+
+    [Fact]
+    public void ArmorShred_ReachesOnlyTheNodesAfterIt_AndTheFoldAgrees()
+    {
+        // 100 armor. The first hit shreds 25% after landing: it takes 100/200, the second 100/175.
+        var attacker = new AttackerStat(Ad: 0, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 0, LifeSteal: 0);
+        var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 100, Mr: 0, Shield: 0);
+        var nodes = new[]
+        {
+            new ComboNode("E6", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Physical, ArmorShredPercentAfter: 0.25),
+            new ComboNode("E7", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Physical),
+        };
+
+        var result = new DamageEngine().Calculate(new DamageCalcInput(nodes, attacker, defender));
+
+        Assert.Equal(50.0 + 100.0 * 100.0 / 175.0, result.TotalDamage, 2);
+        double fold = DamageEngine.SolveKillThresholdHpFold(nodes, attacker, defender)!.Value;
+        double bisect = DamageEngine.SolveKillThresholdHp(nodes, attacker, defender);
+        Assert.Equal(bisect, fold, 0);
+    }
+
+    [Fact]
+    public void MrAndFlatShred_ReachLaterNodes_AndTheFoldAgrees()
+    {
+        // 100 armor, 100 MR. The first node leaves 20% MR shred and 30 flat armor shred.
+        var attacker = new AttackerStat(Ad: 0, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 0, LifeSteal: 0);
+        var defender = new DefenderStat(CurrentHP: 2000, MaxHP: 2000, Armor: 100, Mr: 100, Shield: 0);
+        var nodes = new[]
+        {
+            new ComboNode("Q", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Magic,
+                MrShredPercentAfter: 0.20, ArmorShredFlatAfter: 30),
+            new ComboNode("W", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Magic),
+            new ComboNode("E", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Physical),
+        };
+
+        var result = new DamageEngine().Calculate(new DamageCalcInput(nodes, attacker, defender));
+
+        // Q at 100 MR, W at 80 MR, E at 70 armor.
+        Assert.Equal(50.0 + 100.0 * 100.0 / 180.0 + 100.0 * 100.0 / 170.0, result.TotalDamage, 2);
+        Assert.Equal(DamageEngine.SolveKillThresholdHp(nodes, attacker, defender),
+            DamageEngine.SolveKillThresholdHpFold(nodes, attacker, defender)!.Value, 0);
+    }
+
+    [Fact]
+    public void AttackDamageTaken_ReducesAttacksOnly()
+    {
+        // Plated Steelcaps (0.9): the attack loses 10%, the ability hit does not.
+        var attacker = new AttackerStat(Ad: 100, BonusAD: 0, Ap: 0, Level: 11, CriticalChance: 0, LifeSteal: 0);
+        var defender = new DefenderStat(CurrentHP: 1000, MaxHP: 1000, Armor: 0, Mr: 0, Shield: 0,
+            AttackDamageTakenMultiplier: 0.9);
+        var nodes = new[]
+        {
+            new ComboNode("AA", Damage: 0, RatioAD: 1.0, RatioAP: 0, DamageType.Physical, IsAttack: true),
+            new ComboNode("W", Damage: 100, RatioAD: 0, RatioAP: 0, DamageType.Physical),
+        };
+
+        var result = new DamageEngine().Calculate(new DamageCalcInput(nodes, attacker, defender));
+
+        Assert.Equal(90.0 + 100.0, result.TotalDamage, 2);
     }
 }

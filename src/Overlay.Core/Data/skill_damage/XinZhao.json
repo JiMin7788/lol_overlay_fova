@@ -5,10 +5,13 @@
   "_noteW": "Wind Becomes Lightning FIXED (loop 221) -- Thrust phase added as a second hit. ThrustDamage = NamedDataValue(ThrustBaseDamage, real ranks 50/85/120/155/190) + 0.9x total AD + 0.65x AP, wrapped in mMultiplier (1 + StatByNamedDataValue(mStat=8, CritChanceAmp)); mStat=8 resolves to 0.0 in the current engine (§26 no-crit floor) so the multiplier is always 1 and ThrustDamage cleanly resolves. Matches wiki 'Thrust Physical Damage: 50/85/120/155/190 (+90% AD)(+65% AP)' exactly (the wiki's crit-scaling range, 0%-33.3%, floors at 0% here same as everywhere else in this engine). Physical, count 1, added alongside the existing 4x Slash hits (both phases of the same W cast land on a stationary combo target).",
   "_noteE": "Audacious Charge unchanged: ChargeDamage=BaseDamage+APRatio(1.2). WebSearch confirms 'dealing magic damage to nearby enemies' on the dash. One hit, Magic.",
   "_noteR": "Crescent Guard: TotalDamage=BaseDamage+StatByCoefficient(1.0 bonus AD)+StatByCoefficient(1.1 AP). WebSearch: 'deals 75/175/275(+110% AP)(+1.0 per bonus AD) plus 15% current health as physical damage' -- 110%AP and 100% bonus-AD coefficients match exactly. The '15% current health' term is a separate standalone DataValue PercentCurrentHealthDamage (bare fraction) -- modeled via hpPercentDataValue, hpBasis Current (was missing). Whole hit Physical despite the AP term. Two hits.",
+  "_noteCadenceP": "(2026-10-20, M45 loop 42) Determination: every third attack or Wind Becomes Lightning strike (procEvery 3, a W cast counted once - a floor), not every attack.",
   "P": {
     "bonusEffects": [
       {
         "trigger": "onHit",
+        "procEvery": 3,
+        "countsAbilities": ["W"],
         "hits": [
           {
             "type": "Physical",
@@ -19,10 +22,11 @@
       }
     ]
   },
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack.",
   "Q": {
     "hits": [
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "calc": "BonusDamage",
         "count": 3
       }

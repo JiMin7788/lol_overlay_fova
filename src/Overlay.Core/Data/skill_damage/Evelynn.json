@@ -30,34 +30,47 @@
   },
   "_noteQ_sweep2": "STAGE-4 AUDIT additions (loop 442, 2026-07-27), wiki+BIN agreed: (1) the Q MARK rider - next 3 attacks/abilities vs the marked target deal TotalBonusDamage (wiki 15->55 +25%AP per proc) - added as an onHit bonusEffect (empowered-AA-after-cast rule; NOTE the live cap is 3 procs, a combo with 4+ post-Q AAs would overcount - same accepted approximation as the Hwei-W duration cap); (2) the LINE-SPIKE RECASTS (up to 3, each the same MissileDamage the sweep flagged as MissileBaseDamage) - added as the selectable QRecast slot below, one node per recast.",
   "QRecast": { "icon": "assets/characters/evelynn/hud/icons2d/evelynn_q2.png", "hits": [ { "type": "Magic", "calc": "MissileDamage", "binSpell": "Q", "count": 1 } ] },
+  "_noteShredW": "(2026-10-19, M45 loop 4) Allure deals no damage; a shred-only hit carries its MRShred so later nodes see it. The 2.5 s mark condition is assumed met when W is in a combo.",
+  "W": { "hits": [ { "type": "Magic", "mrShredDataValue": "MRShred", "count": 1 } ] },
+  "_noteEmpE": "(2026-10-19, M45 loop 8) Was the empowered E always. Whiplash deals BaseDamage + PercentHealthBaseTOOLTIP; cast from Demon Shade it deals the Empowered pair instead - Upgraded condition, unmet = the plain whip (P2).",
+  "_noteOnHitE": "(2026-10-20, M45 loop 47) Whiplash applies On-Hit effects to the targeted enemy.",
   "E": {
     "hits": [
       {
         "type": "Magic",
-        "flatDataValue": "EmpoweredDamage",
-        "count": 1
+        "flatDataValue": "BaseDamage",
+        "count": 1,
+        "conditionType": "Upgraded",
+        "metFlatDataValue": "EmpoweredDamage",
+        "appliesOnHit": true
       },
       {
         "type": "Magic",
-        "hpPercentCalc": "PercentHealthEmpoweredTOOLTIP",
+        "hpPercentCalc": "PercentHealthBaseTOOLTIP",
         "hpBasis": "Max",
         "count": 1,
         "tags": [
           "PercentMaxHp",
           "Execute"
-        ]
+        ],
+        "conditionType": "Upgraded",
+        "metHpPercentCalc": "PercentHealthEmpoweredTOOLTIP"
       }
     ]
   },
+  "_noteLowR": "(2026-10-19, M45 loop 11) Was CritDamage always; Last Caress deals Damage, CritDamage only to enemies below 30% health - HpBelow condition (the target health is a user call), unmet = Damage (P2).",
   "R": {
     "hits": [
       {
         "type": "Magic",
-        "calc": "CritDamage",
+        "calc": "Damage",
         "count": 1,
         "tags": [
           "Execute"
-        ]
+        ],
+        "conditionType": "HpBelow",
+        "conditionValue": 0.3,
+        "metCalc": "CritDamage"
       }
     ],
     "tags": [

@@ -28,9 +28,10 @@
       { "type": "Magic", "calc": "MissileDamage", "binSpell": "Q", "count": 1 }
     ]
   },
+  "_noteAttackE": "(2026-10-19, M45 loop 20) Its hit is (part of) the empowered next attack - tagged isAttack (Plated Steelcaps reduces it).",
   "E": {
     "hits": [
-      { "type": "Magic", "calc": "OnHitDamage", "count": 1 },
+      { "type": "Magic", "calc": "OnHitDamage", "count": 1, "isAttack": true },
       { "type": "Magic", "calc": "DashDamage", "count": 1 }
     ]
   },

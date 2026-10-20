@@ -7,7 +7,8 @@
   "_noteR": "Absolute Zero: MaximumDamage = BaseDamage + 3.0x AP, the full-3s-channel explosion; BIN shape matches wiki's 'Maximum Magic Damage' framing exactly (minor rank-2 figure drift vs. a possibly-stale wiki snapshot doesn't matter -- the live BIN value is always used at runtime per the dynamic-lookup Hard Rule). MinDamage (tooltipOnly, Maximum x0.5) is a display-only reference point, not curated separately. Tagged BurstCeiling: Nunu's ultimate is by far his single highest realistic burst-damage contribution.",
   "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "CleaveDamage", "count": 1 } ] } ] },
   "Q": { "hits": [ { "type": "Magic", "calc": "TotalChampionDamage", "count": 1 } ] },
-  "W": { "hits": [ { "type": "Magic", "calc": "MaximumSnowballDamage", "count": 1 } ] },
+  "_noteSizeW": "(2026-10-19, M45 loop 12) Was MaximumSnowballDamage always; the snowball deals NoImpactSnowballDamage to MaximumSnowballDamage by how long it rolled - a [min, max] range, the min anchor (P2).",
+  "W": { "hits": [ { "type": "Magic", "calc": "NoImpactSnowballDamage", "count": 1, "minCalc": "NoImpactSnowballDamage", "maxCalc": "MaximumSnowballDamage" } ] },
   "E": {
     "hits": [
       { "type": "Magic", "calc": "TotalSnowballDamage", "count": 3 },
@@ -15,7 +16,8 @@
     ],
     "_noteE_555": "loop 555 (user decision, section-91-1): Snowball Barrage's ROOT damage only lands when the channel is held to completion - a cast-state fact the engine cannot read, so it is now the Upgraded-gated half (default UNMET = volleys only, the P2 floor; the M28 checkbox asserts the full channel). The old unconditional root hit assumed every E was fully channeled."
   },
-  "R": { "hits": [ { "type": "Magic", "calc": "MaximumDamage", "count": 1 } ], "tags": ["BurstCeiling", "AoeUltimate"] },
+  "_noteChannelR": "(2026-10-19, M45 loop 19) Was MaximumDamage (the full channel) always; Absolute Zero deals MinDamage to MaximumDamage by channel time - a [min, max] range, the minimum anchor (P2).",
+  "R": { "hits": [ { "type": "Magic", "calc": "MinDamage", "count": 1, "minCalc": "MinDamage", "maxCalc": "MaximumDamage" } ], "tags": ["BurstCeiling", "AoeUltimate"] },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): W MaxDamageScalar(1.0)/MaxDamageTime(5.0) are the snowball RAMP parameters; the BIN exposes NO minimum-roll calc (only MaximumSnowballDamage and the NoImpact variant), so a Fizz-style [min,max] range is not expressible from BIN names - the curated Max stands WITH this disclosure (short rolls overstate; BurstCeiling-adjacent semantics). Documented.",
   "_noteSweepTierB": "SWEEP TIER-B (loop 443, 2026-07-28): W NoImpactDamageScalar(0.333) is the no-impact (missed-charge) damage multiplier of the snowball already adjudicated in _noteSweepTriage (BIN exposes no min calc; curated Maximum stands with the short-roll-overstates disclosure). Name recorded."
 }

@@ -1,10 +1,15 @@
 {
   "_note": "Q/R hand-verified against sona.bin.json this pass (auto flag removed): both already matched the auto-picker and resolve cleanly. Q (Hymn of Valor) 'TotalDamage' = BaseDamage + 0.4 AP, Magic. R (Crescendo) 'TotalDamage' = BaseDamage(50-650) + 0.5 AP, Magic -- tagged BurstCeiling as Sona's clearly largest single hit (650 flat at max rank, far above Q's 225 and Power Chord's ~240). W (Aria of Perseverance) and E (Song of Celerity) have NO damage calc in the BIN (pure heal/shield and pure move-speed buff) -- correctly left with no hits entry.",
   "_noteP": "P (Power Chord): after casting 3 spells, Sona's next basic attack deals bonus MAGIC on-hit damage (SonaPassive.mSpellCalculations 'PowerChordDamage' = ByCharLevelBreakpointsCalculationPart(Level1Value=20, InitialBonusPerLevel=10, breakpoint @9->rate15) + StatByCoefficientCalculationPart(mStat absent = AP total, mCoefficient=0.20)). Hand-traced by champion level: level1=20, steps of +10 per level through level8=90, level9 applies the new rate to its own increment per FormulaInterpreter's breakpoint semantics (90+15=105), then +15 per level through level18=105+15x9=240 (plus 20% AP). Curated as a P bonusEffect trigger onHit (real trigger requires a 3-spell-cast charge gate the engine does not model; approximated as firing on every AA, same documented style as Volibear/Rammus P).",
+  "_noteChordP": "(2026-10-20, M45 loop 25) Power Chord fires on the attack after three BASIC-ability casts (PowerChordPassiveCountMax; the wiki: basic abilities stack it) - it rode EVERY attack. Casts before the combo are unknown: the ceiling assumes two. The Staccato chord (Q last: TotalStaccatoDamage instead) is not modeled.",
+  "_noteStaccatoP": "(2026-10-20, M45 loop 29) The chord takes the last song's form: after Hymn of Valor (Q) it deals TotalStaccatoDamage INSTEAD of PowerChordDamage (Spell_SonaPassive_Tooltip). The ceiling's assumed prior casts carry no song, so it takes the plain chord.",
   "P": {
     "bonusEffects": [
       {
         "trigger": "onHit",
+        "castsToArm": 3,
+        "armedBy": ["Q", "W", "E"],
+        "lastArmingCast": ["W", "E"],
         "hits": [
           {
             "type": "Magic",
@@ -12,6 +17,13 @@
             "count": 1
           }
         ]
+      },
+      {
+        "trigger": "onHit",
+        "castsToArm": 3,
+        "armedBy": ["Q", "W", "E"],
+        "lastArmingCast": ["Q"],
+        "hits": [ { "type": "Magic", "calc": "TotalStaccatoDamage", "binSpell": "Q", "count": 1 } ]
       }
     ]
   },

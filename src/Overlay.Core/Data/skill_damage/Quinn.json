@@ -1,6 +1,7 @@
 {
   "_note": "Curated (T3.x passive pass). P (Harrier): attacking a marked target deals bonus PHYSICAL damage (BonusDamage = level-interpolated base 15→120 + 0.4x bonus AD, QuinnPassive.mSpellCalculations). Curated as a P bonusEffect trigger onHit — an assistive APPROXIMATION applied to every hit rather than only on-mark procs (documented, same style as other on-hit passives). Q/E/R kept as the auto first-pass physical picks.",
-  "P": { "bonusEffects": [ { "trigger": "onHit", "hits": [ { "type": "Physical", "calc": "BonusDamage", "count": 1 } ] } ] },
+  "_noteHarrierP": "(2026-10-19, M45 loop 10) Harrier rode EVERY attack. Vault marks its target, so the attack after E carries BonusDamage once (E rider, maxProcs 1); the periodic mark (every few seconds, timing unknown) is manual-only on P.",
+  "P": { "bonusEffects": [ { "trigger": "onHit", "manualOnly": true, "hits": [ { "type": "Physical", "calc": "BonusDamage", "count": 1 } ] } ] },
   "Q": {
     "hits": [
       {
@@ -17,7 +18,8 @@
         "calc": "TotalDamage",
         "count": 1
       }
-    ]
+    ],
+    "bonusEffects": [ { "trigger": "onHit", "maxProcs": 1, "hits": [ { "type": "Physical", "calc": "BonusDamage", "binSpell": "P", "count": 1 } ] } ]
   },
   "R": {
     "tags": ["AoeUltimate"],

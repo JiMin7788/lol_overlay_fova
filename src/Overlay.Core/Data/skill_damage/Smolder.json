@@ -12,7 +12,8 @@
         "type": "Physical",
         "calc": "ExplosionDamage",
         "count": 1
-      }
+      },
+      { "type": "Magic", "calc": "Passive_WDamageIncrease", "binSpell": "P", "stackScaled": true, "count": 1 }
     ]
   },
   "_noteW": "W (Achooo!) is a real 2-part hit: 'InitialDamage' (BaseDamage + 0.6x bonus AD, the sneeze impact) plus 'ExplosionDamage' (ExplosionBaseDamage + 0.5x bonus AD + 0.8 AP, the follow-up mucus burst that only triggers on hitting a champion) -- both curated Physical per live tooltip text ('deals physical damage ... explosion dealing physical damage plus bonus magic damage'); the small AP term inside ExplosionDamage is the formula's own bonus-magic component folded into one number, matching this project's existing convention of a single dominant type per hit rather than splitting every mixed-ratio calc. The Dragon Practice bonus-magic addon (stack-based) is not modeled for the same BuffCounter-infeasibility reason as Q.",
@@ -21,17 +22,21 @@
       {
         "type": "Physical",
         "calc": "DamagePerHit",
-        "count": 1
-      }
+        "count": 5
+      },
+      { "type": "Magic", "calc": "EBonusDamage", "binSpell": "P", "stackScaled": true, "count": 5 }
     ]
   },
   "_noteE": "E (Flap, Flap, Flap!) autonomously fires bolts at the most-wounded visible enemy while Smolder is airborne; 'DamagePerHit' = BaseDamage + 0.3x TOTAL AD (mStat 2, no mStatFormula -> total not bonus, per BIN), Physical per live tooltip. Real bolt COUNT scales off Dragon Practice stacks via 'TotalNumberOfAttacks' (BuffCounterByNamedDataValue, infeasible) -- curated as ONE bolt (count 1), a conservative floor consistent with this project's convention of not inferring un-trackable stack state.",
+  "_noteSweetR": "(2026-10-19, M45 loop 7) Enemies in the center take TooltipOnly_TotalSweetspotDamage instead - SweetSpot condition.",
   "R": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
+        "count": 1,
+        "conditionType": "SweetSpot",
+        "metCalc": "TooltipOnly_TotalSweetspotDamage"
       }
     ],
     "tags": [
@@ -40,13 +45,17 @@
     ]
   },
   "_noteR": "R (MMMMOOOOMMMM!) 'TotalDamage' = BaseDamage(50-650) + 1.0x bonus AD (mStatFormula=2) + 1.0x AP (mStat omitted -> id 0 default, this codebase's established convention) -- resolves cleanly (no crit/buff-counter terms), Physical per live tooltip. Tagged BurstCeiling: by far Smolder's largest single confirmed number (650 flat at max rank before AD/AP), and Q/E are largely unresolvable/stack-gated so R is also the most reliable big hit this file can represent.",
+  "_noteStacksP": "(2026-10-20, M45 loop 23) Dragon Practice's stacks add magic damage to Q, W and E (Passive_*DamageIncrease / EBonusDamage, a live buff counter): the stack knob, unset = 0 stacks (the count is unbounded, so the range ceiling does not guess one). E bombards NumOfAttacksBase (5) times - it counted one bolt; the extra bolt per 100 stacks is not modeled.",
+  "_noteOnHitQ": "(2026-10-20, M45 loop 47) Super Scorcher Breath is considered a basic Attack and applies On-Hit effects.",
   "Q": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
-        "count": 1
-      }
+        "count": 1,
+        "appliesOnHit": true
+      },
+      { "type": "Magic", "calc": "Passive_QDamageIncrease", "binSpell": "P", "stackScaled": true, "count": 1 }
     ]
   },
   "_noteSweepTriage": "SWEEP TRIAGE (loop 442, 2026-07-27): Q Tier2_BlowbackPercentageDamage / Tier3_TrueDamagePercent are the 125/225-STACK evolution tiers (stack state is a live buff counter the API does not expose as a stat; the curated base Q with its stackScaled machinery already covers the modeled part per the section-47 round). W ExplosionDamageMult(1.0)/ExplosionDamageMultihitPenalty(0.75) are multi-hit modifiers. Documented."

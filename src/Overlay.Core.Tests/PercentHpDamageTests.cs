@@ -101,7 +101,7 @@ public class PercentHpDamageTests : IDisposable
 
     private static ComboNode SkillNode(string slot) => new(
         Id: $"{slot}_0",
-        NodeType: ComboNodeType.Skill,
+        NodeType: slot == "AA" ? ComboNodeType.Aa : ComboNodeType.Skill,
         Name: slot,
         Cooldown: 0, Mana: 0, Damage: 0,
         DamageType: ComboDamageType.Magic,
@@ -286,7 +286,8 @@ public class PercentHpDamageTests : IDisposable
     {
         // Vayne E (Condemn) is an ordinary flat/ratio hit (no %HP fields). It must resolve from its
         // BIN calc exactly as before the schema change; enemy has 0 resist so it is unmitigated.
-        var e = Assert.Single(SkillDamageDb.GetHits("Vayne", "E")!);
+        // (M45 loop 12) The second hit is the wall-stun bonus, a HitsWall conditional that is unmet here.
+        var e = SkillDamageDb.GetHits("Vayne", "E")![0];
         Assert.Null(e.HpPercentDataValue);
         Assert.Equal(0.0, e.HpPercent);
         Assert.Equal("TotalDamage", e.Calc);
@@ -318,7 +319,8 @@ public class PercentHpDamageTests : IDisposable
         Assert.Equal(HitDamageType.True, w.Type);
 
         // Absent: Vayne Q has no %HP fields -> defaults (null / 0 / Max), and stays a calc hit.
-        var q = Assert.Single(SkillDamageDb.GetHits("Vayne", "Q")!);
+        // (M45 loop 1) Tumble folds the swing (basicAttack) before its bonus hit; the bonus hit is the subject.
+        var q = Assert.Single(SkillDamageDb.GetHits("Vayne", "Q")!.Where(h => !h.BasicAttack));
         Assert.Null(q.HpPercentDataValue);
         Assert.Equal(0.0, q.HpPercent);
         Assert.Equal(HpBasis.Max, q.HpBasis);
@@ -424,7 +426,8 @@ public class PercentHpDamageTests : IDisposable
         // hpPercentCalc -> defaults to null, unaffected by the new field.
         var w = Assert.Single(SkillDamageDb.GetHits("Vayne", "W")!);
         Assert.Null(w.HpPercentCalc);
-        var q = Assert.Single(SkillDamageDb.GetHits("Vayne", "Q")!);
+        // (M45 loop 1) Tumble folds the swing (basicAttack) before its bonus hit; the bonus hit is the subject.
+        var q = Assert.Single(SkillDamageDb.GetHits("Vayne", "Q")!.Where(h => !h.BasicAttack));
         Assert.Null(q.HpPercentCalc);
     }
 
@@ -476,8 +479,10 @@ public class PercentHpDamageTests : IDisposable
         double frac = SkillDamage.ResolveHpPercentCalc(gwen, "P", "PercentHealth1000Cuts", stats, level: 6)!.Value;
         Assert.Equal(0.016, frac, precision: 4);
 
+        // (M45 loop 11) A Thousand Cuts rides every attack on hit (it was a P node): one AA with 0 AD
+        // is exactly the on-hit.
         var snap = Snapshot("Gwen", stats, enemyChampion: "Target", enemyLevel: 6);
-        var result = RunCombo("Gwen", new[] { "P" }, snap);
+        var result = RunCombo("Gwen", new[] { "AA" }, snap);
 
         Assert.Equal(0.016 * maxHp, result.TotalDamage, precision: 2); // 32.0, no resist on target
     }

@@ -110,14 +110,23 @@ public partial class App : Application
         if (!showDialog) return;
         try
         {
-            MessageBox.Show(
-                "오버레이에서 처리되지 않은 오류가 발생했습니다 (" + source + ").\n\n"
-                + text + "\n\n자세한 내용은 logs/crash-*.log 에 기록되었습니다.",
-                "Overlay 오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            // (design pass) A short message and a way to act on it, instead of a raw stack trace and
+            // a relative log path. The full trace is in the crash log, which the bug report zips.
+            string summary = ex is null ? source : $"{ex.GetType().Name}: {FirstLine(ex.Message)}";
+            var answer = MessageBox.Show(
+                Localization.F("crash.body", summary), Localization.L("crash.title"),
+                MessageBoxButton.YesNo, MessageBoxImage.Error);
+            if (answer == MessageBoxResult.Yes) BugReport.CreateAndOpen();
         }
         catch
         {
             // No UI available (e.g. very early startup) — the file log above is the record.
         }
+    }
+
+    private static string FirstLine(string s)
+    {
+        int nl = s.IndexOfAny(new[] { '\r', '\n' });
+        return nl < 0 ? s : s[..nl];
     }
 }

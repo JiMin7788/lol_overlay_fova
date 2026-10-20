@@ -1,14 +1,17 @@
 {
   "_note": "Curated (T2c/T7). W (Silver Bolts) deals TRUE damage as a % of the target's MAX HP (auto-picker wrongly tagged Magic). T7: modeled as a %HP hit whose fraction resolves LIVE per rank from the BIN DataValue 'MaxHealthRatio' (VayneSilveredBolts) = [0.05,0.06,0.07,0.08,0.09,0.10,0.11] (a per-rank array, indexed by ability rank) \u2014 no baked number, so it is correct at every rank and tracks the patch. Silver Bolts procs on every 3rd hit; modeled as one proc (count 1) placed where the 3rd hit lands. Q (Tumble) empowers the next auto with bonus physical damage. E (Condemn) is physical. DOCUMENTED LIMITATION (loop 350, no data change): wiki confirms Silver Bolts also has a flat DamageFloor minimum (50/65/80/95/110 at ranks 1-5) that applies whenever the %maxHP calc would be lower -- true formula is max(%maxHP, DamageFloor). The BIN exposes DamageFloor as a plain DataValue with no calc/max-of-two-parts node, and this schema has no greater-of-two-values operator, so only the %maxHP term is modeled. This underestimates W damage only against very-low-max-HP targets (early levels / anomalous cases) where the floor would exceed the % value -- a rare, honest, documented gap, not a fabricated fix (same class as Rell E PercentHealthDamageCap).",
+  "_noteAttackQ": "(2026-10-19, M45 loop 1) Empowered attack: its hits are tagged isAttack, so a target with Plated Steelcaps takes 10% less from them as from a basic attack. The calc is bonus-only (under 1.0 x total AD, measured), so the swing is folded in as a basicAttack hit per the loop 551 user decision: the skill node is the empowered attack, no AA node needed after it.",
   "Q": {
     "hits": [
+      { "type": "Physical", "basicAttack": true, "count": 1 },
       {
-        "type": "Physical",
+        "isAttack": true, "type": "Physical",
         "calc": "ADRatioBonus",
         "count": 1
       }
     ]
   },
+  "_noteFloorW": "(2026-10-19, M45 loop 16) Silver Bolts deals at least DamageFloor true damage.",
   "W": {
     "hits": [
       {
@@ -18,17 +21,20 @@
         "count": 1,
         "tags": [
           "PercentMaxHp"
-        ]
+        ],
+        "minDamageDataValue": "DamageFloor"
       }
     ]
   },
+  "_noteWallE": "(2026-10-19, M45 loop 12) A target knocked into terrain takes EmpoweredDamageTT bonus physical damage - HitsWall condition on an extra hit (unmet = none).",
   "E": {
     "hits": [
       {
         "type": "Physical",
         "calc": "TotalDamage",
         "count": 1
-      }
+      },
+      { "type": "Physical", "conditionType": "HitsWall", "metCalc": "EmpoweredDamageTT", "count": 1 }
     ]
   }
 }

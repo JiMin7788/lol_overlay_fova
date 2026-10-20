@@ -98,7 +98,7 @@
                                      Fill="{StaticResource FovaScan}" />
                         </Canvas>
                     </Viewbox>
-                    <TextBlock x:Name="AppTitleLabel" FontSize="17" FontWeight="SemiBold"
+                    <TextBlock x:Name="AppTitleLabel" FontSize="{StaticResource FontTitle}" FontWeight="SemiBold"
                                Margin="10,0,0,0" VerticalAlignment="Center" Opacity="0">
                         <Run Text="fova" Foreground="{StaticResource Text}" /><Run Text="." Foreground="{StaticResource FovaContact}" />
                     </TextBlock>
@@ -107,50 +107,50 @@
                 <RadioButton x:Name="NavHome" Style="{StaticResource NavItem}" GroupName="nav"
                              IsChecked="True" Checked="Nav_Home">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE80F;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavHomeLabel" Text="홈" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavHomeLabel" Text="홈" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="NavSearch" Style="{StaticResource NavItem}" GroupName="nav"
                              Checked="Nav_Search">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavSearchLabel" Text="유저검색" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavSearchLabel" Text="유저검색" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="NavCombo" Style="{StaticResource NavItem}" GroupName="nav"
                              Checked="Nav_Combo">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE945;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavComboLabel" Text="콤보설정" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavComboLabel" Text="콤보설정" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="NavStats" Style="{StaticResource NavItem}" GroupName="nav"
                              Checked="Nav_Stats">
                     <StackPanel Orientation="Horizontal">
                         <!-- MDL2 "AreaChart" — the statistics table -->
-                        <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE9D2;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavStatsLabel" Text="통계" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavStatsLabel" Text="통계" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" GroupName="nav"
                              Checked="Nav_Settings">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE713;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavSettingsLabel" Text="설정" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavSettingsLabel" Text="설정" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="NavHelp" Style="{StaticResource NavItem}" GroupName="nav"
                              Checked="Nav_Help">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="15"
+                        <TextBlock Text="&#xE897;" FontFamily="{StaticResource IconFont}" FontSize="{StaticResource FontSubtitle}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBlock x:Name="NavHelpLabel" Text="도움말" FontSize="14" VerticalAlignment="Center" Opacity="0" />
+                        <TextBlock x:Name="NavHelpLabel" Text="도움말" FontSize="{StaticResource FontInput}" VerticalAlignment="Center" Opacity="0" />
                     </StackPanel>
                 </RadioButton>
             </StackPanel>
@@ -175,17 +175,20 @@
             </Grid.RowDefinitions>
 
             <!-- Header bar -->
-            <Grid Grid.Row="0" Margin="28,22,28,0">
+            <!-- (design pass) Bottom margin keeps the header controls off the divider below, and the
+                 status pill takes the button's height so both sit on one line. -->
+            <Grid Grid.Row="0" Margin="28,16,28,14">
                 <TextBlock x:Name="SectionTitle" Text="홈" Style="{StaticResource SectionHeader}"
                            VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button x:Name="PreviewToggle" Content="오버레이 · OFF" Style="{StaticResource GhostButton}"
-                            Click="PreviewToggle_Click" Margin="0,0,12,0" />
+                    <Button x:Name="PreviewToggle" Content="오버레이 미리보기" Style="{StaticResource GhostButton}"
+                            Click="PreviewToggle_Click" Margin="0,0,8,0" />
                     <Border x:Name="StatusPill" Background="{StaticResource SurfaceHi}"
                             BorderBrush="{StaticResource Border}" BorderThickness="1"
-                            CornerRadius="14" Padding="12,6">
-                        <TextBlock x:Name="StatusText" Text="&#x25CF; 게임 대기 중" FontSize="12"
-                                   FontWeight="SemiBold" Foreground="{StaticResource TextDim}" />
+                            Height="{Binding ActualHeight, ElementName=PreviewToggle}"
+                            CornerRadius="17" Padding="14,0">
+                        <TextBlock x:Name="StatusText" Text="&#x25CF; 게임 대기 중" Style="{StaticResource CaptionText}"
+                                   VerticalAlignment="Center" />
                     </Border>
                 </StackPanel>
             </Grid>
@@ -196,53 +199,64 @@
             <!-- M33 champ-select panel host; inserted in code-behind (needs the composition's
                  LcuConnector + preset store). Collapsed row outside champ select. -->
             <StackPanel x:Name="HomeDashboardExtras" Grid.Row="1">
-                <!-- First-run Flash-key question (2026-07-25): asked ONCE at app start; never
-                     shown again while champSelect.flashKey holds a value. -->
-                <Border x:Name="FlashKeyBanner" Margin="28,12,28,0" Visibility="Collapsed"
-                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
-                        BorderThickness="1" CornerRadius="8" Padding="16,10">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="점멸을 어느 키에 두세요? (프리셋 적용 시 점멸을 이 키로 맞춥니다)"
-                                   VerticalAlignment="Center" Foreground="{StaticResource TextDim}"
-                                   Margin="0,0,10,0" />
-                        <Button x:Name="FlashKeyD" Content="D 점멸" Style="{StaticResource GhostButton}" />
-                        <Button x:Name="FlashKeyF" Content="F 점멸" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                <!-- (2026-10-19) League's game.cfg says WindowMode=0 (fullscreen), where the overlay
+                     cannot draw over the game. Re-checked every few seconds; hides itself once the
+                     user switches to borderless or windowed. -->
+                <Border x:Name="FullscreenWarning" Style="{StaticResource Card}" Margin="28,16,28,0"
+                        BorderBrush="{StaticResource Warning}" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock x:Name="FullscreenWarningTitle" Style="{StaticResource CardTitle}"
+                                   Foreground="{StaticResource Warning}" />
+                        <TextBlock x:Name="FullscreenWarningText" Style="{StaticResource BodyText}"
+                                   Foreground="{StaticResource TextDim}" Margin="0,4,0,0" />
                     </StackPanel>
                 </Border>
-                <!-- First-run guide (1.0 plan, must-add 4): how to get a combo on screen, and that the
-                     default overlay key overlaps the scoreboard. Shown once (general.firstRunGuideShown). -->
-                <Border x:Name="FirstRunGuide" Margin="28,12,28,0" Visibility="Collapsed"
-                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
-                        BorderThickness="1" CornerRadius="8" Padding="16,12">
+                <!-- First-run Flash-key question (2026-07-25): asked ONCE at app start; never
+                     shown again while champSelect.flashKey holds a value. -->
+                <!-- (design pass) Banners are Cards with a right-docked action group, so their edges
+                     and padding match the page cards below them. Text is set from Localization. -->
+                <Border x:Name="FlashKeyBanner" Style="{StaticResource Card}" Margin="28,16,28,0" Visibility="Collapsed">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button x:Name="FirstRunOpenCombo" Content="콤보설정 열기" Style="{StaticResource GhostButton}" />
-                            <Button x:Name="FirstRunDismiss" Content="닫기" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
+                            <Button x:Name="FlashKeyD" Content="D 점멸" Style="{StaticResource GhostButton}" />
+                            <Button x:Name="FlashKeyF" Content="F 점멸" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
                         </StackPanel>
-                        <StackPanel Margin="0,0,12,0">
-                            <TextBlock Text="Fova 시작하기" FontWeight="SemiBold" Foreground="{StaticResource Text}" />
-                            <TextBlock x:Name="FirstRunGuideText" Foreground="{StaticResource TextDim}"
-                                       TextWrapping="Wrap" Margin="0,4,0,0" LineHeight="20" />
-                        </StackPanel>
+                        <TextBlock x:Name="FlashKeyBannerText" Style="{StaticResource HintText}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
                     </DockPanel>
+                </Border>
+                <!-- First-run guide (1.0 plan, must-add 4): what League needs, how to get a combo on
+                     screen, how to pick the target, and the toggle key. Shown once
+                     (general.firstRunGuideShown); Help has a button that brings it back. -->
+                <Border x:Name="FirstRunGuide" Style="{StaticResource Card}" Margin="28,16,28,0" Visibility="Collapsed">
+                    <!-- Actions under the steps, not beside them: the steps get the full width, so
+                         Korean lines no longer break mid-word against the button column. -->
+                    <StackPanel>
+                        <TextBlock x:Name="FirstRunGuideTitle" Text="Fova 시작하기" Style="{StaticResource CardTitle}" />
+                        <TextBlock x:Name="FirstRunGuideText" Style="{StaticResource BodyText}"
+                                   Foreground="{StaticResource TextDim}" Margin="0,8,0,0" />
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <Button x:Name="FirstRunOpenCombo" Content="콤보설정 열기" Style="{StaticResource PrimaryButton}" />
+                            <Button x:Name="FirstRunDismiss" Content="닫기" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </StackPanel>
                 </Border>
                 <!-- M39 one-time telemetry disclosure (2026-08-26): shown once, only while telemetry
                      is actually configured+on; both buttons dismiss it forever (telemetry.noticeShown). -->
-                <Border x:Name="TelemetryNotice" Margin="28,12,28,0" Visibility="Collapsed"
-                        Background="{StaticResource Surface}" BorderBrush="{StaticResource Border}"
-                        BorderThickness="1" CornerRadius="8" Padding="16,10">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="품질 개선을 위해 익명 사용 통계와 오류 리포트를 보냅니다 (설치 ID·버전·OS·오류 내용만 — 게임/계정 정보 없음). 설정에서 끌 수 있습니다."
-                                   VerticalAlignment="Center" Foreground="{StaticResource TextDim}"
-                                   TextWrapping="Wrap" MaxWidth="560" Margin="0,0,10,0" />
-                        <Button x:Name="TelemetryOk" Content="확인" Style="{StaticResource GhostButton}" />
-                        <Button x:Name="TelemetryOptOut" Content="보내지 않기" Style="{StaticResource GhostButton}" Margin="6,0,0,0" />
-                    </StackPanel>
+                <Border x:Name="TelemetryNotice" Style="{StaticResource Card}" Margin="28,16,28,0" Visibility="Collapsed">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="TelemetryOk" Content="확인" Style="{StaticResource GhostButton}" />
+                            <Button x:Name="TelemetryOptOut" Content="보내지 않기" Style="{StaticResource GhostButton}" Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="TelemetryNoticeText" Style="{StaticResource HintText}"
+                                   VerticalAlignment="Center" Margin="0,0,12,0" />
+                    </DockPanel>
                 </Border>
             </StackPanel>
 
             <!-- Active view host -->
-            <ContentControl x:Name="MainContent" Grid.Row="2" Margin="28,20,28,24"
+            <ContentControl x:Name="MainContent" Grid.Row="2" Margin="28,16,28,0"
                             VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" />
 
             <!-- Ad slot host; the AdBanner control is inserted in code-behind (it needs the

@@ -138,7 +138,7 @@ public class EveryCuratedSlotResolvesTests : IDisposable
 
         double? Try(Func<double?> f) { try { return f(); } catch { return null; } }
 
-        foreach (var calc in new[] { hit.Calc, hit.MetCalc, hit.PerSecondCalc, hit.PerAttackCalc })
+        foreach (var calc in new[] { hit.Calc, hit.MetCalc, hit.PerSecondCalc, hit.PerAttackCalc, hit.AttackDamageFractionCalc })
             if (!string.IsNullOrEmpty(calc)
                 && Try(() => SkillDamage.ComputeCalcDamage(champion, bin, calc!, stats, 18, rankSlot: slot)) is > 0)
                 return true;
@@ -198,10 +198,25 @@ public class EveryCuratedSlotResolvesTests : IDisposable
 
             foreach (var slot in SkillDamageDb.GetCuratedSlotKeys(championId!))
             {
-                bool hasHits = SkillDamageDb.GetHits(championId!, slot) is { Length: > 0 };
+                var slotHits = SkillDamageDb.GetHits(championId!, slot);
+                // (M45 loop 4) A slot whose hits only shred (Evelynn W) is utility: it must stay silent,
+                // like a hitless one — its effect is on the nodes after it.
+                bool shredOnly = slotHits is { Length: > 0 } && slotHits.All(h => h.IsShredOnly);
+                // (M45 loop 18) A P slot holding only attack-shape hits IS the basic attack: it lands on AA
+                // nodes, so the AA has to score, and the P node itself stays silent.
+                if (slotHits is { Length: > 0 } && slotHits.All(h => h.AttackShape))
+                {
+                    if (aaAlone > 0.5 && Run(runner, championId!, slot) <= 0.5) scored++;
+                    else deadSlots.Add($"{championId}.{slot} (attack shape)");
+                    continue;
+                }
+                bool hasHits = slotHits is { Length: > 0 } && !shredOnly;
                 bool hasRiders = SkillDamageDb.GetBonusEffects(championId!, slot) is { Length: > 0 };
 
                 double alone = Run(runner, championId!, slot);
+                // (M45 loop 38/39) a summon only an earlier cast creates (Shaco's RClone after R): scored after that cast
+                if (slotHits is { Length: > 0 } && slotHits.All(h => !string.IsNullOrEmpty(h.RequiresPriorCast)))
+                    alone = Run(runner, championId!, slotHits[0].RequiresPriorCast!, slot) - Run(runner, championId!, slotHits[0].RequiresPriorCast!);
                 if (hasHits)
                 {
                     if (alone > 0.5) scored++;
@@ -219,9 +234,15 @@ public class EveryCuratedSlotResolvesTests : IDisposable
                     // attack after it, which is the sequencing half no direct resolution would catch.
                     bool alwaysOn = slot.Equals("P", StringComparison.OrdinalIgnoreCase)
                                     || effects.Any(e => e.AlwaysOn);
+                    // (M45 loop 10/14) ...or, for an on-ability rider this cast arms for a named ability
+                    // (Karma R -> Q), whether that ability scores more after it than alone.
+                    string? armedFor = effects.FirstOrDefault(e => e.Trigger == BonusTrigger.OnAbility
+                        && e.AppliesTo is { Length: > 0 })?.AppliesTo![0];
                     bool ok = alwaysOn
                         ? effects.SelectMany(e => e.Hits).Any(h => Resolves(championId!, slot, h))
-                        : alone > 0.5 || Run(runner, championId!, slot, "AA") > aaAlone + 0.5;
+                        : alone > 0.5 || Run(runner, championId!, slot, "AA") > aaAlone + 0.5
+                          || (armedFor is not null
+                              && Run(runner, championId!, slot, armedFor) > Run(runner, championId!, armedFor) + 0.5);
                     if (ok) rode++;
                     else deadRiders.Add($"{championId}.{slot}");
                     continue;

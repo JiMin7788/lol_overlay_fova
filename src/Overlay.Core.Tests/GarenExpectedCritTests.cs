@@ -133,8 +133,8 @@ public class GarenExpectedCritTests : IDisposable
         var baseline = RunGarenE(Stats(critChance: 0, critDamage: 0));
         var crit = RunGarenE(Stats(critChance: 1.0, critDamage: 0)); // no IE -> CritDamage unreported
 
-        // Max = 1 + 0.40*(1.75-1) = 1.30. Blend coincides here since CriticalChance=1.0 and no IE
-        // means Blend's constant-1.75 term and Max's fallback-1.75 term use the same multiplier.
+        // Max = 1 + 0.3*(2.0-1) = 1.30 — the tooltip's 130% (BIN CriticalDamage, CritMod 0.3, at the
+        // 200% base). Blend coincides here since CriticalChance=1.0.
         Assert.Equal(baseline.TotalDamage * 1.30, crit.TotalDamageMax, 1);
         Assert.Equal(baseline.TotalDamage * 1.30, crit.TotalDamage, 1);
     }
@@ -143,14 +143,13 @@ public class GarenExpectedCritTests : IDisposable
     public void GarenE_HundredPercentCrit_WithIe_MaxMultiplierIs139()
     {
         var baseline = RunGarenE(Stats(critChance: 0, critDamage: 0));
-        // CritDamage=1.975 stands in for an Infinity-Edge-class crit-damage build (the real value
-        // the Live Client API would report) — the M27 spec's §6 endpoint solves for this Mreal:
-        // Max = 1 + 0.40*(1.975-1) = 1.39.
-        var crit = RunGarenE(Stats(critChance: 1.0, critDamage: 1.975));
+        // CritDamage=2.3 stands in for an Infinity-Edge-class crit-damage build (the multiplier the
+        // parser makes of the API's percent). The BIN crit calc scales with it:
+        // Max = 1 + 0.3*(2.3-1) = 1.39.
+        var crit = RunGarenE(Stats(critChance: 1.0, critDamage: 2.3));
 
         Assert.Equal(baseline.TotalDamage * 1.39, crit.TotalDamageMax, 1);
-        // Blend stays on the pre-existing 1.75 constant (M27 §7, unaffected by IE) — still ×1.30,
-        // proving the IE amplification is scoped to the Max/ceiling track only.
-        Assert.Equal(baseline.TotalDamage * 1.30, crit.TotalDamage, 1);
+        // (2026-10-19) Blend uses the real multiplier too, so at 100% crit chance it equals Max.
+        Assert.Equal(baseline.TotalDamage * 1.39, crit.TotalDamage, 1);
     }
 }
