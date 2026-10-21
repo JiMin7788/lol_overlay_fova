@@ -42,8 +42,9 @@ overlay, plus champ-select rune & spell presets.**
 정상입니다. Fova는 아직 **코드 서명 인증서로 서명되지 않아** Windows SmartScreen이
 "인식할 수 없는 앱"으로 표시합니다 — 다운로드 이력이 적은 모든 무서명 프로그램에 뜨는
 경고이고, 악성 판정이 아닙니다. **"추가 정보" → "실행"**을 누르면 설치가 진행됩니다.
-파일은 [GitHub Releases](https://github.com/JiMin7788/lol_overlay_fova/releases)에서만 배포하며,
-각 파일의 SHA-256이 릴리스 페이지에 표시됩니다.
+파일은 [GitHub Releases](https://github.com/JiMin7788/lol_overlay_fova/releases)에서만 배포합니다.
+걱정되면 받은 파일을 [VirusTotal](https://www.virustotal.com/gui/home/upload)에 올려 여러 백신의 검사 결과를
+직접 확인할 수 있습니다.
 
 ### 압축(zip)으로 설치 — 포터블
 
@@ -66,54 +67,77 @@ overlay, plus champ-select rune & spell presets.**
 
 ## What it does · 무엇을 하나요
 
-### 콤보 데미지 계산기 · Combo damage calculator
+> 아래 그림은 실제 앱 화면을 같은 크기·색으로 다시 그린 것입니다(숫자는 예시 게임). 같은 그림이
+> [소개 페이지](https://jimin7788.github.io/lol_overlay_fova/)에서 움직이며 나옵니다.
 
-![콤보 데미지 · 킬각 계산](docs/images/feature-combo-damage.png)
+### 콤보 데미지 · 킬각 · Combo damage
 
-**Combo damage calculator (콤보 데미지 계산기)** — build ability combos per champion; during a
-match, a click-through overlay shows the combo's expected damage against your current target,
-computed from your own live stats (levels, items, runes). Damage formulas come from Riot's own
-static game data, hand-verified per champion.
+![콤보 데미지 · 킬각 계산](docs/images/feature-combo.png)
 
-![멀티폼 · 추가 스킬](docs/images/feature-multiform.png)
+**Combo damage calculator** — build ability combos per champion; during a match, a hotkey shows the
+combo's damage against your current target as a kill line over its health bar, computed from your
+own live stats (levels, items, runes). Damage formulas come from Riot's own static game data,
+audited against every champion's tooltip.
 
-폼이 바뀌면 스킬 세트도 바뀝니다 — 제이스 대포/망치, 그나르 메가, 아펠리오스 무기별 Q, 크산테 R
-총공세, 소환수 히트 수까지 지금 폼 기준으로 계산합니다.
+콤보 단축키를 누르면 대상 체력 바 위에 "이 체력 아래면 죽는다"는 선을 그립니다. 빨강까지 들어온 적은 지금
+콤보로 처치, 노란 선은 확정 킬, 흰 선은 치명타 기댓값입니다. 위쪽 초상화를 눌러 대상을 바꿉니다.
 
-![추가효과 계산](docs/images/feature-bonus-effects.png)
+![스킬별 데미지 · 툴팁 항목 검사](docs/images/feature-accuracy.png)
 
-온힛·처형·룬/아이템 프록 같은 추가효과는 트리거×조건으로 분류해 합산에 반영합니다(개발 중). 관측할
-수 없는 조건은 추측하지 않고 사용자 가정 입력으로 받습니다.
+모든 챔피언의 스킬 툴팁을 항목 단위로 검사해 엔진 계산에 빠짐없이 연결합니다. 온힛·처형·스택·폼 전환까지
+그 시점의 스킬로 계산하고, `` Alt + ` `` 스킬별 카드로 각 스킬이 지금 대상에게 몇 들어가는지 봅니다.
 
-### 픽창 보조 · Champ-select assistant
+### 생존 · 아이템 · Threat and next item
 
-**Champ-select assistant (픽창 보조)** — save your preferred rune page and summoner spells per
-champion, then re-apply them with one click (or an explicit opt-in auto-apply on lock-in) through
-the League Client's own local API. Your hand-made rune pages are never touched without an
-explicit confirmation.
+![적 풀콤보 위험선](docs/images/feature-threat.png)
 
-### 편의 기능 · Quality-of-life helpers
+살아 있는 적마다 풀콤보 예상 데미지를 내 체력 바 위 눈금으로 그리고, 그 눈금 아래로 내려가면 빨강으로
+알립니다. 적의 레벨·아이템은 스코어보드 정보만 쓰고, 스킬은 모두 준비된 것으로 가정합니다.
 
-**Quality-of-life helpers** — objective respawn timers, optional voice (TTS) alerts.
+![다음 아이템 추천](docs/images/feature-items.png)
 
-억제기·넥서스 포탑 리스폰 타이머를 실제 인게임 API 이벤트로 추적합니다.
+상점 키 `P`로 여닫는 추천 카드 — 딜 기준(지금 대상에게 콤보 데미지가 가장 많이 느는 아이템) 또는 탱커
+기준(적 전원의 풀콤보를 가장 잘 버티는 아이템)을 1000골드당 효율과 함께 보여줍니다.
 
-> **잠시 꺼 둔 기능 (0.3.3~)** — 귀환 타이머, 라인 복귀 예측, 적 정글러 발견 알림, 적 아이템 완성 알림은
-> Riot에 허용 여부를 문의하는 동안 꺼 두었습니다. 답을 받으면 앱 업데이트 없이 다시 켜집니다.
-> *Paused while we ask Riot whether they are allowed: recall timer, lane-return prediction,
-> enemy-jungler spotted and enemy item completion alerts. They come back without an app update if approved.*
+### 타이머 · 스코어보드 · Timers and scoreboard
+
+![부활·라인 복귀 · 억제기 타이머](docs/images/feature-timers.png)
+
+죽은 적의 초상화에 남은 시간을, `~`가 붙으면 라인까지 걸어오는 시간을 더한 복귀 예측을 띄웁니다.
+억제기·넥서스 포탑 재생성은 미니맵의 그 자리에 셉니다. 모두 Live Client API 이벤트 기준입니다.
+
+![골드 차이 · 제어 와드](docs/images/feature-gold.png)
+
+`Tab` 스코어보드 위에 팀·라인별 골드 차이(아이템 가격 기준 추정)와 적이 지닌 제어 와드 수를 겹쳐 보여줍니다.
+
+> **잠시 꺼 둔 기능 (0.3.3~)** — 귀환 타이머, 적 정글러 발견 알림, 적 아이템 완성 알림은 Riot에 허용 여부를
+> 문의하는 동안 꺼 두었습니다. 답을 받으면 앱 업데이트 없이 다시 켜집니다.
+> *Paused while we ask Riot whether they are allowed: recall timer, enemy-jungler spotted and enemy
+> item completion alerts. They come back without an app update if approved.*
+
+### 픽창 · 복기 · Champ select and post-game
+
+![레벨별 킬각](docs/images/feature-champselect.png)
+
+**Champ-select assistant** — the level-by-level kill lines for you and your lane opponent, plus
+your saved rune page and summoner spells per champion, re-applied with one click (or an explicit
+opt-in auto-apply on lock-in) through the League Client's own local API. Your hand-made rune pages
+are never touched without an explicit confirmation.
+
+![게임 복기](docs/images/feature-review.png)
+
+게임이 끝나면 위험선 아래에서 당한 데스와 콤보를 확인한 뒤 따낸 킬을 홈 화면에 정리합니다. 기록은 내 PC에만
+저장됩니다.
 
 ### 적 위치 안내 · Enemy position tracking (전체 기능 빌드 전용)
 
-![적 위치 안내](docs/images/feature-jungle-tracking.png)
-
-미니맵에 실제로 보이는 아이콘만 읽어 위치를 알리고, 안 보이게 되면 "사라짐"을 알립니다. 마지막 목격
-지점은 잔상 + 경과 시간으로 남습니다. **공개 배포본(라이트 빌드)에는 화면을 읽는 코드가 없어 이
-기능이 들어 있지 않습니다** — 소스에서 전체 빌드 시에만 사용할 수 있습니다.
+미니맵에 실제로 보이는 아이콘만 읽어 위치를 알리고, 안 보이게 되면 "사라짐"을 알립니다. **공개
+배포본(라이트 빌드)에는 화면을 읽는 코드가 없어 이 기능이 들어 있지 않습니다** — 소스에서 전체 빌드 시에만
+사용할 수 있습니다.
 
 ## Safety & fair play · 안전과 공정성
 
-![안티치트 안전 설계](docs/images/feature-anticheat.png)
+![안티치트 안전 설계](docs/images/feature-safety.png)
 
 Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 
@@ -140,13 +164,18 @@ Fova is designed to be anti-cheat-safe and policy-compliant by construction:
 | --- | --- |
 | `Shift + Tab` | 오버레이 켜고 끄기 |
 | `Alt + 1` | 콤보 결과 오버레이 |
-| `Alt + 2` | 스킬별 데미지 오버레이 |
+| `` Alt + ` `` | 스킬별 데미지 오버레이 |
+| `P` | 다음 아이템 추천 카드 |
+| `Alt + F1` · `F2` · `F3` · `F5` · `F6` | 초상화 줄 1~5번째 적을 콤보 대상으로 |
 
-![콤보 에디터 · 단축키 · TTS](docs/images/feature-assist.png)
+모든 단축키는 설정에서 바꿀 수 있고, `Alt`·`Ctrl`·`Shift`에 일반 키를 최대 3개까지 묶을 수 있습니다.
 
-**콤보 만들기**: 홈 창 → 콤보 설정 → 챔피언 선택 → 스킬을 순서대로 끌어다 놓기 → 단축키 지정.
-**위치 보정**: 설정에서 "이동 여부"를 켠 뒤 `Ctrl+Shift`를 누른 채 카드를 드래그.
-키를 누르지 않은 동안에는 클릭이 게임으로 그대로 통과합니다.
+![콤보 에디터 · 단축키 · 순서 추천](docs/images/feature-editor.png)
+
+**콤보 만들기**: 홈 창 → 콤보설정 → 챔피언 선택 → 스킬을 순서대로 끌어다 놓기 → 단축키 지정. 더 센 시전
+순서가 있으면 이득과 함께 알려줍니다.
+**위치·크기 보정**: 설정에서 이동 모드를 켠 뒤 `Ctrl+Shift`를 누른 채 카드를 드래그하고, 크기는 오버레이
+미리보기에서 카드 아래 막대로 조절합니다. 키를 누르지 않은 동안에는 클릭이 게임으로 그대로 통과합니다.
 
 ### 잘 안 될 때
 
@@ -190,7 +219,7 @@ pwsh packaging/build-release.ps1 -Version 1.0.0
 
 ## Contact · 문의
 
-Open an issue on this repository.
+[디스코드](https://discord.gg/G8h3RbyaRN) (#질문-도움, #버그-제보) or open an issue on this repository.
 
 ---
 

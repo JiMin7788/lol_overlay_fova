@@ -6,359 +6,955 @@
 <title>Fova — LoL 콤보 데미지 오버레이</title>
 <meta name="description" content="게임 중 콤보 데미지와 킬각을 실시간으로 보여주는 가벼운 League of Legends 오버레이. 메모리 접근 없음, 공개 정보만 사용, 무료.">
 <style>
+  /* Page tokens = the app's own (src/Overlay.Client/Theme/Theme.xaml); overlay tokens = the HUD's
+     (src/Overlay.Client/Hud/OverlayHost.cs). The mock-ups below are drawn to the HUD's DIP sizes:
+     --u is one overlay DIP on this page, so a change in OverlayHost maps 1:1 to a change here. */
   :root{
-    --bg:#0F1117; --surface:#181B22; --surface-hi:#20242E;
-    --border:#2A2F3A; --text:#E4E8EE; --dim:#95A0AC; --gold:#C89B3C; --gold-dim:#B7995E;
-    --ok:#4CAF7D;
+    --bg:#0F1117; --surface:#181B22; --surface-hi:#20242E; --border:#2A2F3A;
+    --text:#E6E8EC; --dim:#8B929F; --faint:#5B6472;
+    --accent:#C8AA6E; --accent-hover:#D8BC82; --accent-pressed:#B7995E;
+    --blue:#3B82F6; --ok:#4ADE80; --danger:#F87171; --warn:#F2C14E;
+    --ally:#4C8DFF; --enemy:#E5484D; --scan:#D6E2F2; --contact:#FF5E44;
+    --r-card:10px; --r-ctl:6px;
+    --ov-panel:rgba(11,15,22,.9); --ov-row:rgba(9,12,18,.72); --ov-dim:#B8C0CC; --ov-name:#8B929F;
+    --slot-p:#C8AA6E; --slot-q:#3B82F6; --slot-w:#22C55E; --slot-e:#A855F7; --slot-r:#F87171; --slot-a:#64748B;
+    --mono:Consolas,"Cascadia Mono","SF Mono",Menlo,monospace;
+    --font:"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
-  body{
-    background:var(--bg); color:var(--text);
-    font-family:"Segoe UI","Malgun Gothic",system-ui,sans-serif;
-    line-height:1.6; -webkit-font-smoothing:antialiased;
-  }
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px;position:relative}
 
-  header{padding:64px 0 40px;text-align:center}
-  .logo{display:inline-flex;align-items:center;gap:12px;font-size:34px;font-weight:800;letter-spacing:.5px}
-  .logo .dot{width:24px;height:24px;border-radius:50%;
-    background:conic-gradient(from 210deg,var(--gold),#7d5a1e 55%,transparent 55%);
-    box-shadow:inset 0 0 0 3px var(--bg)}
-  .tagline{margin-top:14px;font-size:20px;font-weight:600}
-  .tagline .hl{color:var(--gold)}
-  .subline{color:var(--dim);margin-top:8px;font-size:14.5px}
+  /* ── ambient: scroll progress + two slow glows that drift with the scroll ── */
+  .progress{position:fixed;left:0;top:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(0);
+    background:linear-gradient(90deg,var(--accent),var(--contact));z-index:10}
+  .glow{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+  .glow i{position:absolute;width:56vmax;height:56vmax;border-radius:50%;filter:blur(110px);opacity:.07;will-change:transform}
+  .glow i:nth-child(1){left:-18vmax;top:-20vmax;background:var(--accent)}
+  .glow i:nth-child(2){right:-22vmax;top:40vh;background:var(--contact);opacity:.045}
 
-  .cta-row{margin-top:26px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-  .cta{display:inline-block;padding:12px 24px;border-radius:10px;
-    background:var(--gold);color:#14181E;font-weight:700;font-size:15px;transition:background .15s}
-  .cta:hover{background:#D8BC82}
-  .cta.ghost{background:var(--surface-hi);color:var(--text);border:1px solid var(--border);font-weight:600}
-  .cta.ghost:hover{border-color:var(--gold-dim)}
-  .cta-note{margin-top:10px;color:var(--dim);font-size:12.5px}
-  .cta-note a{color:var(--gold-dim)}
+  /* ── header ── */
+  header{padding:76px 0 36px;text-align:center}
+  .brand{display:inline-flex;align-items:center;gap:14px;font-size:40px;font-weight:600;letter-spacing:.2px}
+  .brand svg{width:52px;height:52px}
+  .brand .dot{color:var(--contact)}
+  .brand .arc{stroke-dasharray:100;animation:arc 1.1s .35s cubic-bezier(.6,0,.2,1) backwards}
+  .brand .focus{transform-origin:32px 32px;animation:focus 2.8s 1.4s ease-in-out infinite}
+  @keyframes arc{from{stroke-dashoffset:100}}
+  @keyframes focus{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+  .tagline{margin-top:18px;font-size:clamp(20px,3.4vw,30px);font-weight:600;line-height:1.35;word-break:keep-all}
+  .tagline .hl{color:var(--accent)}
+  .subline{color:var(--dim);margin-top:10px;font-size:15px;word-break:keep-all}
+  .cta-row{margin-top:28px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:var(--r-ctl);font-weight:600;font-size:15px;
+    border:1px solid var(--border);color:var(--text);transition:border-color .15s,background .15s,transform .15s}
+  .btn:hover{border-color:var(--accent-pressed);transform:translateY(-1px)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+  .btn.primary:hover{background:var(--accent-hover)}
+  .cta-note{margin-top:12px;color:var(--dim);font-size:12.5px}
+  .cta-note a,.news a{color:var(--accent-hover)}
+  .news{margin:22px auto 0;max-width:740px;padding:9px 16px;border:1px solid var(--border);border-radius:999px;
+    background:var(--surface);font-size:13.5px;color:var(--dim);word-break:keep-all}
+  .news b{color:var(--accent)}
 
-  /* Feature banners: the images carry their own captions on the same dark ground,
-     so they sit as full-width panels with just a hairline frame. */
-  .shots{display:flex;flex-direction:column;gap:18px;margin-top:8px}
-  .shot{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#0d0f14}
-  .shot img{display:block;width:100%;height:auto}
+  /* ── feature sections ── */
+  .feats{display:flex;flex-direction:column;gap:22px;margin-top:20px}
+  .feat{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:36px;align-items:center;
+    border:1px solid var(--border);border-radius:16px;background:rgba(16,18,24,.82);padding:40px 44px}
+  .feat.flip{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+  .feat.flip .copy{order:2}
+  .eyebrow{color:var(--accent);font-size:12px;font-weight:700;letter-spacing:2.4px}
+  .feat h3{font-size:28px;line-height:1.3;margin:8px 0 12px;word-break:keep-all}
+  .feat .copy p{color:var(--dim);font-size:14.5px;word-break:keep-all}
+  .feat .copy p + p{margin-top:8px}
+  .feat .copy b{color:var(--text);font-weight:600}
+  .feat .copy a{color:var(--accent-hover)}
+  .feat .copy .blue{color:#4C8DFF} .feat .copy .red{color:#E5484D}
+  .badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:rgba(74,222,128,.12);
+    color:var(--ok);font-size:11px;font-weight:700;letter-spacing:.3px;vertical-align:2px}
+  .key{display:inline-block;min-width:22px;padding:0 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+    background:var(--surface-hi);color:var(--text);font-size:12px;font-weight:600;line-height:20px;text-align:center}
 
-  h2{font-size:21px;margin:48px 0 4px}
-  .sub{color:var(--dim);font-size:14px;margin-bottom:18px}
+  /* A "stage" stands in for the game screen the HUD sits on. */
+  .stage{--s:1;--u:calc(var(--s) * 1px);position:relative;border-radius:12px;overflow:hidden;padding:26px 18px;
+    display:flex;flex-wrap:wrap;gap:calc(14 * var(--u));justify-content:center;align-items:center;min-height:200px;
+    border:1px solid #1d222b;
+    background:
+      radial-gradient(90% 70% at 18% 12%,rgba(46,84,78,.42),transparent 62%),
+      radial-gradient(80% 70% at 92% 100%,rgba(120,70,40,.30),transparent 60%),
+      repeating-linear-gradient(115deg,rgba(255,255,255,.018) 0 2px,transparent 2px 9px),
+      linear-gradient(160deg,#0d1316,#0a0c10)}
+  .stage.app{background:linear-gradient(160deg,#121620,#0c0e13);padding:22px 14px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:calc(8 * var(--u))}
+  .note{color:var(--dim);font-size:12.5px;margin-top:10px;text-align:center;word-break:keep-all}
 
-  .trust{background:var(--surface);border:1px solid var(--border);border-radius:14px;
-    padding:22px 24px;margin-top:16px}
+  /* ── overlay HUD (OverlayHost) ── */
+  .hud{font-family:var(--font);color:#fff;line-height:1.2;white-space:nowrap}
+  .mono{font-family:var(--mono)}
+  .panel{position:relative;border:1px solid var(--border);border-radius:6px;box-shadow:3px 4px 0 rgba(0,0,0,.33)}
+  .card{width:calc(412 * var(--u));background:var(--ov-panel);padding:calc(13 * var(--u)) calc(14 * var(--u))}
+  .hdr{display:flex;align-items:center;height:calc(20 * var(--u));font-size:calc(12 * var(--u))}
+  .hdr img{width:calc(14 * var(--u));height:calc(14 * var(--u));margin-right:calc(3 * var(--u))}
+  .hdr .ar{color:#F0D08A;margin-right:calc(9 * var(--u))} .hdr .mr{color:#8AB4F0;margin-right:calc(10 * var(--u))}
+  .hdr .who{color:#E6E8EC;font-size:calc(14 * var(--u))}
+  .tag{margin-left:auto;height:calc(16 * var(--u));padding:0 calc(6 * var(--u));border-radius:calc(3 * var(--u));
+    color:#0F1117;font-size:calc(10 * var(--u));line-height:calc(16 * var(--u))}
+  .tag.combo{background:#C8AA6E} .tag.skill{background:#8AB4F0}
+  .bigp{position:absolute;right:calc(14 * var(--u));top:calc(13 * var(--u));width:calc(52 * var(--u));height:calc(52 * var(--u));
+    border-radius:50%;padding:calc(2 * var(--u));background:#C8AA6E}
+  .bigp img,.por img{width:100%;height:100%;border-radius:50%;display:block}
+  .gauge{position:relative;margin-top:calc(10 * var(--u));width:calc(324 * var(--u));height:calc(22 * var(--u));
+    background:#07090D;outline:calc(1 * var(--u)) solid #6B7280;border-radius:2px}
+  .gauge i{position:absolute;top:0;bottom:0;display:block}
+  .gauge .kill{left:0;width:0;background:#E23327;border-radius:2px 0 0 2px}
+  .gauge .spread{width:0;background:rgba(226,51,39,.4)}
+  .gauge .tk{width:calc(1 * var(--u));top:50%;background:rgba(0,0,0,.7)}
+  .gauge .tk.k{width:calc(2 * var(--u));top:0;background:rgba(0,0,0,.95)}
+  .gauge .ev{width:calc(2 * var(--u));margin-left:calc(-1 * var(--u));background:#F2F4F7;opacity:0}
+  .gauge .cut{width:calc(2 * var(--u));margin-left:calc(-1 * var(--u));top:calc(-2 * var(--u));bottom:calc(-2 * var(--u));background:#FFE066;left:0}
+  .fresh{display:flex;justify-content:space-between;width:calc(324 * var(--u));margin-top:calc(3 * var(--u));
+    font-size:calc(9 * var(--u));color:var(--ov-name)}
+  .fresh .evcap{color:#F2F4F7;opacity:0}
+  .boxes{display:flex;gap:calc(9 * var(--u));margin-top:calc(12 * var(--u))}
+  .box{flex:1;height:calc(48 * var(--u));display:flex;align-items:center;justify-content:space-between;
+    padding:0 calc(12 * var(--u)) 0 calc(13 * var(--u));border-radius:6px}
+  .box b{font-family:var(--mono);font-weight:400;font-size:calc(30 * var(--u))}
+  .box span{font-size:calc(11 * var(--u))}
+  .box.max{background:#1A1310;border:1px solid #3A2420} .box.max b{color:#FF7A6A} .box.max span{color:#FF9A8A}
+  .box.min{background:#1A170F;border:1px solid #3A3220} .box.min b,.box.min span{color:#FFD76A}
+  .chips{display:flex;align-items:center;gap:calc(6 * var(--u));margin-top:calc(13 * var(--u))}
+  .chip{width:calc(30 * var(--u));height:calc(30 * var(--u));padding:calc(1.5 * var(--u));flex:0 0 auto}
+  .chip img{width:100%;height:100%;display:block}
+  .chip.aa,.tile.aa{background:var(--slot-a);border-radius:6px;color:#E6E8EC}
+  .chip.aa{padding:calc(3 * var(--u))} .tile.aa{padding:calc(4.5 * var(--u))}
+  .chip.aa svg,.tile.aa svg{width:100%;height:100%;display:block}
+  .chips .cname{margin-left:auto;color:var(--ov-name);font-size:calc(12 * var(--u))}
+  .q{background:var(--slot-q)} .w{background:var(--slot-w)} .e{background:var(--slot-e)} .r{background:var(--slot-r)} .p{background:var(--slot-p)}
+
+  .row{background:var(--ov-row);padding:calc(8 * var(--u)) calc(10 * var(--u));display:flex;gap:calc(8 * var(--u))}
+  .cell{width:calc(64 * var(--u));text-align:center}
+  .por{position:relative;width:calc(56 * var(--u));height:calc(56 * var(--u));margin:0 auto;border-radius:50%;
+    padding:calc(2 * var(--u));background:#3B4250}
+  .por.sel{background:#C8AA6E;box-shadow:0 0 0 calc(3 * var(--u)) rgba(200,170,110,.35)}
+  .por.dead{background:#3A4150} .por.dead img{filter:grayscale(1) brightness(.85)}
+  .por .cd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);
+    color:#CDD3DC;font-size:calc(20 * var(--u));text-shadow:1px 1px 0 rgba(0,0,0,.75)}
+  .cell .nm{margin-top:calc(5 * var(--u));font-size:calc(10 * var(--u));color:var(--ov-name)}
+  .cell .nm.sel{color:#E6E8EC}
+
+  .tiles{display:flex;justify-content:space-between;margin-top:calc(13 * var(--u))}
+  .tilec{width:calc(55.6 * var(--u));text-align:center}
+  .tile{width:calc(45 * var(--u));height:calc(45 * var(--u));margin:0 auto;padding:calc(2 * var(--u))}
+  .tile img{width:100%;height:100%;display:block}
+  .tilec b{display:block;margin-top:calc(7 * var(--u));font-family:var(--mono);font-weight:400;font-size:calc(19 * var(--u));color:#E6E8EC}
+  .tilec b.off{color:#5B6472}
+
+  .threat{width:calc(348 * var(--u));background:var(--ov-row);padding:calc(8 * var(--u)) calc(14 * var(--u))}
+  .tbar{position:relative;width:calc(320 * var(--u));height:calc(12 * var(--u));background:rgba(20,24,31,.8);border-radius:2px}
+  .tbar .hp{position:absolute;left:0;top:0;bottom:0;width:70%;background:#3FA66B;border-radius:2px;transition:width 1.6s cubic-bezier(.4,0,.2,1),background .3s}
+  .threat.lethal .tbar .hp{background:#E5484D}
+  .tmarks{position:relative;width:calc(320 * var(--u))}
+  .tm{position:absolute;top:calc(-15 * var(--u));width:calc(24 * var(--u));margin-left:calc(-12 * var(--u))}
+  .tm .stem{position:absolute;left:calc(11 * var(--u));width:calc(2 * var(--u));top:0;background:#F2C14E;transition:background .3s}
+  .tm .face{position:absolute;left:0;width:calc(24 * var(--u));height:calc(24 * var(--u));border-radius:50%;
+    box-shadow:0 0 0 calc(1 * var(--u)) #F2C14E;transition:box-shadow .3s}
+  .tm .face img{width:100%;height:100%;border-radius:50%;display:block}
+  .tm.hit .stem{background:#E5484D} .tm.hit .face{box-shadow:0 0 0 calc(1 * var(--u)) #E5484D}
+  .tm.gone .stem{background:var(--ov-name)} .tm.gone .face{box-shadow:0 0 0 calc(1 * var(--u)) var(--ov-name)} .tm.gone img{filter:grayscale(1)}
+  .tcap{font-size:calc(9 * var(--u));color:var(--ov-name);margin-top:calc(1 * var(--u))}
+
+  .next{width:calc(300 * var(--u));background:var(--ov-row);padding:calc(8 * var(--u)) calc(10 * var(--u))}
+  .next .ttl{font-size:calc(12 * var(--u));height:calc(19.2 * var(--u))}
+  .irow{display:flex;gap:calc(8 * var(--u));height:calc(32 * var(--u))}
+  .irow img{width:calc(26 * var(--u));height:calc(26 * var(--u))}
+  .irow .n{font-size:calc(12 * var(--u))}
+  .irow .g{font-size:calc(10 * var(--u));color:#3FA66B;margin-top:calc(2 * var(--u))}
+  .next .ft{font-size:calc(9 * var(--u));color:var(--ov-name);margin-top:calc(1 * var(--u))}
+  .swap{display:grid}
+  .swap > .next{grid-area:1/1;min-width:calc(300 * var(--u));width:auto;transition:opacity .5s,transform .5s}
+  .swap > .next + .next{opacity:0;transform:translateY(6px)}
+  .swap.tank > .next:first-child{opacity:0;transform:translateY(-6px)}
+  .swap.tank > .next + .next{opacity:1;transform:none}
+
+  .gold{width:calc(440 * var(--u));background:rgba(1,10,19,.95);border:1px solid #785A28;border-radius:0;padding:calc(12 * var(--u))}
+  .gcap{display:flex;justify-content:space-between;font-size:calc(11 * var(--u));height:calc(15.4 * var(--u))}
+  .gcap .c{color:var(--ov-dim)}
+  .gnum{display:flex;justify-content:space-between;align-items:baseline;height:calc(26.4 * var(--u))}
+  .gnum .mono{font-size:calc(20 * var(--u))}
+  .gnum .lead{font-size:calc(20 * var(--u))} .gnum .lead .mono{font-size:calc(22 * var(--u))}
+  .gbar{position:relative;height:calc(8 * var(--u));background:#1E2328;margin-top:calc(6 * var(--u))}
+  .gbar i,.lbar i{position:absolute;top:0;bottom:0;transition:width 1.2s cubic-bezier(.4,0,.2,1),left 1.2s cubic-bezier(.4,0,.2,1),background .4s}
+  .gbar .mid{left:50%;width:calc(2 * var(--u));margin-left:calc(-1 * var(--u));top:calc(-3 * var(--u));bottom:calc(-3 * var(--u));background:#C8AA6E}
+  .lanes{display:flex;margin-top:calc(10 * var(--u))}
+  .lane{flex:1;text-align:center;font-size:calc(12 * var(--u));color:var(--ov-dim)}
+  .lbar{position:relative;height:calc(3 * var(--u));margin:calc(3 * var(--u)) calc(4 * var(--u)) 0;background:#1E2328}
+  .blue{color:#4C8DFF} .red{color:#E5484D} .gld{color:#C8AA6E} .wht{color:#fff}
+
+  .wards{background:var(--ov-row);padding:calc(8 * var(--u)) calc(10 * var(--u))}
+  .wards .ttl{font-size:calc(12 * var(--u));height:calc(19.2 * var(--u))}
+  .wrow{display:flex;gap:calc(6 * var(--u));height:calc(36 * var(--u))}
+  .wrow img{width:calc(30 * var(--u));height:calc(30 * var(--u))}
+  .wrow b{width:calc(34 * var(--u));height:calc(30 * var(--u));background:rgba(20,24,31,.8);font-family:var(--mono);font-weight:400;
+    font-size:calc(15 * var(--u));display:flex;align-items:center;justify-content:center;border-radius:4px}
+  .wrow b.z{color:var(--ov-name)}
+
+  .mini{position:relative;width:calc(210 * var(--u));height:calc(210 * var(--u));border:1px solid #3a3f2e;background:#0b1712;flex:0 0 auto}
+  .mini svg{width:100%;height:100%;display:block}
+  .mtimer{position:absolute;font-family:var(--font);font-size:calc(11 * var(--u));text-shadow:1px 1px 0 rgba(0,0,0,.75);transform:translate(-50%,-60%)}
+
+  /* ── app window (Theme.xaml) ── */
+  .win{width:calc(600 * var(--u));background:var(--bg);border:1px solid #2b2f38;border-radius:8px;overflow:hidden;
+    font-size:calc(13 * var(--u));line-height:1.45;box-shadow:0 30px 60px -20px rgba(0,0,0,.6);text-align:left}
+  .wtitle{height:calc(28 * var(--u));display:flex;align-items:center;gap:calc(6 * var(--u));padding:0 calc(10 * var(--u));
+    font-size:calc(11 * var(--u));color:var(--dim);border-bottom:1px solid #1c1f26}
+  .wtitle svg{width:calc(13 * var(--u));height:calc(13 * var(--u))}
+  .wtitle .ctl{margin-left:auto;letter-spacing:calc(14 * var(--u));color:#6b7280}
+  .wbody{display:flex}
+  .rail{width:calc(60 * var(--u));background:var(--surface);border-right:1px solid var(--border);padding:calc(14 * var(--u)) calc(8 * var(--u));
+    display:flex;flex-direction:column;align-items:center;gap:calc(8 * var(--u))}
+  .rail .lg{width:calc(30 * var(--u));height:calc(30 * var(--u));margin-bottom:calc(10 * var(--u))}
+  .rail .ni{position:relative;width:calc(44 * var(--u));height:calc(40 * var(--u));border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--dim)}
+  .rail .ni svg{width:calc(17 * var(--u));height:calc(17 * var(--u))}
+  .rail .ni.on{background:var(--surface-hi);color:var(--text)}
+  .rail .ni.on::before{content:"";position:absolute;left:calc(-6 * var(--u));top:25%;bottom:25%;width:calc(3 * var(--u));border-radius:2px;background:var(--accent)}
+  .main{flex:1;padding:calc(18 * var(--u)) calc(22 * var(--u));min-width:0}
+  .mhead{display:flex;align-items:center;gap:calc(8 * var(--u));padding-bottom:calc(12 * var(--u));border-bottom:1px solid var(--border);margin-bottom:calc(14 * var(--u))}
+  .mhead h4{font-size:calc(17 * var(--u));font-weight:600;margin-right:auto}
+  .ghost{border:1px solid var(--border);border-radius:6px;padding:calc(5 * var(--u)) calc(12 * var(--u));font-weight:600;font-size:calc(12 * var(--u));color:var(--text);background:transparent}
+  .pill{background:var(--surface-hi);border-radius:999px;padding:calc(5 * var(--u)) calc(12 * var(--u));font-size:calc(11 * var(--u));color:var(--dim);font-weight:600}
+  .acard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:calc(16 * var(--u))}
+  .inset{background:var(--surface-hi);border:1px solid var(--border);border-radius:var(--r-ctl);padding:calc(12 * var(--u))}
+  .ct{font-size:calc(15 * var(--u));font-weight:600}
+  .fl{font-size:calc(13 * var(--u));font-weight:600}
+  .bd{font-size:calc(13 * var(--u))}
+  .hint{font-size:calc(12 * var(--u));color:var(--dim)}
+  .cap{font-size:calc(12 * var(--u));color:var(--dim);font-weight:600}
+  .grid{display:flex;gap:calc(8 * var(--u));margin-top:calc(8 * var(--u))}
+  .gt{width:calc(48 * var(--u));text-align:center;font-size:calc(11 * var(--u));color:var(--dim)}
+  .gt img{width:calc(48 * var(--u));height:calc(48 * var(--u));display:block;border:1px solid var(--border)}
+  .gt.on img{border:2px solid var(--accent)} .gt.on{color:var(--text)}
+  .pal{display:flex;gap:calc(8 * var(--u));margin-top:calc(6 * var(--u))}
+  .sk{width:calc(40 * var(--u));height:calc(40 * var(--u));border:2px solid;background:var(--surface-hi);flex:0 0 auto}
+  .sk img{width:100%;height:100%;display:block}
+  .sk.aa{border-color:#94A3B8;color:#E6E8EC;padding:calc(7 * var(--u))}
+  .seqz{display:flex;gap:calc(8 * var(--u));min-height:calc(58 * var(--u));align-items:center;padding:calc(8 * var(--u));margin-top:calc(6 * var(--u))}
+  .seqz .sk{opacity:0;transform:translateY(calc(-26 * var(--u))) scale(.8);transition:opacity .35s,transform .45s cubic-bezier(.3,1.4,.5,1)}
+  .seqz .sk.in{opacity:1;transform:none}
+  .range{color:var(--accent);font-size:calc(17 * var(--u));font-weight:600;margin-left:calc(10 * var(--u))}
+  .better{display:flex;align-items:center;gap:calc(8 * var(--u));margin-top:calc(8 * var(--u));opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
+  .better.in{opacity:1;transform:none}
+  .better .bd{flex:1}
+  .hk{display:flex;gap:calc(8 * var(--u));align-items:center;margin-top:calc(6 * var(--u))}
+  .prim{background:var(--accent);color:var(--bg);border-radius:6px;padding:calc(5 * var(--u)) calc(14 * var(--u));font-weight:600;font-size:calc(12 * var(--u))}
+  .chart{display:block;margin-top:calc(10 * var(--u));overflow:visible}
+  .chart .ln{fill:none;stroke-width:2;stroke-linejoin:round}
+  .chart text{font-family:var(--font);font-size:10px;fill:var(--dim)}
+  .ep{display:inline-flex;gap:calc(4 * var(--u));vertical-align:middle;margin-left:calc(8 * var(--u))}
+  .ep img{width:calc(24 * var(--u));height:calc(24 * var(--u));border-radius:3px;opacity:.45;display:block}
+  .ep img.on{opacity:1;outline:2px solid var(--accent)}
+  .rv > *{opacity:0;transform:translateY(8px);transition:opacity .45s,transform .45s}
+  .rv.in > *{opacity:1;transform:none}
+
+  /* ── safety ── */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .lst{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-card);padding:18px 20px;font-size:14px}
+  .lst h5{font-size:14px;margin-bottom:8px}
+  .lst li{list-style:none;display:flex;gap:10px;padding:5px 0;color:var(--text);word-break:keep-all}
+  .lst.yes h5{color:var(--ok)} .lst.yes li::before{content:"✓";color:var(--ok);font-weight:700}
+  .lst.no h5{color:var(--danger)} .lst.no li::before{content:"✕";color:var(--danger);font-weight:700}
+  .pp{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .pp span{border:1px solid var(--border);border-radius:999px;padding:4px 12px;font-size:12.5px;color:var(--dim)}
+  .pp b{color:var(--accent);margin-right:4px}
+
+  h2{font-size:22px;margin:56px 0 4px}
+  .sub{color:var(--dim);font-size:14px;margin-bottom:16px}
+  .trust,.dl{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-top:14px}
   .trust ul{list-style:none}
-  .trust li{padding:7px 0;font-size:14.5px;display:flex;gap:10px;align-items:flex-start}
-  .trust li::before{content:"✓";color:var(--ok);font-weight:700;flex:0 0 auto}
-  .trust li b{color:var(--text)}
+  .trust li{padding:7px 0 7px 24px;font-size:14.5px;position:relative;word-break:keep-all}
+  .trust li::before{content:"✓";color:var(--ok);font-weight:700;position:absolute;left:0}
   .trust li span{color:var(--dim)}
-  .trust .src{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);
-    color:var(--dim);font-size:13px}
-  .trust .src a{color:var(--gold-dim)}
-
-  .dl{background:var(--surface);border:1px solid var(--border);border-radius:14px;
-    padding:22px 24px;margin-top:16px;font-size:14.5px}
-  .dl p{margin:6px 0;color:var(--dim)}
-  .dl b{color:var(--text)}
-  .dl a{color:var(--gold-dim)}
-  .dl .warn{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;
-    background:var(--surface-hi);font-size:13px}
-
+  .trust .src{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--dim);font-size:13px}
+  .trust .src a,.dl a,.faq a,footer a{color:var(--accent-hover)}
+  .dl{font-size:14.5px} .dl p{margin:6px 0;color:var(--dim)} .dl b{color:var(--text)}
+  .dl .warn{margin-top:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-hi);font-size:13px}
   .faq{margin-top:16px;display:flex;flex-direction:column;gap:8px}
   .faq details{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0 20px}
   .faq summary{cursor:pointer;padding:14px 0;font-weight:600;font-size:15px;list-style:none}
   .faq summary::-webkit-details-marker{display:none}
-  .faq summary::before{content:"Q.";color:var(--gold);margin-right:8px}
+  .faq summary::before{content:"Q.";color:var(--accent);margin-right:8px}
   .faq details[open] summary{border-bottom:1px solid var(--border)}
   .faq p{padding:12px 0 16px;color:var(--dim);font-size:14px}
-  .faq a{color:var(--gold-dim)}
-
-  footer{margin:56px 0 40px;padding-top:24px;border-top:1px solid var(--border);
-    color:var(--dim);font-size:12.5px;text-align:center}
-  footer a{color:var(--gold-dim)}
+  footer{margin:56px 0 40px;padding-top:24px;border-top:1px solid var(--border);color:var(--dim);font-size:12.5px;text-align:center}
   footer p{margin:6px 0}
 
-  /* HTML feature panels in the banners' look: eyebrow, title and copy on the left, an app-style mock on
-     the right. Used for what changed or is new, so the page shows only what the download has. */
-  .feat{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:32px;align-items:center;
-    border:1px solid var(--border);border-radius:16px;background:#101218;padding:40px 44px}
-  .eyebrow{color:var(--gold);font-size:12px;font-weight:700;letter-spacing:2.4px}
-  .feat h3{font-size:28px;line-height:1.3;margin:8px 0 12px;word-break:keep-all}
-  .feat .copy p{color:var(--dim);font-size:14.5px;word-break:keep-all}
-  .feat .copy b{color:var(--text)}
-  .badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:#16301F;
-    color:#6EE7A7;font-size:11px;font-weight:700;letter-spacing:.3px;vertical-align:2px}
-  .mock{display:flex;flex-direction:column;gap:12px;min-width:0}
-  .mock .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;min-width:0}
-  .card .t{font-weight:700;font-size:15px}
-  .card .s{color:var(--dim);font-size:13px;margin-top:4px}
-  .card .big{font-size:30px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums;line-height:1.3;margin-top:4px}
-  .card .big small{font-size:13px;color:var(--dim);font-weight:400;margin-left:6px}
-  .item-row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;padding:8px 0;
-    border-top:1px solid var(--border);font-size:13.5px}
-  .card .t + .item-row{margin-top:8px;border-top:0}
-  .item-row b{font-weight:600}
-  .item-row span{color:var(--dim);font-variant-numeric:tabular-nums}
-  .gauge{position:relative;height:18px;border:1px solid #6B7280;border-radius:4px;background:#07090D;margin:14px 0 10px}
-  .gauge i{position:absolute;top:0;bottom:0;display:block}
-  .gauge .kill{left:0;background:#E23327}
-  .gauge .spread{background:rgba(226,51,39,.4)}
-  .gauge .hp{left:0;background:#2F6F4F}
-  .gauge .line{width:2px;margin-left:-1px}
-  .gauge .min{background:#FFE066;top:-3px;bottom:-3px}
-  .gauge .ev{background:#F2F4F7}
-  .gauge .tick{width:2px;margin-left:-1px;background:#C8CDD5;top:-4px;bottom:-4px}
-  .gauge .tick.hit{background:#FF6A5A}
-  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--dim);font-size:12.5px}
-  .legend em{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-  .legend .hit{color:#FF8A7A}
-  .seq{display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--dim)}
-  .chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;
-    border-radius:6px;border:2px solid;background:var(--surface-hi);color:var(--text);font-weight:700;font-size:13px}
-  .kbd{display:inline-block;padding:3px 10px;border:1px solid var(--border);border-bottom-width:3px;border-radius:7px;
-    background:var(--surface-hi);color:var(--text);font-weight:600;font-size:13px}
-  .gain{color:#6EE7A7;font-weight:700}
-  .lv{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;margin-top:8px}
-  .lv th,.lv td{padding:6px 8px;text-align:right;border-top:1px solid var(--border)}
-  .lv th{color:var(--dim);font-weight:600;font-size:12.5px;border-top:0}
-  .lv td:first-child,.lv th:first-child{text-align:left}
-  .lv .me{color:#FF7A6A} .lv .foe{color:#8AB4F0}
-  .news{margin:22px auto 0;max-width:720px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;
-    background:var(--surface);font-size:13.5px;color:var(--dim);word-break:keep-all}
-  .news b{color:var(--gold)}
-  .news a{color:var(--gold-dim)}
-  @media (max-width:780px){
-    .feat{grid-template-columns:1fr;padding:26px 20px;gap:22px}
+  /* ── scroll reveal ── */
+  @keyframes up{from{opacity:0;transform:translateY(16px)}}
+  .js header > *{animation:up .8s cubic-bezier(.2,.7,.2,1) both}
+  .js header > :nth-child(2){animation-delay:.08s} .js header > :nth-child(3){animation-delay:.16s}
+  .js header > :nth-child(4){animation-delay:.24s} .js header > :nth-child(5){animation-delay:.3s} .js header > :nth-child(6){animation-delay:.36s}
+  .js .reveal .copy{opacity:0;transform:translateX(-28px);transition:opacity .7s,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .js .reveal.flip .copy{transform:translateX(28px)}
+  .js .reveal .stage{opacity:0;transform:translateY(34px) scale(.97);transition:opacity .8s .12s,transform .9s .12s cubic-bezier(.2,.7,.2,1)}
+  .js .reveal.in .copy,.js .reveal.in .stage{opacity:1;transform:none}
+  .js .rise{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .js .rise.in{opacity:1;transform:none}
+  .gauge .kill,.gauge .spread{transition:width 1.1s cubic-bezier(.3,0,.2,1)}
+  .gauge .spread{transition-delay:.9s}
+  .gauge .cut{transition:left 1.1s cubic-bezier(.3,0,.2,1)}
+  .gauge .ev,.fresh .evcap{transition:opacity .5s 1.9s}
+  .in .gauge .ev,.in .fresh .evcap{opacity:1}
+  .chart .ln{transition:stroke-dashoffset 1.8s cubic-bezier(.4,0,.2,1)}
+
+  /* Static: reduced motion, and the README banners (?banner=<id>) - every element at its end state. */
+  .static *,.static *::before{transition:none!important;animation:none!important}
+  @media (prefers-reduced-motion:reduce){*,*::before{transition:none!important;animation:none!important}html{scroll-behavior:auto}}
+  html.banner,html.banner body{background:var(--bg);overflow:hidden}
+  .banner .glow,.banner .progress,.banner header,.banner h2,.banner .sub,.banner .trust,.banner .dl,.banner .faq,.banner footer,.banner .feat{display:none}
+  .banner .feats{margin:0}
+  .banner .wrap{max-width:none;padding:0}
+  .banner .feat.shot{display:grid;border:0;border-radius:0;height:100vh;padding:0 64px;background:var(--bg)}
+
+  @media (max-width:860px){
+    .feat,.feat.flip{grid-template-columns:minmax(0,1fr);padding:26px 16px;gap:22px}
+    .feat.flip .copy{order:0}
     .feat h3{font-size:23px}
+    .two{grid-template-columns:1fr}
+    .stage{padding:18px 10px}
+    .brand{font-size:34px} .brand svg{width:44px;height:44px}
   }
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="logo"><span class="dot"></span>FOVA</div>
-      <p class="tagline">지금 이 콤보로 <span class="hl">킬각이 나오는지</span>, 게임 화면 위에서 바로.</p>
-      <p class="subline">내 실시간 스탯·룬·아이템 기준으로 콤보 데미지를 계산해 보여주는 가벼운 LoL 오버레이 — 무료</p>
-      <div class="cta-row">
-        <a class="cta" href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe">⬇ 설치 파일 받기 (최신 버전)</a>
-        <a class="cta ghost" href="https://github.com/JiMin7788/lol_overlay_fova">GitHub에서 보기</a>
+<div class="progress" aria-hidden="true"></div>
+<div class="glow" aria-hidden="true"><i></i><i></i></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- DrawCommandRenderer.BuildBasicAttackGeometry, the HUD's auto-attack sword -->
+  <symbol id="aa" viewBox="0 0 24 24"><g transform="rotate(-45 12 12)" fill="currentColor">
+    <path d="M12 2.2c1.7 1.9 2.5 3.9 2.5 6.1v5.2h-5V8.3c0-2.2.8-4.2 2.5-6.1Z"/><rect x="6.4" y="13.5" width="11.2" height="2.7" rx="1.35"/>
+    <rect x="10.8" y="16.2" width="2.4" height="4.2" rx="1.1"/><circle cx="12" cy="21.2" r="1.75"/></g></symbol>
+  <!-- HomeWindow.xaml nav-rail logo -->
+  <symbol id="logo" viewBox="0 0 64 64">
+    <path d="M38.84,50.79 A 20,20 0 1 1 50.79,25.16" fill="none" stroke="#D6E2F2" stroke-width="6" stroke-linecap="round"/>
+    <path d="M50.79,25.16 A 20,20 0 0 1 38.84,50.79" fill="none" stroke="#FF5E44" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="32" cy="32" r="3.6" fill="#D6E2F2"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path d="M38.84,50.79 A 20,20 0 1 1 50.79,25.16" fill="none" stroke="#D6E2F2" stroke-width="6" stroke-linecap="round"/>
+        <path class="arc" pathLength="100" d="M50.79,25.16 A 20,20 0 0 1 38.84,50.79" fill="none" stroke="#FF5E44" stroke-width="6" stroke-linecap="round"/>
+        <circle class="focus" cx="32" cy="32" r="3.6" fill="#D6E2F2"/>
+      </svg>
+      <span>fova<span class="dot">.</span></span>
+    </div>
+    <p class="tagline">지금 이 콤보로 <span class="hl">킬각이 나오는지</span>,<br>게임 화면 위에서 바로.</p>
+    <p class="subline">내 실시간 스탯·룬·아이템 기준으로 콤보 데미지를 계산해 보여주는 가벼운 LoL 오버레이 — 무료</p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe">⬇ 설치 파일 받기 (최신 버전)</a>
+      <a class="btn" href="https://discord.gg/G8h3RbyaRN">디스코드 참여</a>
+      <a class="btn" href="https://github.com/JiMin7788/lol_overlay_fova">GitHub에서 보기</a>
+    </div>
+    <p class="cta-note">무설치 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip">포터블 zip</a>도 있습니다 · Windows 10/11 · 업데이트 자동</p>
+    <p class="news"><b>0.4.0</b> · 모든 챔피언 툴팁 항목 단위 검사 · 치명타 기댓값 선 · 탱커 아이템 추천 · 단축키 3키 조합 ·
+      <a href="https://github.com/JiMin7788/lol_overlay_fova/releases/tag/v0.4.0">변경 사항</a></p>
+  </header>
+
+  <!-- Each mock-up below is the app's real layout redrawn in HTML (the numbers are a sample game). -->
+  <main class="feats">
+
+    <section class="feat reveal shot" id="combo" data-play="combo">
+      <div class="copy">
+        <div class="eyebrow">COMBO DAMAGE</div>
+        <h3>콤보 데미지 · 킬각, 단축키 한 번에</h3>
+        <p>콤보에 지정한 단축키를 누르면 대상 체력 바 위에 <b>이 체력 아래면 죽는다</b>는 선을 그립니다.
+           빨강까지 들어온 적은 지금 콤보로 처치, 노란 선은 확정 킬, 흰 선은 치명타 기댓값.</p>
+        <p>실제 패치 계수로 관통 순서·치명타·룬·아이템까지 반영하고, 위쪽 초상화를 눌러 대상을 바꿉니다.</p>
       </div>
-      <p class="cta-note">무설치 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip">포터블 zip</a>도 있습니다 · Windows 10/11 · 업데이트 자동</p>
-      <p class="news"><b>0.4.0</b> · 모든 챔피언 툴팁 항목 단위 검사 · 치명타 기댓값 선 · 탱커 아이템 추천 · 단축키 3키 조합 · 간단히 보기 게이지 ·
-        <a href="https://github.com/JiMin7788/lol_overlay_fova/releases/tag/v0.4.0">변경 사항</a></p>
-    </header>
+      <div class="stage" data-w="430">
+        <div class="col hud">
+          <div class="panel row" id="roster"></div>
+          <div class="panel card" id="combocard">
+            <div class="hdr"><img src="images/ui/armor.png" alt=""><span class="mono ar">78</span><img src="images/ui/mr.png" alt=""><span class="mono mr">52</span><span class="who">아리</span>
+              <span class="tag combo" style="margin-right:calc(60 * var(--u))">콤보</span></div>
+            <div class="bigp"><img src="images/ui/Ahri.png" alt="아리"></div>
+            <div class="gauge" data-hp="2180" data-min="1240" data-ev="1532" data-max="1894"><i class="kill"></i><i class="spread"></i></div>
+            <div class="fresh"><span>최대 체력: 적 아이템을 마지막으로 본 시점 기준</span><span class="evcap">치명 기대 1532</span></div>
+            <div class="boxes"><div class="box max"><b class="mono" data-count="1894">1894</b><span>최대</span></div><div class="box min"><b class="mono" data-count="1240">1240</b><span>최소</span></div></div>
+            <div class="chips">
+              <div class="chip e"><img src="images/ui/YasuoE.png" alt="E"></div><div class="chip q"><img src="images/ui/YasuoQ1Wrapper.png" alt="Q"></div>
+              <div class="chip aa"><svg><use href="#aa"/></svg></div><div class="chip r"><img src="images/ui/YasuoR.png" alt="R"></div>
+              <div class="chip q"><img src="images/ui/YasuoQ1Wrapper.png" alt="Q"></div><span class="cname">풀콤 (E-Q-AA-R-Q)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <!-- 오버레이 UI 쇼케이스 — 이미지 배너는 캡션을 자체 포함, .feat 패널은 HTML로 그린 화면 예시 -->
-    <div class="shots">
-      <figure class="shot"><img src="images/feature-combo-damage.png" alt="콤보 데미지 · 킬각 계산 — 대상 체력 바 위에 최소~최대 킬 임계선을 그려 어느 체력부터 잡을 수 있는지 표시"></figure>
+    <section class="feat flip reveal shot" id="accuracy" data-play="skills">
+      <div class="copy">
+        <div class="eyebrow">ACCURACY <span class="badge">0.4.0</span></div>
+        <h3>모든 챔피언 툴팁을 항목 단위로 검사</h3>
+        <p>모든 챔피언의 스킬 툴팁을 문장 단위로 쪼개, 데미지 항목마다 엔진 계산에 빠짐없이 연결됐는지 자동으로 검사합니다.
+           온힛·처형·스택·폼 전환(제이스·니달리·크산테 R 이후 등)까지 그 시점의 스킬로 계산합니다.</p>
+        <p><span class="key">Alt</span>+<span class="key">`</span> 로 스킬별 데미지 카드를 띄워 지금 대상에게 각 스킬이 몇 들어가는지 봅니다.</p>
+      </div>
+      <div class="stage" data-w="430">
+        <div class="panel card hud">
+          <div class="hdr"><img src="images/ui/armor.png" alt=""><span class="mono ar">78</span><img src="images/ui/mr.png" alt=""><span class="mono mr">52</span><span class="who">아리</span><span class="tag skill">스킬별</span></div>
+          <div class="tiles">
+            <div class="tilec"><div class="tile p"><img src="images/ui/YasuoP.png" alt="P"></div><b class="off">0</b></div>
+            <div class="tilec"><div class="tile q"><img src="images/ui/YasuoQ1Wrapper.png" alt="Q"></div><b data-count="312">312</b></div>
+            <div class="tilec"><div class="tile w"><img src="images/ui/YasuoW.png" alt="W"></div><b class="off">0</b></div>
+            <div class="tilec"><div class="tile e"><img src="images/ui/YasuoE.png" alt="E"></div><b data-count="148">148</b></div>
+            <div class="tilec"><div class="tile r"><img src="images/ui/YasuoR.png" alt="R"></div><b data-count="421">421</b></div>
+            <div class="tilec"><div class="tile aa"><svg><use href="#aa"/></svg></div><b data-count="196">196</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">ACCURACY <span class="badge">0.4.0</span></div>
-          <h3>모든 챔피언 툴팁을 항목 단위로 검사</h3>
-          <p>모든 챔피언의 스킬 툴팁을 문장 단위로 쪼개, 데미지 항목마다 엔진 계산에 빠짐없이 연결됐는지 자동으로 검사합니다.
-             치명타는 운에 따라 갈리니 확정 킬(최소)과 최대 사이에 <b>치명타 기댓값 선</b>도 그립니다.</p>
+    <section class="feat reveal shot" id="threat" data-play="threat">
+      <div class="copy">
+        <div class="eyebrow">KILL THREAT</div>
+        <h3>적 풀콤보, 지금 체력으로 버티나</h3>
+        <p>살아 있는 적마다 풀콤보 예상 데미지를 내 체력 바 위 눈금으로 그립니다. 체력이 눈금보다 낮아지면 그 눈금과 바가 <b>빨강</b>으로 —
+           그 적의 풀콤보에 죽는다는 뜻입니다.</p>
+        <p>적의 레벨·아이템은 스코어보드 정보만 쓰고, 스킬은 모두 준비된 것으로 가정합니다. 죽어 있는 적은 회색.</p>
+      </div>
+      <div class="stage" data-w="370">
+        <div class="panel threat hud" id="threatcard">
+          <div class="tbar"><i class="hp"></i></div>
+          <div class="tmarks" id="tmarks"></div>
+          <div class="tcap">눈금 = 그 적의 풀콤 데미지 · 빨강 = 지금 체력이면 죽음 (모든 스킬 준비 기준 추정)</div>
         </div>
-        <div class="mock">
-          <div class="card">
-            <div class="t">킬 임계 게이지 <span class="s">— 상대 최대 체력 2,880</span></div>
-            <div class="gauge"><i class="kill" style="width:38%"></i><i class="spread" style="left:38%;width:27%"></i><i class="line ev" style="left:49%"></i><i class="line min" style="left:38%"></i></div>
-            <div class="legend"><span><em style="background:#E23327"></em>확정 킬</span><span><em style="background:rgba(226,51,39,.4)"></em>치명타가 다 터지면</span><span><em style="background:#F2F4F7"></em>치명 기대</span></div>
-          </div>
-          <div class="row">
-            <div class="card"><div class="s">최대</div><div class="big" style="color:#FF7A6A">1,870</div></div>
-            <div class="card"><div class="s">최소</div><div class="big" style="color:#FFD76A">1,094</div></div>
-            <div class="card"><div class="s">치명 기대</div><div class="big" style="color:#F2F4F7">1,410</div></div>
-          </div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <figure class="shot"><img loading="lazy" src="images/feature-multiform.png" alt="멀티폼 · 추가 스킬 — 제이스·그나르·렉사이·흐웨이 등 폼 전환 스킬까지 개별 계산"></figure>
-      <figure class="shot"><img loading="lazy" src="images/feature-bonus-effects.png" alt="추가효과 계산 — 온힛·처형·룬 증폭까지 실제 패치 계수로 반영"></figure>
+    <section class="feat flip reveal shot" id="items" data-play="items">
+      <div class="copy">
+        <div class="eyebrow">NEXT ITEM <span class="badge">0.4.0 탱커</span></div>
+        <h3>다음 아이템, 딜이냐 탱이냐</h3>
+        <p>상점 키 <span class="key">P</span> 로 여닫는 추천 카드. <b>딜</b> 기준은 지금 대상에게 내 콤보 데미지가 가장 많이 느는 완성 아이템을,
+           <b>탱커</b> 기준은 적 전원의 풀콤보를 가장 잘 버티는 아이템을 1000골드당 효율과 함께 보여줍니다.</p>
+        <p>기준은 설정 → 오버레이에서 고릅니다.</p>
+      </div>
+      <div class="stage" data-w="320">
+        <div class="swap hud" id="swap">
+          <div class="panel next">
+            <div class="ttl">다음 아이템 · 아리 상대 콤보 데미지</div>
+            <div class="irow"><img src="images/ui/item3153.png" alt=""><div><div class="n">몰락한 왕의 검</div><div class="g">+27%  ·  +105 / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3072.png" alt=""><div><div class="n">피바라기</div><div class="g">+24%  ·  +88 / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item6675.png" alt=""><div><div class="n">나보리 명멸검</div><div class="g">+22%  ·  +103 / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3036.png" alt=""><div><div class="n">도미닉 경의 인사</div><div class="g">+21%  ·  +79 / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item6672.png" alt=""><div><div class="n">크라켄 학살자</div><div class="g">+19%  ·  +79 / 1000골드</div></div></div>
+            <div class="ft">치명타·공속·스킬가속·지속 효과는 계산 안 됨</div>
+          </div>
+          <div class="panel next">
+            <div class="ttl">다음 아이템 · 탱커 (적 풀콤보 버티기)</div>
+            <div class="irow"><img src="images/ui/item3075.png" alt=""><div><div class="n">가시 갑옷</div><div class="g">적 콤보 합 248% → 219% (내 체력 대비)  ·  -11.8%p / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3084.png" alt=""><div><div class="n">강철심장</div><div class="g">적 콤보 합 248% → 222% (내 체력 대비)  ·  -8.7%p / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3110.png" alt=""><div><div class="n">얼어붙은 심장</div><div class="g">적 콤보 합 248% → 228% (내 체력 대비)  ·  -8.0%p / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3143.png" alt=""><div><div class="n">란두인의 예언</div><div class="g">적 콤보 합 248% → 227% (내 체력 대비)  ·  -7.8%p / 1000골드</div></div></div>
+            <div class="irow"><img src="images/ui/item3065.png" alt=""><div><div class="n">정령의 형상</div><div class="g">적 콤보 합 248% → 230% (내 체력 대비)  ·  -6.7%p / 1000골드</div></div></div>
+            <div class="ft">보호막·회복·지속 효과는 계산 안 됨 · 적 스킬 모두 준비 기준</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">KILL THREAT</div>
-          <h3>적 풀콤보, 지금 체력으로 버티나</h3>
-          <p>살아 있는 적마다 풀콤보 예상 데미지를 내 체력 바 위 눈금으로 그립니다. 내 체력이 눈금보다 낮으면 그 적의 풀콤보에 죽는다는 뜻.
-             적의 레벨·아이템은 스코어보드 정보만 쓰고, 스킬은 모두 준비된 것으로 가정합니다.</p>
+    <section class="feat reveal shot" id="timers" data-play="timers">
+      <div class="copy">
+        <div class="eyebrow">TIMERS</div>
+        <h3>부활·라인 복귀 · 억제기 타이머</h3>
+        <p>죽은 적은 초상화 위에 남은 시간을 띄웁니다. <b>~</b>가 붙으면 부활 뒤 라인까지 걸어오는 시간을 더한 복귀 예측입니다.</p>
+        <p>억제기·넥서스 포탑 재생성은 미니맵의 그 자리에 숫자로 셉니다. 모두 Live Client API 이벤트 시각 기준입니다.</p>
+      </div>
+      <div class="stage" data-w="610">
+        <div class="panel row hud" id="roster2"></div>
+        <div class="mini hud" aria-label="미니맵">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <rect width="100" height="100" fill="#0e1d16"/>
+            <g fill="#15301f"><circle cx="30" cy="40" r="9"/><circle cx="46" cy="72" r="8"/><circle cx="58" cy="28" r="8"/><circle cx="72" cy="60" r="9"/><circle cx="24" cy="64" r="6"/><circle cx="77" cy="37" r="6"/></g>
+            <path d="M2 4 Q30 38 50 50 T98 96" stroke="#1b3a4d" stroke-width="7" fill="none"/>
+            <g stroke="#4a4433" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 90 L8 8 L90 10"/><path d="M10 90 L92 92 L90 10"/><path d="M13 87 L87 13"/></g>
+            <path d="M0 72 Q0 100 28 100 L0 100Z" fill="#1b2a3c"/><path d="M100 28 Q100 0 72 0 L100 0Z" fill="#3a1c22"/>
+            <circle cx="10" cy="90" r="5" fill="#2f5d9a"/><circle cx="90" cy="10" r="5" fill="#9a2f3a"/>
+            <g fill="#E5484D"><circle cx="72" cy="9" r="1.8"/><circle cx="91" cy="28" r="1.8"/><circle cx="83" cy="13" r="1.4"/></g>
+          </svg>
+          <span class="mtimer gld" style="left:76%;top:24%" data-cd="247">247</span>
+          <span class="mtimer" style="left:86%;top:16%;color:#F0C674" data-cd="131">131</span>
         </div>
-        <div class="mock">
-          <div class="card">
-            <div class="t">내 체력 1,240 / 2,150</div>
-            <div class="gauge"><i class="hp" style="width:58%"></i><i class="tick" style="left:41%"></i><i class="tick hit" style="left:66%"></i><i class="tick hit" style="left:83%"></i></div>
-            <div class="legend"><span>애니 41%</span><span class="hit">제드 66%</span><span class="hit">카이사 83%</span></div>
-            <div class="s" style="margin-top:10px">눈금 = 그 적의 풀콤 데미지 · 빨강 = 지금 체력이면 죽음 (모든 스킬 준비 기준 추정)</div>
-          </div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">NEXT ITEM <span class="badge">0.4.0 탱커 추천</span></div>
-          <h3>다음 아이템, 딜이냐 탱이냐</h3>
-          <p>상점 키 <b>P</b>로 여닫는 추천 카드. <b>딜</b> 기준은 지금 대상에게 내 콤보 데미지가 가장 많이 느는 완성 아이템을,
-             <b>탱커</b> 기준은 적 전원의 풀콤보를 가장 잘 버티는 체력·방어 아이템을 1000골드당 효율과 함께 보여줍니다.</p>
+    <section class="feat flip reveal shot" id="gold" data-play="gold">
+      <div class="copy">
+        <div class="eyebrow">SCOREBOARD</div>
+        <h3>골드 차이 · 제어 와드</h3>
+        <p><span class="key">Tab</span> 스코어보드를 열면 그 위에 팀 골드와 라인별 골드 차이를 막대로 겹쳐 보여줍니다.
+           골드는 스코어보드의 아이템 가격으로 추정합니다.</p>
+        <p>적이 지니고 있는 제어 와드 수도 따로 셉니다(설치된 와드는 공개 정보가 아니라서 세지 않음).</p>
+      </div>
+      <div class="stage" data-w="560">
+        <div class="panel gold hud" id="goldp">
+          <div class="gcap"><span><span class="blue">블루팀</span> <span class="gld">우리</span></span><span class="c">골드 차이 · 추정</span><span class="red">레드팀</span></div>
+          <div class="gnum"><span class="mono blue" data-k="b">41.3k</span><span class="lead blue" data-k="l">블루 <span class="mono">+1.5k</span></span><span class="mono red" data-k="r">39.8k</span></div>
+          <div class="gbar"><i class="bl" style="left:0;background:#4C8DFF"></i><i class="rd" style="background:rgba(229,72,77,.5)"></i><i class="mid"></i></div>
+          <div class="lanes" id="lanes"></div>
         </div>
-        <div class="mock">
-          <div class="card">
-            <div class="t">다음 아이템 · 제드 상대 콤보 데미지</div>
-            <div class="item-row"><b>루덴의 동반자</b><span>+18% · +6 / 1000골드</span></div>
-            <div class="item-row"><b>그림자불꽃</b><span>+15% · +5 / 1000골드</span></div>
-          </div>
-          <div class="card">
-            <div class="t">다음 아이템 · 탱커 (적 풀콤보 버티기)</div>
-            <div class="item-row"><b>가시 갑옷</b><span>적 콤보 합 182% → 154% (내 체력 대비) · -11.4%p / 1000골드</span></div>
-            <div class="item-row"><b>강철심장</b><span>적 콤보 합 182% → 160% (내 체력 대비) · -7.3%p / 1000골드</span></div>
-          </div>
+        <div class="panel wards hud">
+          <div class="ttl">제어 와드 수</div>
+          <div class="wrow"><img src="images/ui/Darius.png" alt=""><b>1</b></div>
+          <div class="wrow"><img src="images/ui/LeeSin.png" alt=""><b class="z">0</b></div>
+          <div class="wrow"><img src="images/ui/Ahri.png" alt=""><b>1</b></div>
+          <div class="wrow"><img src="images/ui/Jinx.png" alt=""><b class="z">0</b></div>
+          <div class="wrow"><img src="images/ui/Thresh.png" alt=""><b>2</b></div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">TIMERS</div>
-          <h3>부활·라인 복귀 · 억제기 타이머</h3>
-          <p>죽은 적은 초상화에 부활까지 남은 시간과 라인으로 걸어오는 시간을 더해 <b>~M:SS</b>로 보여줍니다.
-             억제기·넥서스 포탑 재생성은 Live Client API의 파괴 이벤트 시각으로 셉니다.</p>
+    <section class="feat reveal shot" id="champselect" data-play="chart">
+      <div class="copy">
+        <div class="eyebrow">CHAMP SELECT</div>
+        <h3>레벨별 킬각, 픽 단계에서 미리</h3>
+        <p>챔피언 선택 화면에서 라인 상대와 나의 레벨별 처치 선을 그래프로 그립니다. <b class="blue">파랑</b>은 상대 체력이 몇 % 아래면 내 풀콤보에 잡히는지,
+           <b class="red">빨강</b>은 내가 몇 % 아래면 상대 풀콤보에 잡히는지.</p>
+        <p>"2레벨은 상대, 6레벨은 나" 같은 라인 계획을 게임 전에 세웁니다. 라인 상대는 추정이라 다른 적 초상화를 눌러 바꿀 수 있습니다.</p>
+      </div>
+      <div class="stage app" data-w="440" data-max="1.15">
+        <div class="inset" style="width:calc(412 * var(--u));font-size:calc(13 * var(--u))">
+          <div><span class="fl">킬각 타이밍 · 상대</span><span class="ep"><img src="images/ui/Darius.png" alt=""><img src="images/ui/LeeSin.png" alt=""><img class="on" src="images/ui/Zed.png" alt="제드"><img src="images/ui/Jinx.png" alt=""><img src="images/ui/Thresh.png" alt=""></span></div>
+          <svg class="chart" id="chart" viewBox="0 0 380 120" style="width:calc(380 * var(--u));height:calc(120 * var(--u))"></svg>
+          <div class="bd" style="margin-top:calc(6 * var(--u))">풀피에서 원콤 — 나: 11레벨부터 · 제드: 없음</div>
+          <div class="hint" style="margin-top:calc(4 * var(--u));white-space:normal">파랑 = 상대 체력이 이 % 아래면 내 풀콤으로 킬 · 빨강 = 내 체력이 이 % 아래면 상대 풀콤에 죽음<br>아이템·룬 없음, 점멸만 있음, 스킬은 일반적인 선마 순서 기준 추정</div>
         </div>
-        <div class="mock">
-          <div class="row">
-            <div class="card"><div class="t">적 라인 복귀</div><div class="big">~0:52</div><div class="s">부활 0:31 + 라인까지 이동</div></div>
-            <div class="card"><div class="t">억제기</div><div class="big">03:42</div><div class="s">아군 미드 억제기 재생성</div></div>
-            <div class="card"><div class="t">넥서스 포탑</div><div class="big">01:47</div><div class="s">아군 넥서스 포탑 (좌) 재생성</div></div>
-          </div>
-        </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">CHAMP SELECT</div>
-          <h3>레벨별 킬각, 픽 단계에서 미리</h3>
-          <p>챔피언 선택 화면에서 라인 상대와 나의 레벨별 처치 임계를 한 장으로 보여줍니다. 상대 체력이 몇 % 아래면 내 풀콤보에 잡히는지,
-             내가 몇 % 아래면 상대 풀콤보에 잡히는지. "2레벨은 상대, 6레벨은 나" 같은 라인 계획을 게임 전에 세웁니다.
-             라인 상대는 추정이라 다른 적 초상화를 눌러 바꿀 수 있습니다.</p>
-        </div>
-        <div class="mock">
-          <div class="card">
-            <div class="t">킬 타이밍 · 아리 vs 제드</div>
-            <table class="lv">
-              <tr><th>레벨</th><th>내 풀콤보 → 상대</th><th>상대 풀콤보 → 나</th></tr>
-              <tr><td>2</td><td class="me">31%</td><td class="foe">38%</td></tr>
-              <tr><td>3</td><td class="me">42%</td><td class="foe">44%</td></tr>
-              <tr><td>6</td><td class="me">71%</td><td class="foe">63%</td></tr>
-              <tr><td>9</td><td class="me">78%</td><td class="foe">70%</td></tr>
-            </table>
-            <div class="s" style="margin-top:8px">체력이 이 % 아래면 풀콤보로 처치 (아이템 없음 · 모든 스킬 준비 기준)</div>
+    <section class="feat flip reveal shot" id="review" data-play="review">
+      <div class="copy">
+        <div class="eyebrow">POST-GAME</div>
+        <h3>게임이 끝나면, 숫자로 복기</h3>
+        <p>게임마다 내 체력이 적 풀콤보 위험선 아래였을 때의 데스와, 콤보를 확인한 뒤 따낸 킬을 홈 화면에 정리해 보여줍니다.
+           기록은 내 PC에만 저장됩니다.</p>
+      </div>
+      <div class="stage app" data-w="580" data-max="1">
+        <div class="win" data-win style="width:calc(560 * var(--u))">
+          <div class="wbody">
+            <div class="rail" data-rail="0"></div>
+            <div class="main">
+              <div class="mhead"><h4>홈</h4><span class="ghost">오버레이 미리보기</span><span class="pill">● 게임 대기 중</span></div>
+              <div class="acard rv" id="rv">
+                <div class="ct">지난 게임 · 야스오 · 승리 · 9/4/6 · 31분</div>
+                <div class="bd" style="margin-top:calc(8 * var(--u))">사망 4번 중 3번은 상대 풀콤 위험선 아래에서 (위험선 아래로 내려간 횟수 7번)</div>
+                <div class="bd" style="margin-top:calc(4 * var(--u))">킬 9번 중 6번은 킬 전 15초 안에 콤보 단축키로 데미지를 확인함</div>
+                <div class="hint" style="margin-top:calc(2 * var(--u))">&nbsp;&nbsp;12:41&nbsp;&nbsp;제드에게 사망 — 위험선 아래</div>
+                <div class="hint">&nbsp;&nbsp;19:05&nbsp;&nbsp;리 신에게 사망 — 위험선 아래</div>
+                <div class="hint">&nbsp;&nbsp;24:30&nbsp;&nbsp;다리우스에게 사망</div>
+                <div class="hint">&nbsp;&nbsp;28:12&nbsp;&nbsp;제드에게 사망 — 위험선 아래</div>
+                <div class="cap" style="margin-top:calc(12 * var(--u))">최근 게임</div>
+                <div class="hint">&nbsp;&nbsp;10/20 21:14&nbsp;&nbsp;야스오&nbsp;&nbsp;패배&nbsp;&nbsp;5/7/3&nbsp;&nbsp;· 위험선 사망 5/7</div>
+                <div class="hint">&nbsp;&nbsp;10/20 20:31&nbsp;&nbsp;제드&nbsp;&nbsp;승리&nbsp;&nbsp;12/3/4&nbsp;&nbsp;· 위험선 사망 2/3</div>
+                <div class="hint" style="margin-top:calc(8 * var(--u));white-space:normal">위험선 = 상대가 모든 스킬로 한 번에 줄 수 있는 피해(추정). 내 체력이 이보다 낮으면 위험합니다. 기록은 이 PC에만 저장됩니다.</div>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">POST-GAME</div>
-          <h3>게임이 끝나면, 숫자로 복기</h3>
-          <p>게임마다 내 체력이 적 풀콤보선 아래였을 때의 데스와, 콤보를 확인한 뒤 따낸 킬을 정리해 보여줍니다.
-             기록은 내 PC에만 저장됩니다.</p>
-        </div>
-        <div class="mock">
-          <div class="row">
-            <div class="card"><div class="s">데스</div><div class="big">3<small>/ 5 · 적 풀콤보선 아래에서</small></div></div>
-            <div class="card"><div class="s">킬</div><div class="big">4<small>/ 6 · 콤보 확인 뒤</small></div></div>
+    <section class="feat reveal shot" id="editor" data-play="editor">
+      <div class="copy">
+        <div class="eyebrow">COMBO EDITOR</div>
+        <h3>콤보 에디터 · 단축키 · 순서 추천</h3>
+        <p>모든 챔피언에 추천 콤보가 기본으로 들어 있고, 스킬을 끌어다 놓아 직접 짤 수도 있습니다. 더 센 시전 순서가 있으면 이득과 함께 알려줍니다.</p>
+        <p>단축키는 Alt·Ctrl·Shift에 일반 키를 <b>최대 3개</b>까지 묶을 수 있고, 공유 코드로 <a href="https://discord.gg/G8h3RbyaRN">디스코드</a>에서 콤보를 주고받습니다.</p>
+      </div>
+      <div class="stage app" data-w="620" data-max="1">
+        <div class="win" data-win>
+          <div class="wbody">
+            <div class="rail" data-rail="2"></div>
+            <div class="main">
+              <div class="mhead"><h4>콤보설정</h4><span class="ghost">오버레이 미리보기</span><span class="pill">● 게임 대기 중</span></div>
+              <div class="acard">
+                <div class="ct">콤보 만들기</div>
+                <div class="grid">
+                  <div class="gt"><img src="images/ui/Aatrox.png" alt="">아트록스</div><div class="gt"><img src="images/ui/Ahri.png" alt="">아리</div>
+                  <div class="gt"><img src="images/ui/Akali.png" alt="">아칼리</div><div class="gt"><img src="images/ui/Garen.png" alt="">가렌</div>
+                  <div class="gt"><img src="images/ui/Sylas.png" alt="">사일러스</div><div class="gt on"><img src="images/ui/Yasuo.png" alt="">야스오</div>
+                  <div class="gt"><img src="images/ui/Zed.png" alt="">제드</div><div class="gt"><img src="images/ui/Katarina.png" alt="">카타리나</div>
+                </div>
+                <div class="fl" style="margin-top:calc(12 * var(--u))">스킬 팔레트</div>
+                <div class="pal">
+                  <div class="sk" style="border-color:var(--slot-q)"><img src="images/ui/YasuoQ1Wrapper.png" alt=""></div>
+                  <div class="sk" style="border-color:var(--slot-w)"><img src="images/ui/YasuoW.png" alt=""></div>
+                  <div class="sk" style="border-color:var(--slot-e)"><img src="images/ui/YasuoE.png" alt=""></div>
+                  <div class="sk" style="border-color:var(--slot-r)"><img src="images/ui/YasuoR.png" alt=""></div>
+                  <div class="sk aa"><svg width="100%" height="100%"><use href="#aa"/></svg></div>
+                </div>
+                <div class="fl" style="margin-top:calc(12 * var(--u))">콤보 순서</div>
+                <div class="inset seqz" id="seqz">
+                  <div class="sk" style="border-color:var(--slot-q)"><img src="images/ui/YasuoQ1Wrapper.png" alt=""></div>
+                  <div class="sk" style="border-color:var(--slot-e)"><img src="images/ui/YasuoE.png" alt=""></div>
+                  <div class="sk aa"><svg width="100%" height="100%"><use href="#aa"/></svg></div>
+                  <div class="sk" style="border-color:var(--slot-r)"><img src="images/ui/YasuoR.png" alt=""></div>
+                  <div class="sk" style="border-color:var(--slot-q)"><img src="images/ui/YasuoQ1Wrapper.png" alt=""></div>
+                </div>
+                <div class="inset" style="margin-top:calc(8 * var(--u))">
+                  <span class="cap">예상 피해</span><span class="range">1,154 ~ 1,771</span>
+                  <div class="better" id="better"><span class="bd">더 센 순서: E → Q → AA → R → Q  (+86, +7%)</span><span class="ghost">이 순서로</span></div>
+                </div>
+                <div class="fl" style="margin-top:calc(12 * var(--u))">단축키 (선택)</div>
+                <div class="hk"><span class="ghost">ALT+Q+W</span><span class="ghost">＋</span><span class="prim" style="margin-left:auto">저장</span></div>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="feat">
-        <div class="copy">
-          <div class="eyebrow">COMBO EDITOR</div>
-          <h3>콤보 에디터 · 단축키 · 순서 추천</h3>
-          <p>모든 챔피언에 추천 콤보가 기본으로 들어 있고, 직접 짠 콤보는 더 센 시전 순서가 있으면 이득과 함께 알려줍니다.
-             단축키는 Alt·Ctrl·Shift에 일반 키를 <b>최대 3개</b>까지 묶을 수 있고, 공유 코드로 디스코드에서 콤보를 주고받을 수 있습니다.</p>
-        </div>
-        <div class="mock">
-          <div class="card">
-            <div class="seq"><span class="chip" style="border-color:#3B82F6">Q</span>→<span class="chip" style="border-color:#A855F7">E</span>→<span class="chip" style="border-color:#64748B">AA</span>→<span class="chip" style="border-color:#22C55E">W</span>→<span class="chip" style="border-color:#F87171">R</span></div>
-            <div class="s" style="margin-top:10px">더 센 순서: E → Q → AA → W → R <span class="gain">+7%</span> <span class="kbd">이 순서로</span></div>
-          </div>
-          <div class="card">
-            <div class="t">단축키 <span class="badge">0.4.0 3키 조합</span></div>
-            <div class="seq" style="margin-top:10px"><span class="kbd">Alt</span>+<span class="kbd">Q</span>+<span class="kbd">W</span></div>
-            <div class="s" style="margin-top:8px">전체화면 게임 위에서도 동작 · 키를 삼키지 않음</div>
-          </div>
-        </div>
-      </section>
+  </main>
+
+  <h2 class="rise">안전한 이유</h2>
+  <p class="sub rise">헬퍼류와 원리부터 다릅니다 — 소스 코드가 공개돼 있어 직접 확인할 수 있습니다.</p>
+  <section class="feat reveal shot" id="safety">
+    <div class="copy">
+      <div class="eyebrow">P1 – P4</div>
+      <h3>안티치트 안전 설계</h3>
+      <p>새로운 정보를 만들지 않습니다. 이미 존재하는 공개 정보를 더 빠르게 전달할 뿐입니다. 게임에 개입할 수단 자체가 코드에 없고,
+         소스 전체가 공개돼 있어 직접 확인할 수 있습니다.</p>
     </div>
-
-    <h2>안전한 이유</h2>
-    <p class="sub">헬퍼류와 원리부터 다릅니다 — 소스 코드가 공개돼 있어 직접 확인할 수 있습니다.</p>
-    <div class="shots">
-      <figure class="shot"><img loading="lazy" src="images/feature-anticheat.png" alt="안티치트 안전 설계 — 사용하는 것: Live Client Data API·정적 데이터·클릭스루 표시 창 / 하지 않는 것: 메모리 읽기·코드 주입·입력 자동화"></figure>
+    <div class="rise">
+      <div class="two">
+        <ul class="lst yes"><h5>사용하는 것</h5><li>Live Client Data API — 127.0.0.1:2999</li><li>Data Dragon / CommunityDragon 정적 데이터</li><li>클릭스루 표시 창 — 입력은 게임으로 통과</li></ul>
+        <ul class="lst no"><h5>하지 않는 것</h5><li>게임 메모리 읽기</li><li>코드 / DLL 주입 · 패킷 분석</li><li>입력 자동화 — SendInput / keybd_event 호출 없음</li></ul>
+      </div>
+      <div class="pp"><span><b>P1</b>공개 정보만</span><span><b>P2</b>Last Seen 너머 비추론</span><span><b>P3</b>메모리 접근 · 매크로 금지</span><span><b>P4</b>보조 전용</span></div>
     </div>
-    <div class="trust">
-      <ul>
-        <li><b>공개 정보만 사용</b>&nbsp;<span>— Riot이 공식 제공하는 로컬 Live Client API와 공개 게임 데이터(Data Dragon)만 읽습니다.</span></li>
-        <li><b>게임 메모리 접근 없음</b>&nbsp;<span>— 메모리 읽기/쓰기, 코드 주입, 패킷 분석을 하지 않습니다.</span></li>
-        <li><b>조작 대신 표시만</b>&nbsp;<span>— 매크로·자동 입력이 없고, 오버레이는 정보를 보여줄 뿐 절대 대신 플레이하지 않습니다.</span></li>
-        <li><b>인게임 광고 없음</b>&nbsp;<span>— 광고는 데스크톱 홈 화면에만, 게임이 시작되면 완전히 꺼집니다.</span></li>
-        <li><b>가볍게</b>&nbsp;<span>— 저사양 PC 기준으로 설계. 게임 프레임에 영향을 주지 않는 것이 성능 원칙입니다.</span></li>
-      </ul>
-      <p class="src">Riot Developer Portal에 제품 등록·심사 절차를 진행 중입니다. 전체 소스:
-        <a href="https://github.com/JiMin7788/lol_overlay_fova">github.com/JiMin7788/lol_overlay_fova</a></p>
-    </div>
-
-    <h2>다운로드</h2>
-    <div class="dl">
-      <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe">Fova 설치 파일</a></b> — 항상 최신 버전, 이후 업데이트는 자동</p>
-      <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip">포터블 zip</a></b> — 풀어서 fova.exe 실행 (무설치, 자동 업데이트 동일)</p>
-      <p>.NET 8 Desktop Runtime이 필요합니다 — 설치 파일은 없으면 자동으로 설치합니다.
-         모든 버전은 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases">GitHub Releases</a>에 있습니다.</p>
-      <div class="warn">Windows SmartScreen이 "인식할 수 없는 앱"이라고 표시할 수 있습니다 — 다운로드 이력이 적은
-        모든 무서명 프로그램에 뜨는 일반 경고입니다. "추가 정보 → 실행"으로 진행하세요.</div>
-    </div>
-
-    <h2>자주 묻는 질문</h2>
-    <div class="faq">
-      <details open>
-        <summary>쓰면 밴 당하나요?</summary>
-        <p>Fova는 게임 메모리를 읽거나 쓰지 않고, 코드 주입·패킷 분석·매크로·자동 입력도 하지 않습니다.
-           Riot이 공식으로 제공하는 로컬 Live Client Data API와 공개 게임 데이터(Data Dragon)만 읽어 별도 창에 표시합니다.
-           Riot 개발자 정책에 맞춰 설계했고 Riot Developer Portal 등록·문의를 진행 중이지만, 서드파티 앱 허용 여부의 최종 판단은 Riot에 있습니다.
-           소스 전체가 <a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a>에 공개돼 있어 직접 확인할 수 있습니다.</p>
-      </details>
-      <details>
-        <summary>설치할 때 "Windows의 PC 보호" 경고가 떠요</summary>
-        <p>Windows SmartScreen 경고입니다. 코드 서명 인증서가 없는 새 프로그램은 다운로드 이력이 쌓이기 전까지 이 화면이 뜹니다.
-           "추가 정보 → 실행"으로 진행하세요. 파일이 걱정되면 받은 설치 파일을
-           <a href="https://www.virustotal.com/gui/home/upload">VirusTotal</a>에 직접 올려 여러 백신의 검사 결과를 확인할 수 있습니다.</p>
-      </details>
-      <details>
-        <summary>게임 프레임에 영향이 있나요?</summary>
-        <p>오버레이는 마우스가 통과하는 표시 전용 창이고, 저사양 PC를 기준으로 가볍게 설계했습니다. 게임 중에는 광고도 완전히 꺼집니다.</p>
-      </details>
-      <details>
-        <summary>오버레이를 켜고 끄려면?</summary>
-        <p>기본 단축키는 Shift+Tab이며 설정 → 오버레이에서 바꿀 수 있습니다. 모든 단축키는 Alt·Ctrl·Shift에 일반 키를 최대 3개까지 묶을 수 있습니다(예: Alt+Q+W).
-           위치와 크기는 설정의 배율·이동 모드로 조절합니다.</p>
-      </details>
-      <details>
-        <summary>업데이트는 어떻게 하나요?</summary>
-        <p>자동입니다. 실행할 때 새 버전을 확인해 백그라운드로 받아 두고, 앱을 종료할 때 적용합니다. 설정은 그대로 유지됩니다.</p>
-      </details>
-      <details>
-        <summary>유료인가요?</summary>
-        <p>무료입니다.</p>
-      </details>
-    </div>
-
-    <footer>
-      <p><a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a> · <a href="privacy.html">개인정보 안내</a></p>
-      <p>Fova isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
-         <br>Fova는 Riot Games의 보증을 받지 않았으며, Riot Games 또는 Riot Games 자산의 제작·관리에 공식적으로 관여하는 누구의 견해나 의견도 대변하지 않습니다. Riot Games 및 모든 관련 자산은 Riot Games, Inc.의 상표 또는 등록 상표입니다.</p>
-    </footer>
+  </section>
+  <div class="trust rise">
+    <ul>
+      <li><b>공개 정보만 사용</b>&nbsp;<span>— Riot이 공식 제공하는 로컬 Live Client API와 공개 게임 데이터(Data Dragon)만 읽습니다.</span></li>
+      <li><b>게임 메모리 접근 없음</b>&nbsp;<span>— 메모리 읽기/쓰기, 코드 주입, 패킷 분석을 하지 않습니다.</span></li>
+      <li><b>조작 대신 표시만</b>&nbsp;<span>— 매크로·자동 입력이 없고, 오버레이는 정보를 보여줄 뿐 절대 대신 플레이하지 않습니다.</span></li>
+      <li><b>인게임 광고 없음</b>&nbsp;<span>— 광고는 데스크톱 홈 화면에만, 게임이 시작되면 완전히 꺼집니다.</span></li>
+      <li><b>가볍게</b>&nbsp;<span>— 저사양 PC 기준으로 설계. 게임 프레임에 영향을 주지 않는 것이 성능 원칙입니다.</span></li>
+    </ul>
+    <p class="src">Riot Developer Portal에 제품 등록·심사 절차를 진행 중입니다. 전체 소스:
+      <a href="https://github.com/JiMin7788/lol_overlay_fova">github.com/JiMin7788/lol_overlay_fova</a></p>
   </div>
+
+  <h2 class="rise">다운로드</h2>
+  <div class="dl rise">
+    <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Setup.exe">Fova 설치 파일</a></b> — 항상 최신 버전, 이후 업데이트는 자동</p>
+    <p><b><a href="https://github.com/JiMin7788/lol_overlay_fova/releases/latest/download/FovaApp-win-Portable.zip">포터블 zip</a></b> — 풀어서 fova.exe 실행 (무설치, 자동 업데이트 동일)</p>
+    <p>.NET 8 Desktop Runtime이 필요합니다 — 설치 파일은 없으면 자동으로 설치합니다.
+       모든 버전은 <a href="https://github.com/JiMin7788/lol_overlay_fova/releases">GitHub Releases</a>에 있습니다.</p>
+    <div class="warn">Windows SmartScreen이 "인식할 수 없는 앱"이라고 표시할 수 있습니다 — 다운로드 이력이 적은
+      모든 무서명 프로그램에 뜨는 일반 경고입니다. "추가 정보 → 실행"으로 진행하세요.</div>
+  </div>
+
+  <h2 class="rise">자주 묻는 질문</h2>
+  <div class="faq rise">
+    <details open>
+      <summary>쓰면 밴 당하나요?</summary>
+      <p>Fova는 게임 메모리를 읽거나 쓰지 않고, 코드 주입·패킷 분석·매크로·자동 입력도 하지 않습니다.
+         Riot이 공식으로 제공하는 로컬 Live Client Data API와 공개 게임 데이터(Data Dragon)만 읽어 별도 창에 표시합니다.
+         Riot 개발자 정책에 맞춰 설계했고 Riot Developer Portal 등록·문의를 진행 중이지만, 서드파티 앱 허용 여부의 최종 판단은 Riot에 있습니다.
+         소스 전체가 <a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a>에 공개돼 있어 직접 확인할 수 있습니다.</p>
+    </details>
+    <details>
+      <summary>설치할 때 "Windows의 PC 보호" 경고가 떠요</summary>
+      <p>Windows SmartScreen 경고입니다. 코드 서명 인증서가 없는 새 프로그램은 다운로드 이력이 쌓이기 전까지 이 화면이 뜹니다.
+         "추가 정보 → 실행"으로 진행하세요. 파일이 걱정되면 받은 설치 파일을
+         <a href="https://www.virustotal.com/gui/home/upload">VirusTotal</a>에 직접 올려 여러 백신의 검사 결과를 확인할 수 있습니다.</p>
+    </details>
+    <details>
+      <summary>게임 프레임에 영향이 있나요?</summary>
+      <p>오버레이는 마우스가 통과하는 표시 전용 창이고, 저사양 PC를 기준으로 가볍게 설계했습니다. 게임 중에는 광고도 완전히 꺼집니다.</p>
+    </details>
+    <details>
+      <summary>오버레이를 켜고 끄려면?</summary>
+      <p>기본 단축키는 Shift+Tab이며 설정 → 오버레이에서 바꿀 수 있습니다. 모든 단축키는 Alt·Ctrl·Shift에 일반 키를 최대 3개까지 묶을 수 있습니다(예: Alt+Q+W).
+         위치는 설정에서 이동 모드를 켜고 Ctrl+Shift를 누른 채 카드를 끌어 옮기고, 크기는 오버레이 미리보기에서 카드 아래 막대로 조절합니다.</p>
+    </details>
+    <details>
+      <summary>업데이트는 어떻게 하나요?</summary>
+      <p>자동입니다. 실행할 때 새 버전을 확인해 백그라운드로 받아 두고, 앱을 종료할 때 적용합니다. 설정은 그대로 유지됩니다.</p>
+    </details>
+    <details>
+      <summary>질문하거나 버그를 알리려면?</summary>
+      <p><a href="https://discord.gg/G8h3RbyaRN">디스코드</a>의 #질문-도움, #버그-제보에 남겨 주세요. 콤보 공유와 패치노트도 거기서 봅니다.
+         앱 안의 도움말 → 버그 신고로 로그와 버전을 함께 보낼 수도 있습니다.</p>
+    </details>
+    <details>
+      <summary>유료인가요?</summary>
+      <p>무료입니다.</p>
+    </details>
+  </div>
+
+  <footer>
+    <p><a href="https://discord.gg/G8h3RbyaRN">디스코드</a> · <a href="https://github.com/JiMin7788/lol_overlay_fova">GitHub</a> · <a href="privacy.html">개인정보 안내</a></p>
+    <p>Fova isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+       <br>Fova는 Riot Games의 보증을 받지 않았으며, Riot Games 또는 Riot Games 자산의 제작·관리에 공식적으로 관여하는 누구의 견해나 의견도 대변하지 않습니다. Riot Games 및 모든 관련 자산은 Riot Games, Inc.의 상표 또는 등록 상표입니다.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var q = new URLSearchParams(location.search);
+  var banner = q.get('banner');
+  var still = !!banner || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (banner) {
+    root.classList.add('banner');
+    var shot = document.getElementById(banner);
+    document.querySelectorAll('.feat.shot').forEach(function (s) { if (s !== shot) s.classList.remove('shot'); });
+  }
+  if (still) root.classList.add('static');
+  root.classList.add('js');
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var U = function (n) { return 'calc(' + n + ' * var(--u))'; };
+
+  // ── fit each stage: --s = the HUD scale that fits its widest element (data-w, in DIP) ──
+  function fit() {
+    $$('.stage').forEach(function (st) {
+      var w = +st.dataset.w || 420, max = +(st.dataset.max || 1.2);
+      var room = st.clientWidth - parseFloat(getComputedStyle(st).paddingLeft) * 2;
+      var s = Math.max(.5, Math.min(max, room / w));
+      st.style.setProperty('--s', s.toFixed(3));
+      if (banner) { // a README banner is one viewport tall: shrink a tall mock-up to fit it
+        var h = st.getBoundingClientRect().height, fitH = innerHeight - 48;
+        if (h > fitH) st.style.setProperty('--s', (s * fitH / h).toFixed(3));
+      }
+    });
+  }
+
+  // ── shared builders ──
+  var enemies = [
+    { id: 'Darius', ko: '다리우스' }, { id: 'LeeSin', ko: '리 신' }, { id: 'Ahri', ko: '아리' },
+    { id: 'Jinx', ko: '징크스' }, { id: 'Thresh', ko: '쓰레쉬' }];
+  function roster(el, sel, dead) {
+    el.innerHTML = enemies.map(function (e) {
+      var d = dead[e.id];
+      return '<div class="cell"><div class="por' + (e.id === sel ? ' sel' : d != null ? ' dead' : '') + '"><img src="images/ui/' + e.id + '.png" alt="">' +
+        (d != null ? '<span class="cd" data-cd="' + d.s + '" data-fmt="' + (d.ret ? '~' : '') + '">' + (d.ret ? '~' : '') + d.s + '</span>' : '') +
+        '</div><div class="nm' + (e.id === sel ? ' sel' : '') + '">' + e.ko + '</div></div>';
+    }).join('');
+  }
+  roster($('#roster'), 'Ahri', { Jinx: { s: 18 } });
+  roster($('#roster2'), null, { Jinx: { s: 52, ret: true }, LeeSin: { s: 18 } });
+  $$('#roster2 .cd').forEach(function (c) { if (c.textContent.length >= 4) c.style.fontSize = U(13); });
+
+  // combo gauge: HP ticks every 100, a heavier one every 1000 (OverlayHost.BuildComboCard)
+  var g = $('.gauge'), hp = +g.dataset.hp;
+  var ticks = '';
+  for (var h = 100; h < hp; h += 100) ticks += '<i class="tk' + (h % 1000 === 0 ? ' k' : '') + '" style="left:' + (h / hp * 100) + '%"></i>';
+  g.insertAdjacentHTML('beforeend', ticks + '<i class="ev" style="left:' + (g.dataset.ev / hp * 100) + '%"></i><i class="cut"></i>');
+
+  // kill-threat portraits: the same first-row-that-fits placement as BuildThreatCard
+  var threats = [{ id: 'Thresh', p: .31 }, { id: 'Jinx', p: .44, dead: true }, { id: 'LeeSin', p: .49 }, { id: 'Darius', p: .58 }, { id: 'Ahri', p: .66 }];
+  var rows = [], marks = '';
+  threats.forEach(function (t) {
+    var x = 320 * t.p, r = 0;
+    while (r < rows.length && x - 12 < rows[r] + 2) r++;
+    rows[r] = x + 12; t.row = r;
+  });
+  threats.forEach(function (t) {
+    var top = 15 + 4 + t.row * 26;
+    marks += '<div class="tm' + (t.dead ? ' gone' : '') + '" data-p="' + t.p + '" style="left:' + (t.p * 100) + '%">' +
+      '<i class="stem" style="height:' + U(top) + '"></i><div class="face" style="top:' + U(top) + '"><img src="images/ui/' + t.id + '.png" alt=""></div></div>';
+  });
+  var tm = $('#tmarks');
+  tm.innerHTML = marks;
+  tm.style.height = U(4 + rows.length * 26);
+
+  // gold lanes
+  var laneNames = ['탑', '정글', '미드', '원딜', '서폿'];
+  $('#lanes').innerHTML = laneNames.map(function (n) {
+    return '<div class="lane">' + n + ' <span class="mono"></span><div class="lbar"><i class="bl" style="left:0"></i><i class="rd"></i></div></div>';
+  }).join('');
+
+  // kill-timing chart (KillTimingCard: 380x120, PadL 30, PadB 16)
+  var mine = [18, 26, 35, 41, 47, 64, 67, 71, 76, 82, 100, 100, 100, 100, 100, 100, 100, 100];
+  var theirs = [22, 31, 38, 44, 49, 61, 64, 67, 70, 72, 75, 78, 80, 82, 84, 86, 87, 88];
+  (function chart() {
+    var W = 380, H = 120, L = 30, B = 16, pw = W - L, ph = H - B;
+    var X = function (lv) { return L + (lv - 1) / 17 * pw; }, Y = function (p) { return ph - p / 100 * ph; };
+    var s = '';
+    [0, 50, 100].forEach(function (p) {
+      s += '<line x1="' + L + '" y1="' + Y(p) + '" x2="' + W + '" y2="' + Y(p) + '" stroke="#2A2F3A" opacity=".6"/>';
+      s += '<text x="0" y="' + (Y(p) + 4) + '">' + p + '%</text>';
+    });
+    [1, 6, 11, 16, 18].forEach(function (lv) { s += '<text x="' + (X(lv) - 4) + '" y="' + (ph + 13) + '">' + lv + '</text>'; });
+    s += '<line x1="' + X(6) + '" y1="0" x2="' + X(6) + '" y2="' + ph + '" stroke="#8B929F" opacity=".6" stroke-dasharray="3 3"/>';
+    function line(v, c) { return '<polyline class="ln" stroke="' + c + '" points="' + v.map(function (p, i) { return X(i + 1).toFixed(1) + ',' + Y(p).toFixed(1); }).join(' ') + '"/>'; }
+    s += line(mine, '#4C8DFF') + line(theirs, '#E5484D');
+    $('#chart').innerHTML = s;
+    $$('#chart .ln').forEach(function (l) { var n = l.getTotalLength(); l.style.strokeDasharray = n; l.style.strokeDashoffset = still ? 0 : n; });
+  })();
+
+  // app-window nav rail (HomeWindow.xaml)
+  var icons = [
+    '<path d="M3 11l9-7 9 7v9h-6v-6H9v6H3z"/>', '<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+    '<path d="M13 2L5 14h6l-1 8 8-12h-6z"/>', '<path d="M3 20h18M5 20V12l4-3 4 4 6-6v13"/>',
+    '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+    '<path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7v.5M12 17.5v.5"/>'];
+  $$('[data-rail]').forEach(function (r) {
+    var on = +r.dataset.rail;
+    r.innerHTML = '<svg class="lg"><use href="#logo"/></svg>' + icons.map(function (p, i) {
+      return '<div class="ni' + (i === on ? ' on' : '') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg></div>';
+    }).join('');
+  });
+  $$('[data-win]').forEach(function (w) {
+    w.insertAdjacentHTML('afterbegin', '<div class="wtitle"><svg><use href="#logo"/></svg>Fova<span class="ctl">–□✕</span></div>');
+  });
+
+  // ── animation helpers ──
+  function count(el, to, ms) {
+    if (still) { el.textContent = to; return; }
+    var t0 = performance.now();
+    (function step(t) {
+      var k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(to * e);
+      if (k < 1) requestAnimationFrame(step);
+    })(t0);
+  }
+  function loop(sec, fn) { // runs fn every sec while its section is on screen
+    var id = null;
+    return { on: function () { if (!id && !still) { id = setInterval(fn, sec * 1000); } }, off: function () { clearInterval(id); id = null; } };
+  }
+  function every(sel, fn) { $$(sel).forEach(fn); }
+
+  // ── per-section plays ──
+  var play = {
+    combo: function () {
+      var hpv = +g.dataset.hp;
+      $('.kill', g).style.width = (g.dataset.min / hpv * 100) + '%';
+      var sp = $('.spread', g);
+      sp.style.left = (g.dataset.min / hpv * 100) + '%';
+      sp.style.width = ((g.dataset.max - g.dataset.min) / hpv * 100) + '%';
+      $('.cut', g).style.left = (g.dataset.min / hpv * 100) + '%';
+      every('#combocard [data-count]', function (b) { count(b, +b.dataset.count, 1300); });
+    },
+    skills: function (sec) { every('[data-count]', function (b) { count(b, +b.dataset.count, 1100); }); },
+    threat: function () {
+      var card = $('#threatcard'), bar = $('.hp', card), low = false;
+      function set(p) {
+        bar.style.width = (p * 100) + '%';
+        var any = false;
+        every('#tmarks .tm', function (m) {
+          var hit = !m.classList.contains('gone') && p <= +m.dataset.p;
+          m.classList.toggle('hit', hit); any = any || hit;
+        });
+        card.classList.toggle('lethal', any);
+      }
+      set(.70);
+      return loop(3.2, function () { low = !low; set(low ? .52 : .70); });
+    },
+    items: function () {
+      var sw = $('#swap');
+      return loop(4, function () { sw.classList.toggle('tank'); });
+    },
+    timers: function (sec) {
+      return loop(1, function () {
+        every('[data-cd]', function (c) {
+          if (!sec.contains(c)) return;
+          var v = +c.dataset.cd - 1, fmt = c.dataset.fmt || '';
+          if (v < 0) v = +c.getAttribute('data-start') || 0;
+          if (!c.hasAttribute('data-start')) c.setAttribute('data-start', +c.dataset.cd);
+          c.dataset.cd = v;
+          c.textContent = fmt + v;
+        });
+      });
+    },
+    gold: function () {
+      var states = [
+        { b: 41300, r: 39800, lanes: [400, 500, 1100, 400, 0] },
+        { b: 43900, r: 40200, lanes: [900, -200, 1800, 900, 300] },
+        { b: 44600, r: 45200, lanes: [-300, -900, 1200, -400, -200] }];
+      var i = 0, card = $('#goldp');
+      function fmt(v) { return (v / 1000).toFixed(1) + 'k'; }
+      function lead(d) { var a = Math.abs(d); return a < 100 ? '±0' : '+' + (a >= 1000 ? (a / 1000).toFixed(1) + 'k' : a); }
+      function col(d) { return d >= 100 ? '#4C8DFF' : d <= -100 ? '#E5484D' : '#fff'; }
+      function tug(el, b, r) { // DrawGoldTugBar: ±20% of the average fills the bar
+        var avg = (b + r) / 2, l = avg > 0 ? Math.max(-1, Math.min(1, (b - r) / avg / .2)) : 0, split = 50 + l * 50;
+        var bl = $('.bl', el), rd = $('.rd', el);
+        bl.style.width = split + '%'; bl.style.background = l >= 0 ? '#4C8DFF' : 'rgba(76,141,255,.5)';
+        rd.style.left = split + '%'; rd.style.width = (100 - split) + '%'; rd.style.background = l <= 0 ? '#E5484D' : 'rgba(229,72,77,.5)';
+      }
+      function set(s) {
+        var d = s.b - s.r;
+        $('[data-k=b]', card).textContent = fmt(s.b);
+        $('[data-k=r]', card).textContent = fmt(s.r);
+        var L = $('[data-k=l]', card);
+        L.style.color = col(d);
+        L.innerHTML = (Math.abs(d) < 100 ? '' : (d > 0 ? '블루 ' : '레드 ')) + '<span class="mono">' + lead(d) + '</span>';
+        tug($('.gbar', card), s.b, s.r);
+        $$('.lane', card).forEach(function (ln, k) {
+          var v = s.lanes[k], m = $('.mono', ln);
+          m.textContent = lead(v); m.style.color = col(v);
+          tug($('.lbar', ln), 10000 + Math.max(0, v), 10000 + Math.max(0, -v));
+        });
+      }
+      set(states[0]);
+      return loop(3.6, function () { i = (i + 1) % states.length; set(states[i]); });
+    },
+    chart: function () { every('#chart .ln', function (l) { l.style.strokeDashoffset = 0; }); },
+    review: function () {
+      var kids = $('#rv').children;
+      for (var k = 0; k < kids.length; k++) kids[k].style.transitionDelay = (still ? 0 : k * 90) + 'ms';
+      $('#rv').classList.add('in');
+    },
+    editor: function () {
+      $$('#seqz .sk').forEach(function (c, k) { c.style.transitionDelay = (still ? 0 : 200 + k * 260) + 'ms'; c.classList.add('in'); });
+      setTimeout(function () { $('#better').classList.add('in'); }, still ? 0 : 1900);
+    }
+  };
+
+  // ── scroll: reveal once, loops only while on screen ──
+  var loops = new Map();
+  function start(sec) {
+    if (sec.dataset.started) return;
+    sec.dataset.started = 1;
+    var p = sec.dataset.play;
+    var lp = p && play[p] ? play[p](sec) : null;
+    if (lp) loops.set(sec, lp);
+  }
+  fit();
+  addEventListener('resize', fit);
+  var targets = $$('.reveal, .rise');
+  if (still || !('IntersectionObserver' in window)) {
+    targets.forEach(function (t) { t.classList.add('in'); start(t); });
+  } else {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        var t = e.target, lp;
+        if (e.isIntersecting) { t.classList.add('in'); start(t); if ((lp = loops.get(t))) lp.on(); }
+        else if ((lp = loops.get(t))) lp.off();
+      });
+    }, { threshold: .18 });
+    targets.forEach(function (t) { io.observe(t); });
+
+    var prog = $('.progress'), glows = $$('.glow i'), ticking = false;
+    addEventListener('scroll', function () {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(function () {
+        var y = scrollY, max = document.documentElement.scrollHeight - innerHeight;
+        prog.style.transform = 'scaleX(' + (max > 0 ? y / max : 0) + ')';
+        glows[0].style.transform = 'translate3d(0,' + (y * .18) + 'px,0)';
+        glows[1].style.transform = 'translate3d(0,' + (-y * .12) + 'px,0)';
+        ticking = false;
+      });
+    }, { passive: true });
+  }
+})();
+</script>
 </body>
 </html>
