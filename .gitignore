@@ -26,6 +26,9 @@ __pycache__/
 # Packaging output (packaging/build-release.ps1)
 dist/
 
+# UI test suite: the Fova build copy and run reports (src/Overlay.Client.UiTests)
+artifacts/
+
 # wrangler local cache (telemetry-worker)
 telemetry-worker/.wrangler/
 
@@ -35,3 +38,6 @@ data-pipeline/tooltip_audit_cache/
 docs/reports/tooltip_audit/classified.json
 docs/reports/tooltip_audit/clauses.json
 docs/reports/tooltip_audit/mapping.json
+
+# Local-only project wiki (C:/dev/_hub/shared/skills/wiki)
+wiki/

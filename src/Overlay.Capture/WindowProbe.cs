@@ -22,7 +22,7 @@ public enum GameDisplayMode
 
 /// <summary>
 /// M31 P1 native window probing (user32/kernel32 P/Invoke): the tiny bits of Win32 the capture
-/// orchestrator needs about the tracked game HWND — client size, containing monitor, foreground/
+/// orchestrator needs about the tracked game HWND — client size, containing monitor, DPI, foreground/
 /// minimized state, a style-based display-mode guess, and the League install path for
 /// <c>game.cfg</c> discovery (§2 layer 0). Path discovery uses
 /// <c>QueryFullProcessImageName</c> with <c>PROCESS_QUERY_LIMITED_INFORMATION</c> — a PATH query,
@@ -53,6 +53,14 @@ public static class WindowProbe
     /// output.</summary>
     public static IntPtr GetContainingMonitor(IntPtr hwnd)
         => MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+    /// <summary>Monitor the window is on, as a number, or 0 when it is on none (minimized, closing,
+    /// gone) — unlike <see cref="GetContainingMonitor"/>, which always picks the nearest one.</summary>
+    public static long GetMonitorOrZero(IntPtr hwnd)
+        => (long)MonitorFromWindow(hwnd, MONITOR_DEFAULTTONULL);
+
+    /// <summary>DPI of the window, or 0 for an invalid window.</summary>
+    public static uint GetDpi(IntPtr hwnd) => GetDpiForWindow(hwnd);
 
     /// <summary>Full (virtual-desktop) bounds of a monitor.</summary>
     public static PixelRect GetMonitorBounds(IntPtr hMonitor)
@@ -137,6 +145,7 @@ public static class WindowProbe
     private const int GWL_STYLE = -16;
     private const long WS_CAPTION = 0x00C00000L;
     private const long WS_THICKFRAME = 0x00040000L;
+    private const uint MONITOR_DEFAULTTONULL = 0x00000000;
     private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
     private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
@@ -158,6 +167,7 @@ public static class WindowProbe
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
     // Bare "GetWindowLongPtr" is a C macro; the real x64 export is GetWindowLongPtrW. (Assumes an
     // x64 host — the WPF app is x64. On x86 this entry point does not exist; noted in the TODO.)
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);

@@ -16,9 +16,11 @@ internal static class Autostart
     private const string ValueName = "Fova";
 
     /// <summary>Writes or removes the Run entry. Called at every start (so the entry follows the
-    /// exe if the install moved) and when the setting changes. Never throws.</summary>
+    /// exe if the install moved) and when the setting changes. Never throws. No-op in test mode.</summary>
     public static void Apply(bool enabled)
     {
+        // AI-NOTE: tests must never rewrite the user's Run entry.
+        if (AppPaths.IsTestMode) return;
         try
         {
             using var key = Registry.CurrentUser.CreateSubKey(RunKey);

@@ -25,13 +25,17 @@ namespace Overlay.Client.Hotkeys;
 /// reacts to the exact set of REGISTERED combos, it just does so over the game:
 ///  • It checks each key event ONLY against the registered combos and fires on a match.
 ///  • It NEVER logs, stores, buffers, or transmits any keystroke. There is no key history, no
-///    file/console output of keys, no "all keys" collection. The ONLY state kept is the set of
-///    registered combos, the currently-held MODIFIER keys, and an open/closed flag that mirrors
-///    League's scoreboard toggle on Tab (2026-10-19: the global-gold panel shows alongside the
-///    scoreboard). That state is tracked purely from this hook's own key events — never via <c>GetAsyncKeyState</c> /
+///    file/console output of keys, no "all keys" collection. The ONLY state kept is: the registered
+///    combos; the currently-held modifier keys; the currently-held non-modifier key tokens (each only
+///    while held - removed on its key-up, and all held keys cleared on every foreground-window change
+///    and on reinstall); the Tab-scoreboard and chat open/closed flags in <see cref="HotkeyGate"/>
+///    (with their Enter/Tab first-down latches); and the foreground-window class/title check (is the
+///    League game window in front - a yes/no, the name itself is not kept). That state is tracked purely
+///    from this hook's own key events and the foreground window — never via <c>GetAsyncKeyState</c> /
 ///    <c>GetKeyboardState</c> (those are intentionally not used).
 ///  • It does NOT consume/swallow the key: every event is passed through with
 ///    <c>CallNextHookEx</c>, so normal gameplay typing is completely unaffected.
+///  • (lolF01) A <see cref="HotkeyGate"/> decides whether a key may fire: in a game, only over the League window with its chat closed.
 ///
 /// ─── READ-ONLY (P3/P4) ─────────────────────────────────────────────────────────────────────
 /// Sends NO input (no SendInput/keybd_event). On a match it only raises
@@ -63,13 +67,19 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     private const int WM_SYSKEYDOWN = 0x0104;
     private const int WM_SYSKEYUP = 0x0105;
 
-    // Modifier virtual-key codes (generic + left/right variants). These are the ONLY key codes
-    // whose held-state this class tracks.
+    // Modifier virtual-key codes (generic + left/right variants). Held modifiers are tracked by these
+    // codes; held non-modifier keys only as combo tokens (see _heldKeys).
     private const uint VK_SHIFT = 0x10, VK_LSHIFT = 0xA0, VK_RSHIFT = 0xA1;
     private const uint VK_CONTROL = 0x11, VK_LCONTROL = 0xA2, VK_RCONTROL = 0xA3;
     private const uint VK_MENU = 0x12, VK_LMENU = 0xA4, VK_RMENU = 0xA5; // Alt
     private const uint VK_LWIN = 0x5B, VK_RWIN = 0x5C;
-    private const uint VK_TAB = 0x09; // League's scoreboard key — held state only (see class doc)
+
+    private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+
+    // Same identifiers MainWindow uses to find the League in-game window.
+    private const string LeagueWindowClass = "RiotWindowClass";
+    private const string LeagueWindowTitle = "League of Legends (TM) Client";
 
     [StructLayout(LayoutKind.Sequential)]
     private struct KBDLLHOOKSTRUCT
@@ -96,9 +106,37 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
     private static extern IntPtr GetModuleHandle(string? lpModuleName);
 
+    private delegate void WinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+        int idObject, int idChild, uint idEventThread, uint dwmsEventTime);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc,
+        WinEventProc lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, char[] lpClassName, int nMaxCount);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd, char[] lpString, int nMaxCount);
+
     // Kept in a field so the GC never collects the delegate while the hook is installed.
     private readonly LowLevelKeyboardProc _proc;
     private IntPtr _hookHandle;
+
+    // (lolF01) Decides whether a key may fire and owns the chat/scoreboard mirrors.
+    private readonly HotkeyGate _gate;
+    // Foreground-change hook (out-of-context: delivered on this install thread's pump). Delegate kept for the GC.
+    private readonly WinEventProc _foregroundProc;
+    private IntPtr _foregroundHook;
+    // Reused for the foreground window's class/title (both callbacks run on the install thread).
+    private readonly char[] _nameBuffer = new char[64];
 
     // The install thread's dispatcher — the fire is queued back onto it so the hook callback
     // returns immediately (see class doc "THREADING"). Reinstalls must also run on this thread.
@@ -114,19 +152,17 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     private const long SilenceReinstallMs = 120_000;
 
     private readonly object _lock = new();
-    // The ONLY persistent state: which combos are registered (both directions for O(1) lookup).
+    // The only state this class keeps (the gate's flags aside - see class doc "POLICY RECONCILIATION"):
+    // which combos are registered (both directions for O(1) lookup) and which keys are held right now.
     private readonly Dictionary<HotkeyCombo, int> _comboToOsId = new();
     private readonly Dictionary<int, HotkeyCombo> _osIdToCombo = new();
-    // Currently-held MODIFIER keys only (by vkCode). Not a keystroke log — modifiers only,
-    // cleared on key-up, and used solely to build the chord for a registered-combo match.
+    // Currently-held modifier keys (by vkCode). Not a keystroke log — removed on key-up, cleared on a
+    // foreground change and on reinstall, and used solely to build the chord for a registered-combo match.
     private readonly HashSet<uint> _heldModifiers = new();
-    // Mirror of League's scoreboard TOGGLE: flipped on each Tab press (key-repeat ignored via
-    // _tabDown). Two bools; no key history.
-    private volatile bool _scoreboardOpen;
 
     // (M46) Non-modifier keys currently down, as combo tokens - a chord may hold up to three keys (Q+W).
+    // Same lifetime as _heldModifiers: only while held.
     private readonly List<string> _heldKeys = new();
-    private bool _tabDown;
 
     /// <summary>Raised (on the install/UI thread, from the hook callback) with the OS id of the
     /// registered combo that was pressed. Subscribe and forward to
@@ -136,14 +172,27 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     /// <summary>Optional sink for the rare watchdog/reinstall lines (wire to M18 logging).</summary>
     public Action<string>? Log { get; init; }
 
-    public LowLevelHotkeyHook()
+    public LowLevelHotkeyHook(HotkeyGate gate)
     {
+        _gate = gate ?? throw new ArgumentNullException(nameof(gate));
         _proc = HookCallback;
         _dispatcher = Dispatcher.CurrentDispatcher; // the install thread's pump
         _hookHandle = Install();
         if (_hookHandle == IntPtr.Zero)
             throw new InvalidOperationException(
                 $"SetWindowsHookEx(WH_KEYBOARD_LL) failed (Win32 error {Marshal.GetLastWin32Error()}).");
+
+        // AI-NOTE: a failed foreground hook (zero handle) is not fatal - each key-down re-checks the foreground
+        // window, so the gate still blocks keys and closes the chat mirror, just at the next key.
+        _foregroundProc = (_, _, _, _, _, _, _) =>
+        {
+            // AI-NOTE: a key-up can be lost (elevated foreground window, secure desktop, hook timeout) and the
+            // keyboard state APIs are banned here, so a window switch is where a stale held key gets dropped.
+            lock (_lock) { _heldModifiers.Clear(); _heldKeys.Clear(); }
+            _gate.OnForegroundChanged(IsLeagueGameForeground());
+        };
+        _foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero,
+            _foregroundProc, 0, 0, WINEVENT_OUTOFCONTEXT);
 
         // A user lock / UAC secure-desktop transition can eat a modifier's key-up (leaving it stuck
         // "held") and can drop the hook; resync + reinstall on the way back is the concrete fix for
@@ -191,6 +240,11 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
             UnhookWindowsHookEx(_hookHandle);
             _hookHandle = IntPtr.Zero;
         }
+        if (_foregroundHook != IntPtr.Zero)
+        {
+            UnhookWinEvent(_foregroundHook);
+            _foregroundHook = IntPtr.Zero;
+        }
     }
 
     // ── watchdog + reinstall (defends the hook against a silent timeout removal) ──────────────
@@ -221,7 +275,9 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
     {
         if (_disposed) return;
         lock (_lock) { _heldModifiers.Clear(); _heldKeys.Clear(); }
-        _tabDown = false;
+        // AI-NOTE: their key-ups may have been lost with the hook; a stuck latch would ignore the next press.
+        _gate.OnKeyUp("TAB");
+        _gate.OnKeyUp("ENTER");
 
         IntPtr old = _hookHandle;
         IntPtr fresh = Install();
@@ -250,14 +306,24 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
             return (CurrentModifiers() & modifier) == modifier;
     }
 
-    /// <summary>Mirror of League's scoreboard toggle (Tab): true after an odd number of Tab presses
-    /// since <see cref="ResetScoreboard"/>. Same hook-event tracking as the modifiers, same policy.
-    /// Alt/Ctrl/Win+Tab are not presses (Alt+Tab switches windows); plain or Shift+Tab are.</summary>
-    public bool IsScoreboardOpen => _scoreboardOpen;
-
-    /// <summary>The scoreboard starts closed in a new game — call on game start so a Tab pressed in
-    /// some other window beforehand cannot leave the mirror inverted.</summary>
-    public void ResetScoreboard() => _scoreboardOpen = false;
+    /// <summary>True when the foreground window is the League in-game client (class or title as
+    /// MainWindow finds it); false on any failure. Reads into <see cref="_nameBuffer"/>, no allocation.</summary>
+    private bool IsLeagueGameForeground()
+    {
+        try
+        {
+            IntPtr hwnd = GetForegroundWindow();
+            if (hwnd == IntPtr.Zero) return false;
+            int n = GetClassName(hwnd, _nameBuffer, _nameBuffer.Length);
+            if (n > 0 && _nameBuffer.AsSpan(0, n).SequenceEqual(LeagueWindowClass)) return true;
+            n = GetWindowText(hwnd, _nameBuffer, _nameBuffer.Length);
+            return n > 0 && _nameBuffer.AsSpan(0, n).SequenceEqual(LeagueWindowTitle);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
@@ -280,14 +346,6 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     private void OnKeyDown(uint vkCode)
     {
-        if (vkCode == VK_TAB && !_tabDown) // first down only — holding Tab auto-repeats key-down
-        {
-            _tabDown = true;
-            HotkeyModifiers mods;
-            lock (_lock) mods = CurrentModifiers();
-            if ((mods & (HotkeyModifiers.Alt | HotkeyModifiers.Control | HotkeyModifiers.Win)) == 0)
-                _scoreboardOpen = !_scoreboardOpen;
-        } // …and still match it below (SHIFT+TAB is a combo)
         if (IsModifier(vkCode))
         {
             lock (_lock) _heldModifiers.Add(vkCode);
@@ -297,14 +355,18 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
         var key = ToKeyToken(vkCode);
         if (key is null) return; // key we can't express as a combo token → cannot match anything.
 
+        bool leagueInFront = IsLeagueGameForeground();
         int osId = 0;
         lock (_lock)
         {
-            // (M46) the held keys together first (Q+W), then the key alone - a key held for something else never
-            // blocks a plain binding
+            var mods = CurrentModifiers();
+            bool allow = _gate.OnKeyDown(key, mods, leagueInFront);
+            // (M46) the held keys together first (Q+W), then smaller chords with this key, then the key alone - a key
+            // held for something else never blocks a chord or a plain binding
             bool found = false;
-            foreach (var pressed in HotkeyCombo.Candidates(CurrentModifiers(), _heldKeys, key))
-                if (_comboToOsId.TryGetValue(pressed, out osId)) { found = true; break; }
+            if (allow)
+                foreach (var pressed in HotkeyCombo.Candidates(mods, _heldKeys, key))
+                    if (_comboToOsId.TryGetValue(pressed, out osId)) { found = true; break; }
             if (!_heldKeys.Contains(key)) _heldKeys.Add(key);
             if (!found) return;
         }
@@ -318,11 +380,13 @@ public sealed class LowLevelHotkeyHook : IHotkeyHook, IDisposable
 
     private void OnKeyUp(uint vkCode)
     {
-        if (vkCode == VK_TAB) _tabDown = false;
         if (IsModifier(vkCode))
             lock (_lock) _heldModifiers.Remove(vkCode);
         else if (ToKeyToken(vkCode) is { } token)
+        {
             lock (_lock) _heldKeys.Remove(token);
+            _gate.OnKeyUp(token);
+        }
     }
 
     private static bool IsModifier(uint vk) => vk switch

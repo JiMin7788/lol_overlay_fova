@@ -55,8 +55,8 @@ public static class MinimapRingFinder
     private static readonly int[] Dy = { 0, 0, 1, -1, 1, -1, -1, 1 };
 
     /// <summary>Locates champion icons in a frame. <paramref name="radiusPx"/> is the calibrated
-    /// icon radius (see <see cref="MinimapIconRadiusCalibrator"/>).</summary>
-    public static IReadOnlyList<Icon> Find(MinimapFrame frame, double radiusPx, int redMargin)
+    /// icon radius (see <see cref="MinimapIconRadiusCalibrator"/>); <paramref name="strict"/> = <see cref="StrictRingSettings"/>, null = off.</summary>
+    public static IReadOnlyList<Icon> Find(MinimapFrame frame, double radiusPx, int redMargin, StrictRingSettings? strict = null)
     {
         if (radiusPx <= 2) return Array.Empty<Icon>();
 
@@ -124,6 +124,16 @@ public static class MinimapRingFinder
                 { dup = true; break; }
             if (dup) continue;
 
+            // lolF04 (TODO:442) opt-in strict ring (null = off): the chosen ring's own colour must be (nearly) absent
+            // just outside it, else the circle lies inside a team-coloured disc and the seed yields no icon.
+            // AI-NOTE: placed after the duplicate drop so no line above moves (the duplicate rule is cited by line);
+            // the two tests are independent, so their order changes nothing. An outer circle too far outside the
+            // frame to judge keeps the icon: there is no evidence of a disc there.
+            if (strict is not null
+                && RingCoverage(frame, bx, by, bestR + strict.OuterOffsetPx, redMargin, out double outerRed, out double outerBlue)
+                && strict.Rejects(enemy ? outerRed : outerBlue))
+                continue;
+
             found.Add(new Icon(bx, by, enemy, bestCoverage, bestR));
         }
 
@@ -131,8 +141,8 @@ public static class MinimapRingFinder
     }
 
     /// <summary>Share of the circumference at <paramref name="radius"/> carrying each team colour.
-    /// False when too much of the circle lies outside the frame to judge.</summary>
-    private static bool RingCoverage(
+    /// False when too much of the circle lies outside the frame to judge. Internal for the replay's --ring-profile.</summary>
+    internal static bool RingCoverage(
         MinimapFrame frame, double cx, double cy, double radius, int redMargin,
         out double redShare, out double blueShare)
     {

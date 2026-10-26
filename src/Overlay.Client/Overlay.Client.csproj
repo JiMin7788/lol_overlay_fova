@@ -15,6 +15,19 @@
     <DefineConstants>$(DefineConstants);LIGHT</DefineConstants>
   </PropertyGroup>
 
+  <!-- BETA BUILD (`-p:FovaBeta=true`, packaging/build-release.ps1 -Beta, lolF05). The full build
+       (capture included) with BETA defined, read at runtime through BuildFlavor.IsBeta. -->
+  <PropertyGroup Condition="'$(FovaBeta)' == 'true'">
+    <DefineConstants>$(DefineConstants);BETA</DefineConstants>
+  </PropertyGroup>
+
+  <!-- AI-NOTE: the beta is the full build by definition — a LightMode beta would ship without the
+       capture stack it exists to test, so the combination fails the build instead of compiling. -->
+  <Target Name="FovaBetaRequiresFullBuild" BeforeTargets="CoreCompile"
+          Condition="'$(FovaBeta)' == 'true' And '$(LightMode)' == 'true'">
+    <Error Text="FovaBeta=true needs the full build; do not combine it with LightMode=true." />
+  </Target>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <!-- Bumped from net8.0-windows to consume Overlay.Capture (M31). A consumer's TargetFramework

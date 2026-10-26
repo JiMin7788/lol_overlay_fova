@@ -121,6 +121,9 @@ public sealed class MinimapVisionPipeline : IDisposable
     public void Start()
     {
         _tracker.Start();
+        // lolF04 R4: the gates OptionsFor applies to every frame, logged once so a user's log shows them on.
+        if (CandidateGateSettings.Measured is { } gates)
+            _log?.Invoke(gates.Describe(MinimapStructurePositions.All.Count));
         _capture.FrameCaptured += OnFrame;
         _tickTimer = new Timer(_ => SafeTick(), null, TickIntervalMs, TickIntervalMs);
     }
@@ -401,6 +404,8 @@ public sealed class MinimapVisionPipeline : IDisposable
         {
             ExpectedIconRadiusPx = radius,
             ToleranceRadiusPx = Math.Max(2.0, radius * 0.4),
+            // AI-NOTE: lolF04 — adopted on the user's labels (docs/reports/minimap_lolF04_gates.md, "Verdict: adopted").
+            Gates = CandidateGateSettings.Measured,
         };
     }
 

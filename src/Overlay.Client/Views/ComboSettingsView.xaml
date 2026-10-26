@@ -154,11 +154,11 @@
                         <StackPanel Orientation="Horizontal">
                             <Button x:Name="HotkeyButton" Content="단축키 설정" Style="{StaticResource GhostButton}"
                                     HorizontalAlignment="Left" Focusable="True" Click="HotkeyButton_Click"
-                                    PreviewKeyDown="HotkeyButton_PreviewKeyDown" LostFocus="HotkeyButton_LostFocus" />
+                                    PreviewKeyDown="HotkeyButton_PreviewKeyDown" PreviewKeyUp="HotkeyButton_PreviewKeyUp" LostFocus="HotkeyButton_LostFocus" />
                             <Button x:Name="HotkeyButton2" Content="＋" Style="{StaticResource GhostButton}"
                                     Margin="8,0,0,0" HorizontalAlignment="Left" Focusable="True"
                                     Click="HotkeyButton2_Click"
-                                    PreviewKeyDown="HotkeyButton2_PreviewKeyDown" LostFocus="HotkeyButton2_LostFocus" />
+                                    PreviewKeyDown="HotkeyButton2_PreviewKeyDown" PreviewKeyUp="HotkeyButton2_PreviewKeyUp" LostFocus="HotkeyButton2_LostFocus" />
                         </StackPanel>
 
                         <Button x:Name="SaveButton" Content="저장" Style="{StaticResource PrimaryButton}"

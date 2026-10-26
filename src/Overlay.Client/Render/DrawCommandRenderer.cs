@@ -144,6 +144,16 @@ internal static class DrawCommandRenderer
         dc.DrawText(text, new Point(b.X, b.Y));
     }
 
+    /// <summary>Width in DIPs of <paramref name="content"/> as <see cref="DrawText"/> draws it in the
+    /// default (Segoe UI) face, fallback fonts included — for text placed by its right edge.</summary>
+    public static double MeasureTextWidth(string content, double fontSize)
+    {
+        if (string.IsNullOrEmpty(content)) return 0;
+        // The brush does not change the layout; Transparent is the no-colour placeholder.
+        return new FormattedText(content, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+            DefaultTypeface, fontSize > 0 ? fontSize : 12.0, Brushes.Transparent, 1.0).WidthIncludingTrailingWhitespace;
+    }
+
     private static void DrawProgressBar(DrawingContext dc, in DrawCommand cmd)
     {
         var b = cmd.Bounds;

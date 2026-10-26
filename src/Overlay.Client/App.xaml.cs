@@ -81,8 +81,8 @@ public partial class App : Application
         string text = ex?.ToString() ?? "(null exception object)";
         try
         {
-            // Same location as Overlay.Core's Logger.DefaultLogDirectory (logs/ next to the exe).
-            string dir = Path.Combine(AppContext.BaseDirectory, "logs");
+            // Same location as Overlay.Core's Logger.DefaultLogDirectory (logs/ next to the exe, or under the test data dir).
+            string dir = AppPaths.LogDir;
             Directory.CreateDirectory(dir);
             string file = Path.Combine(dir,
                 "crash-" + DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + ".log");

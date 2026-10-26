@@ -62,6 +62,49 @@ public class M46KeysAndTankItemsTests : IDisposable
     }
 
     [Fact]
+    public void Candidates_AChordFiresWhileAnUnrelatedKeyIsHeld()
+    {
+        // (lolF01) Space held for the camera, Q held, W pressed: Q+W is among the candidates
+        var c = HotkeyCombo.Candidates(HotkeyModifiers.None, new[] { "SPACE", "Q" }, "W").Select(x => x.Canonical).ToArray();
+        Assert.Contains("Q+W", c);
+        Assert.Equal("Q+SPACE+W", c[0]);
+        Assert.Equal("W", c[^1]);
+        Assert.Equal(new[] { "Q+SPACE+W", "Q+W", "SPACE+W", "W" }, c);
+    }
+
+    [Fact]
+    public void Candidates_AStaleHeldKeyNeverBlocksTheChord_SubsetsStayWithinMaxKeys_NoDuplicates()
+    {
+        // (lolF01) E's key-up was missed: ALT+Q+W must still be tried
+        var c = HotkeyCombo.Candidates(HotkeyModifiers.Alt, new[] { "E", "Q" }, "W").ToArray();
+        Assert.Contains("ALT+Q+W", c.Select(x => x.Canonical));
+        Assert.All(c.Skip(1), x => Assert.True(x.Key.Split('+').Length <= HotkeyCombo.MaxKeys));
+        Assert.Equal(c.Length, c.Distinct().Count());
+
+        // more held keys than a chord can hold: only the first (exact) combo may exceed MaxKeys
+        var many = HotkeyCombo.Candidates(HotkeyModifiers.None, new[] { "A", "B", "C", "D" }, "W").ToArray();
+        Assert.Equal(5, many[0].Key.Split('+').Length);
+        Assert.All(many.Skip(1), x => Assert.True(x.Key.Split('+').Length <= HotkeyCombo.MaxKeys));
+        Assert.Equal(many.Length, many.Distinct().Count());
+        Assert.All(many, x => Assert.Contains("W", x.Key.Split('+')));
+    }
+
+    [Fact]
+    public void Candidates_AgainstARegisteredSet_PickTheBestChord()
+    {
+        // (lolF01) the hook walks Candidates in order and fires the first registered one
+        static string? Match(IEnumerable<string> registered, string[] held, string pressed)
+        {
+            var set = registered.Select(HotkeyCombo.Parse).ToHashSet();
+            return HotkeyCombo.Candidates(HotkeyModifiers.None, held, pressed).FirstOrDefault(set.Contains)?.Canonical;
+        }
+
+        Assert.Equal("Q+W", Match(new[] { "Q+W", "W" }, new[] { "Q" }, "W"));
+        Assert.Equal("W", Match(new[] { "W" }, new[] { "SPACE", "Q" }, "W"));
+        Assert.Equal("Q+W", Match(new[] { "Q+W", "W" }, new[] { "SPACE", "Q" }, "W"));
+    }
+
+    [Fact]
     public void Registry_TakesAMultiKeyChord_AndSeesItInEitherOrder()
     {
         var registry = new HotkeyRegistry(new NullHook());

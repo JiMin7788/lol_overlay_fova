@@ -213,8 +213,12 @@ public sealed class ConfigManager : IDisposable
         // into the typed ConfigSchema and re-serializing drops anything System.Text.Json
         // doesn't recognize, which is exactly "ignore unknown keys" (Acceptance Criteria
         // #2) while still round-tripping every KNOWN field correctly.
-        var schema = ConfigMigrator.MigrateAndDeserialize(obj, SerializerOptions);
-        return ToJsonObject(schema);
+        var schema = ConfigMigrator.MigrateAndDeserialize(obj, SerializerOptions, out bool migrated);
+        var loaded = ToJsonObject(schema);
+        // AI-NOTE: persist a migrated file at once so each migration step runs exactly once,
+        // even if the user never changes a setting this session.
+        if (migrated) WriteAtomic(path, loaded);
+        return loaded;
     }
 
     // ── Debounce + atomic write ─────────────────────────────────────────────────

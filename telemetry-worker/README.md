@@ -30,6 +30,14 @@ Then wire the URL into the app:
 
 ## Reading the numbers
 
+`pwsh telemetry-worker/stats.ps1 [-Days 30]` prints installs, daily users, new installs, versions
+and crashes, with release installs and dev builds in separate columns. It reads the token from the
+Windows user environment variable `FOVA_CF_TOKEN` (custom API token, Account - D1 - Read) and never
+prints it. Release builds stamp their version first (`build-release.ps1` passes it); releases up to
+0.4.0 carry only the git hash and count as dev.
+
+With wrangler instead:
+
 ```powershell
 # DAU, last 14 days
 npx wrangler d1 execute fova-telemetry --remote --command "SELECT day, COUNT(*) AS dau FROM pings GROUP BY day ORDER BY day DESC LIMIT 14"

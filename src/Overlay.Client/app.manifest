@@ -23,7 +23,9 @@
       * That hook NEVER swallows a key — HookCallback has exactly one return path,
         CallNextHookEx, so every keystroke reaches the game untouched.
       * It NEVER logs, stores, buffers or transmits a keystroke. The only state kept is the
-        set of registered hotkey combos plus which modifier keys are currently held.
+        set of registered hotkey combos, which modifier and other keys are currently held
+        (only while held), the Tab-scoreboard and chat open/closed flags (HotkeyGate), and
+        whether the foreground window is the League game window (class/title check).
       * It does NOT use GetAsyncKeyState/GetKeyboardState, and sends NO input
         (no SendInput/keybd_event) — it cannot act on the player's behalf (P4).
       * It does NOT read game memory or inject code into any process (P3).

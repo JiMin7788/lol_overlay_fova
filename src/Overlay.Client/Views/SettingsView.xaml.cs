@@ -53,9 +53,8 @@ public partial class SettingsView : UserControl
     private string _nextItemHotkey = DefaultNextItemHotkey;
     private const string DefaultNextItemHotkey = "P";
 
-    // (M46) A chord being captured: up to three keys, finished when one of them is released or the third goes down.
-    private readonly List<string> _pendingKeys = new();
-    private ModifierKeys _pendingMods;
+    // (M46) A chord being captured: any modifiers plus up to three keys, finished when one of them is released or the third goes down.
+    private readonly Overlay.Core.Hotkeys.ChordCapture _chordCapture = new();
 
     /// <summary>(M31 §C) Afterimage per-role gates, in the order they appear in the UI. Keys must match
     /// <c>OverlayHost.AfterimageRoleEnabled</c>'s <c>minimap.afterimage.roles.{key}</c> lookup and the
@@ -547,8 +546,7 @@ public partial class SettingsView : UserControl
 
     private void BeginCapture(Button button)
     {
-        _pendingKeys.Clear();
-        _pendingMods = ModifierKeys.None;
+        _chordCapture.Reset();
         button.Content = SL("단축키를 입력해주세요…", "Press a key combination…");
         Keyboard.Focus(button);
     }
@@ -727,20 +725,15 @@ public partial class SettingsView : UserControl
 
     /// <summary>The key-down half of a capture, shared by every hotkey button: a lone modifier and a key M13's parser
     /// cannot name are skipped; any other key joins the chord. Returns true (and the chord) once the chord holds
-    /// <see cref="Overlay.Core.Hotkeys.HotkeyCombo.MaxKeys"/> keys; otherwise the chord waits for a key-up.</summary>
+    /// <see cref="Overlay.Core.Hotkeys.HotkeyCombo.MaxKeys"/> non-modifier keys (modifiers do not count); otherwise
+    /// the chord waits for a key-up.</summary>
     private bool TryCaptureChord(KeyEventArgs e, out string chord)
     {
         chord = "";
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        if (IsModifierKey(key)) return false;
-
-        var token = KeyToToken(key);
-        if (token is null) return false;
-
-        _pendingMods = Keyboard.Modifiers;
-        if (!_pendingKeys.Contains(token)) _pendingKeys.Add(token);
-        if (ModifierCount(_pendingMods) + _pendingKeys.Count < Overlay.Core.Hotkeys.HotkeyCombo.MaxKeys) return false;
-        chord = TakePendingChord();
+        if (IsModifierKey(key) || KeyToToken(key) is not { } token) return false;
+        if (_chordCapture.OnKeyDown(ToHotkeyModifiers(Keyboard.Modifiers), token) is not { } done) return false;
+        chord = done;
         return true;
     }
 
@@ -749,27 +742,21 @@ public partial class SettingsView : UserControl
     {
         chord = "";
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
-        if (IsModifierKey(key) || KeyToToken(key) is not { } token || !_pendingKeys.Contains(token)) return false;
-        chord = TakePendingChord();
+        if (IsModifierKey(key) || KeyToToken(key) is not { } token) return false;
+        if (_chordCapture.OnKeyUp(token) is not { } done) return false;
+        chord = done;
         return true;
     }
 
-    private string TakePendingChord()
+    private static Overlay.Core.Hotkeys.HotkeyModifiers ToHotkeyModifiers(ModifierKeys mods)
     {
-        var parts = new List<string>(Overlay.Core.Hotkeys.HotkeyCombo.MaxKeys);
-        if (_pendingMods.HasFlag(ModifierKeys.Control)) parts.Add("CTRL");
-        if (_pendingMods.HasFlag(ModifierKeys.Alt)) parts.Add("ALT");
-        if (_pendingMods.HasFlag(ModifierKeys.Shift)) parts.Add("SHIFT");
-        if (_pendingMods.HasFlag(ModifierKeys.Windows)) parts.Add("WIN");
-        parts.AddRange(_pendingKeys);
-        _pendingKeys.Clear();
-        _pendingMods = ModifierKeys.None;
-        return string.Join("+", parts);
+        var result = Overlay.Core.Hotkeys.HotkeyModifiers.None;
+        if (mods.HasFlag(ModifierKeys.Control)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Control;
+        if (mods.HasFlag(ModifierKeys.Alt)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Alt;
+        if (mods.HasFlag(ModifierKeys.Shift)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Shift;
+        if (mods.HasFlag(ModifierKeys.Windows)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Win;
+        return result;
     }
-
-    private static int ModifierCount(ModifierKeys mods)
-        => (mods.HasFlag(ModifierKeys.Control) ? 1 : 0) + (mods.HasFlag(ModifierKeys.Alt) ? 1 : 0)
-           + (mods.HasFlag(ModifierKeys.Shift) ? 1 : 0) + (mods.HasFlag(ModifierKeys.Windows) ? 1 : 0);
 
     // ── Overlay: combo-overlay hotkey capture (§40 added the skill one and left this as a note) ──
 

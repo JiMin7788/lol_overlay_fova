@@ -96,9 +96,9 @@ public sealed class DamageEngine
     /// </summary>
     private static SimResult Simulate(IReadOnlyList<ComboNode> nodes, AttackerStat attacker, DefenderStat defender)
     {
-        var blend = new TrackState(defender.CurrentHP, defender.Shield);
-        var min = new TrackState(defender.CurrentHP, defender.Shield);
-        var max = new TrackState(defender.CurrentHP, defender.Shield);
+        var blend = new TrackState(defender.CurrentHP, defender.Shield, defender.Uncapped);
+        var min = new TrackState(defender.CurrentHP, defender.Shield, defender.Uncapped);
+        var max = new TrackState(defender.CurrentHP, defender.Shield, defender.Uncapped);
 
         var breakdown = new List<(string NodeId, double Damage)>(nodes.Count);
         var shred = ShredState.None; // (2026-10-19) shred left by earlier nodes — the same on every track
@@ -162,6 +162,10 @@ public sealed class DamageEngine
             return 0;
 
         double raw = baseRaw;
+        // AI-NOTE: (lolF01) an Uncapped defender's running HP can go below 0; HP-scaled hits read it floored at 0
+        // (a % of current HP never goes negative, missing HP never exceeds max HP). On the capped path a live track
+        // always has RemainingHp > 0 here (step 5 executes at <= 0), so the floor changes nothing there.
+        double hpNow = Math.Max(0, track.RemainingHp);
 
         // Execute types that alter/replace the base damage itself happen before
         // mitigation, since they are still raw (pre-armor/mr) damage values. Reads THIS
@@ -173,7 +177,7 @@ public sealed class DamageEngine
                 // "재계산" (recalculate): this node's damage is a percentage of
                 // the defender's HP remaining *at the moment it lands*, replacing
                 // the flat ratioAD/ratioAP formula (tick-type execute skills).
-                raw = node.ExecutePercent * track.RemainingHp;
+                raw = node.ExecutePercent * hpNow;
                 // (M45 loop 16) "Deals a minimum of X" (Dr. Mundo Q): the floor wins once the target is low.
                 if (node.ExecuteFloor > raw) raw = node.ExecuteFloor;
                 break;
@@ -181,7 +185,7 @@ public sealed class DamageEngine
                 // Additive bonus based on HP already missing at this point in the
                 // sequence (dynamic, not the pre-combo defender.currentHP snapshot
                 // — consistent with CurrentHp's own dynamic re-evaluation above).
-                raw += node.ExecutePercent * (defender.MaxHP - track.RemainingHp);
+                raw += node.ExecutePercent * (defender.MaxHP - hpNow);
                 break;
             case ExecuteType.BaseWithMissingHpBonus:
                 // Kraken Slayer "Bring It Down" shape (wiki-confirmed, see
@@ -193,7 +197,7 @@ public sealed class DamageEngine
                 // additive fraction×absoluteMissingHP term above. Re-evaluated live off
                 // the same dynamic remainingHp used by CurrentHp/MissingHp, not a frozen
                 // pre-combo snapshot.
-                double missingFrac = defender.MaxHP > 0 ? (defender.MaxHP - track.RemainingHp) / defender.MaxHP : 0;
+                double missingFrac = defender.MaxHP > 0 ? (defender.MaxHP - hpNow) / defender.MaxHP : 0;
                 raw *= 1.0 + node.ExecutePercent * missingFrac;
                 break;
         }
@@ -239,8 +243,10 @@ public sealed class DamageEngine
         }
         track.RemainingHp -= hpLoss;
 
-        // Step 5: execute checks.
-        if (node.ExecuteType == ExecuteType.Threshold && track.RemainingHp <= node.ExecuteThreshold)
+        // Step 5: execute checks. (lolF01) An Uncapped defender is never executed: no branch runs, every later hit
+        // still counts and RemainingHp may go negative (Simulate clamps it to 0 at the end).
+        if (defender.Uncapped) { /* never executed */ }
+        else if (node.ExecuteType == ExecuteType.Threshold && track.RemainingHp <= node.ExecuteThreshold)
         {
             track.RemainingHp = 0;
             track.Executed = true;
@@ -341,11 +347,11 @@ public sealed class DamageEngine
         public double Lifesteal;
         public bool Executed;
 
-        public TrackState(double currentHp, double shield)
+        public TrackState(double currentHp, double shield, bool uncapped = false)
         {
             RemainingHp = currentHp;
             ShieldRemaining = Math.Max(0, shield);
-            Executed = currentHp <= 0;
+            Executed = !uncapped && currentHp <= 0; // (lolF01) an Uncapped defender starts alive at any HP
         }
     }
 
@@ -1011,7 +1017,10 @@ public sealed record DefenderStat(
     double MrReductionFlat = 0,
     double MrReductionPercent = 0,
     // (2026-10-19) Multiplier on damage the target takes from attacks (Plated Steelcaps: 0.9).
-    double AttackDamageTakenMultiplier = 1.0);
+    double AttackDamageTakenMultiplier = 1.0,
+    // (lolF01, tank item ranking only) No HP cap: the target is never executed, so every node's damage counts in
+    // TotalDamage even past 0 HP; execute nodes count only their hit damage. False = the normal capped pipeline.
+    bool Uncapped = false);
 
 /// <summary>
 /// Minimal placeholder input type for M06 Rune Engine output. M06 doesn't exist yet

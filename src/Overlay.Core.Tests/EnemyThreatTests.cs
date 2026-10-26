@@ -435,6 +435,55 @@ public class EnemyThreatMonitorRetryTests
     }
 }
 
+/// <summary>(lolf01-t3) Overlapping Ticks must not race on the cache: one compute per enemy for an
+/// unchanged snapshot, never two at once.</summary>
+public class EnemyThreatMonitorConcurrencyTests
+{
+    [Fact]
+    public async Task ParallelTicks_NeverThrow_AndComputeEachEnemyOnce()
+    {
+        var snap = new GameSnapshot
+        {
+            HasData = true, ActivePlayerSummonerName = "Me", PlayerCount = 3,
+            Stats = new ActivePlayerStats { MaxHealth = 1000, CurrentHealth = 1000, Armor = 30, MagicResist = 30 },
+        };
+        snap.Players[0].SummonerName = "Me"; snap.Players[0].Team = "ORDER";
+        snap.Players[1].SummonerName = "Foe1"; snap.Players[1].Team = "CHAOS"; snap.Players[1].ChampionName = "Zed";
+        snap.Players[2].SummonerName = "Foe2"; snap.Players[2].Team = "CHAOS"; snap.Players[2].ChampionName = "Ahri";
+        var calls = new System.Collections.Concurrent.ConcurrentDictionary<string, int>();
+        int inFlight = 0, maxInFlight = 0;
+        var monitor = new EnemyThreatMonitor(() => snap, (_, e) =>
+        {
+            int now = Interlocked.Increment(ref inFlight);
+            InterlockedMax(ref maxInFlight, now);
+            Thread.Sleep(20); // a slow compute widens the race window
+            calls.AddOrUpdate(e.ChampionName, 1, (_, n) => n + 1);
+            Interlocked.Decrement(ref inFlight);
+            return new ThreatEstimate(e.ChampionName, 1, 100, "x");
+        });
+
+        using var start = new ManualResetEventSlim();
+        var threads = Enumerable.Range(0, 8).Select(_ => Task.Run(() =>
+        {
+            start.Wait();
+            for (int i = 0; i < 50; i++) monitor.Tick();
+        })).ToArray();
+        start.Set();
+        await Task.WhenAll(threads); // rethrows any Tick exception
+
+        Assert.Equal(1, calls["Zed"]);
+        Assert.Equal(1, calls["Ahri"]);
+        Assert.Equal(1, maxInFlight);
+        Assert.Equal(new[] { "Zed", "Ahri" }, monitor.Latest.Select(t => t.ScoreboardName));
+    }
+
+    private static void InterlockedMax(ref int target, int value)
+    {
+        int seen;
+        while (value > (seen = Volatile.Read(ref target)) && Interlocked.CompareExchange(ref target, value, seen) != seen) { }
+    }
+}
+
 public class LaneOpponentTests
 {
     [Theory]

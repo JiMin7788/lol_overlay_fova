@@ -70,19 +70,28 @@ public sealed class AppComposition : IDisposable
     // M29: HOME-window ad slot. Constructed in the ctor (it reads config), disposed with the rest.
     private readonly AdSlotService _ads;
 
-    // Remote force-OFF switch for the gated features (1.0 plan). Constructed in the ctor so its
-    // disk cache is in force before StartSubsystems reads it; see ApplyRemoteFlags.
+    // Remote force-OFF switch for the gated features (1.0 plan): non-beta builds obey forceOff, beta
+    // builds obey only beta_kill (lolF05; see IsFeatureOff). Constructed in the ctor so its disk cache
+    // is in force before StartSubsystems reads it; see ApplyRemoteFlags.
     private readonly RemoteFlags _flags;
+
+    // lolF05: beta_kill start/stop seams for the two screen capturers. KillGate owns the lock, the
+    // no-restart latch and the "not started"/"stopped" log lines; created in the ctor before
+    // _flags.Changed is subscribed, because Changed runs StopCaptureKilledByBeta on the fetch thread.
+    private readonly KillGate _minimapGate;
+    private readonly KillGate _buffStackGate;
 
     // M01
     private LiveClientPoller? _poller;
     private LiveClientEventPublisher? _publisher;
 
-    /// <summary>Latest game snapshot captured from the M01 poller, read by the ComboRunner
-    /// to build an ExecutionContext when a combo hotkey fires. Written on the poller's
-    /// background thread, read on the bus's async dispatch thread — a reference-typed
-    /// field, so writes/reads are atomic and "latest wins" is exactly the desired semantics.</summary>
-    private volatile GameSnapshot? _latestSnapshot;
+    /// <summary>Latest game snapshot captured from the M01 poller (null when no game is running),
+    /// read by the ComboRunner to build an ExecutionContext when a combo hotkey fires.</summary>
+    private LiveSnapshotHolder? _snapshotHolder;
+
+    // AI-NOTE: read through the holder on every call (lambdas built before the poller exist
+    // capture this property, not a value), so a disconnect's null is seen everywhere.
+    private GameSnapshot? CurrentSnapshot => _snapshotHolder?.Latest;
 
     // ComboRunner: closes the hotkey -> combo -> HUD loop (COMBO.TRIGGER -> UI.COMBO_RESULT).
     private ComboRunner? _comboRunner;
@@ -110,21 +119,18 @@ public sealed class AppComposition : IDisposable
     /// <summary>(2026-10-19) Global gold estimate (null when off / no estimate yet), and whether
     /// League's scoreboard is toggled open (Tab) — the overlay shows the estimate with the scoreboard.</summary>
     public GlobalGoldView? GlobalGoldView => _globalGold?.LatestView;
-    public bool ScoreboardOpen => _hotkeyHook?.IsScoreboardOpen ?? false;
+    public bool ScoreboardOpen => _hotkeyGate.ScoreboardOpen;
 
     /// <summary>(2026-10-20, user request) Whether the global gold panel is up: with its key left at TAB it follows the
     /// scoreboard; with another key (<c>overlay.globalGoldHotkey</c>) that key toggles it.</summary>
-    public bool GlobalGoldShown => GoldFollowsScoreboard(GlobalGoldHotkey) ? ScoreboardOpen : _globalGoldToggled;
-
-    private volatile bool _globalGoldToggled;
+    public bool GlobalGoldShown => HotkeyGate.GoldFollowsScoreboard(GlobalGoldHotkey) ? ScoreboardOpen : _hotkeyGate.GlobalGoldToggled;
 
     private string GlobalGoldHotkey => _config.Get("overlay.globalGoldHotkey") as string ?? "TAB";
 
-    /// <summary>TAB is League's own scoreboard key: the panel mirrors it instead of binding it.</summary>
-    public static bool GoldFollowsScoreboard(string chord) => string.Equals(chord.Trim(), "TAB", StringComparison.OrdinalIgnoreCase);
+    /// <summary>A new game starts with League's scoreboard and chat closed and the gold panel off.</summary>
     public void ResetScoreboard()
     {
-        _hotkeyHook?.ResetScoreboard();
+        _hotkeyGate.ResetForNewGame();
         _nextItemsShown = false; // (M46) the shop starts closed too
     }
 
@@ -155,6 +161,8 @@ public sealed class AppComposition : IDisposable
     // (M40) Enemy kill-threat estimates, refreshed by a 1s background timer, read by the HUD.
     private EnemyThreatMonitor? _threat;
     private System.Threading.Timer? _threatTimer;
+    // AI-NOTE: a 1s tick can outlast its period (M46 ranking); an overlapping tick is skipped, not queued.
+    private readonly Overlay.Core.Threading.TickGate _threatTickGate = new();
     // (M42) Post-game review: sampled by the same 1s timer, saved to UserDataDir/history.
     private readonly Overlay.Core.Review.KillReviewRecorder _review = new();
     private readonly Overlay.Core.Review.KillReviewStore _reviewStore =
@@ -203,6 +211,8 @@ public sealed class AppComposition : IDisposable
     // Win32HotkeyHook.cs is left in place but is now unused.
     private LowLevelHotkeyHook? _hotkeyHook;
     private HotkeyRegistry? _hotkeys;
+    // (lolF01) In a game, keys fire only over the League window with its chat closed. Built in the ctor.
+    private readonly HotkeyGate _hotkeyGate;
 
     /// <summary>M19: registration id of the overlay visibility toggle hotkey, kept so a rebind can
     /// unregister the old combo before registering the new one. Null when unregistered/skipped.</summary>
@@ -252,7 +262,7 @@ public sealed class AppComposition : IDisposable
 
     /// <summary>Latest per-tick game snapshot captured from the M01 poller (or null before the
     /// first tick / when no game is running). Read by the home views for live stats/scoreboard.</summary>
-    public GameSnapshot? LatestSnapshot => _latestSnapshot;
+    public GameSnapshot? LatestSnapshot => CurrentSnapshot;
 
     // ── Overlay preview (2026-10-19) ─────────────────────────────────────────
 
@@ -298,7 +308,7 @@ public sealed class AppComposition : IDisposable
     /// <summary>What the overlay draws from: the live game when there is one, else the preview's
     /// sample game while the preview is on.</summary>
     public GameSnapshot? OverlaySnapshot
-        => _latestSnapshot is { HasData: true } live ? live : PreviewSnapshot ?? _latestSnapshot;
+        => CurrentSnapshot is { HasData: true } live ? live : PreviewSnapshot ?? CurrentSnapshot;
 
     private string? FirstSavedComboChampion()
     {
@@ -366,6 +376,8 @@ public sealed class AppComposition : IDisposable
 
     public AppComposition()
     {
+        _hotkeyGate = new HotkeyGate(() => CurrentSnapshot is { HasData: true });
+
         // M29: the slot subscribes to GAME.CONNECTED here — before Start() — so the in-game
         // dormancy rule holds even if a game is already running when the app launches.
         // (loop 525) The endpoint defaults to the house manifest in the public repo. loop 513 only
@@ -377,12 +389,16 @@ public sealed class AppComposition : IDisposable
         var endpoint = GetString("ads.endpoint", DefaultAdEndpoint);
         if (string.IsNullOrWhiteSpace(endpoint)) endpoint = DefaultAdEndpoint;
         bool adsEnabled = GetBool("ads.enabled", true);
-        _ads = new AdSlotService(adsEnabled, endpoint);
+        _ads = new AdSlotService(adsEnabled, endpoint, cacheRoot: AppPaths.AdsCacheDir);
         AdLog(_ads.IsConfigured
             ? $"ctor: configured, endpoint={endpoint}"
             : $"ctor: NOT configured (enabled={adsEnabled}, endpoint='{endpoint}')");
 
-        _flags = new RemoteFlags(DefaultFlagsEndpoint);
+        _flags = new RemoteFlags(DefaultFlagsEndpoint, cachePath: AppPaths.FlagsCachePath);
+        _minimapGate = new KillGate(FeatureGate.MinimapVision, "minimap capture",
+            () => BuildFlavor.IsBeta && _flags.IsBetaKilled(FeatureGate.MinimapVision), MinimapLog);
+        _buffStackGate = new KillGate(FeatureGate.BuffStackVision, "buff-stack vision",
+            () => BuildFlavor.IsBeta && _flags.IsBetaKilled(FeatureGate.BuffStackVision), MinimapLog);
         _flags.Changed += ApplyRemoteFlags;
         _ = _flags.RefreshAsync(_cts.Token);
 
@@ -392,7 +408,7 @@ public sealed class AppComposition : IDisposable
         var telemetryEndpoint = GetString("telemetry.endpoint", DefaultTelemetryEndpoint);
         if (string.IsNullOrWhiteSpace(telemetryEndpoint)) telemetryEndpoint = DefaultTelemetryEndpoint;
         Telemetry = new Overlay.Core.Telemetry.TelemetryService(
-            GetBool("telemetry.enabled", true), telemetryEndpoint,
+            GetBool("telemetry.enabled", true), telemetryEndpoint, dataDir: AppPaths.TelemetryDir,
             appVersion: typeof(AppComposition).Assembly
                 .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
                 ?.InformationalVersion ?? "unknown");
@@ -414,7 +430,14 @@ public sealed class AppComposition : IDisposable
 
     /// <summary>True when the remote flags keep <paramref name="feature"/> off (Settings hides its
     /// switches then).</summary>
-    public bool IsFeatureForcedOff(string feature) => _flags.IsForcedOff(feature);
+    public bool IsFeatureForcedOff(string feature) => IsFeatureOff(feature);
+
+    /// <summary>The build's one remote off-rule (lolF05): beta_kill in a beta build, forceOff otherwise.</summary>
+    private bool IsFeatureOff(string f) => _flags.IsOff(f, BuildFlavor.IsBeta);
+
+    /// <summary>What the HUD shows instead of the saved toggle for <paramref name="key"/> (null = the
+    /// saved toggle): in a beta build the held-back alerts show unless beta_kill lists them (lolF05).</summary>
+    public bool? HudEnabledOverride(string key) => FeatureGate.HudOverride(key, BuildFlavor.IsBeta, IsFeatureOff(key));
 
     /// <summary>M33 per-champion rune/spell preset store (null iff <see cref="Lcu"/> is null).</summary>
     public Overlay.Core.ChampSelect.ChampSelectPresets? ChampSelectStore { get; }
@@ -535,20 +558,10 @@ public sealed class AppComposition : IDisposable
                 PollInterval = TimeSpan.FromMilliseconds(250),
                 RequestTimeout = TimeSpan.FromMilliseconds(1000),
             });
+            // AI-NOTE: the holder must subscribe BEFORE the publisher, so it clears the snapshot
+            // before any GAME.DISCONNECTED subscriber runs (handlers run in subscription order).
+            _snapshotHolder = new LiveSnapshotHolder(_poller);
             _publisher = new LiveClientEventPublisher(_poller);
-            // Keep the latest snapshot so the ComboRunner can build an ExecutionContext on
-            // demand. 'cur' is the poller's REUSABLE buffer (_current), which it swaps and
-            // re-parses in place on the very next tick — so we must COPY it, not store the
-            // reference, or a combo firing mid-parse (the runner reads _latestSnapshot on an
-            // arbitrary hotkey press, off the poll thread) could read a torn/half-updated
-            // snapshot. GameSnapshot.CopyTo gives us a stable per-tick capture the poller
-            // never mutates. The volatile field publishes the new reference to the reader.
-            _poller.SnapshotAvailable += (prev, cur, initial) =>
-            {
-                var capture = new GameSnapshot();
-                cur.CopyTo(capture);
-                _latestSnapshot = capture;
-            };
 
             // M19 §3.3 Global Gold Compare — opt-in overlay item (Settings → 오버레이 항목).
             // Needs the poller's own SnapshotAvailable feed (full scoreboard in one tick),
@@ -601,11 +614,14 @@ public sealed class AppComposition : IDisposable
         // departure's marker delay low; rare tail ghosts remain possible — tune this key
         // per-user without a rebuild if they recur.
         _afterimages = new Overlay.Core.Jungle.EnemyAfterimageTracker(
-            graceMs: () => GetDouble("minimap.afterimage.visibleGraceMs", 1200));
+            graceMs: () => GetDouble("minimap.afterimage.visibleGraceMs", 1200))
+        {
+            Diagnostics = MinimapLog,
+        };
         _afterimages.Start();
 
         // M07 Item Tracker — (2026-10-19) my own completions only; enemies' have their own card.
-        _items = new ItemTracker(snapshot: () => _latestSnapshot);
+        _items = new ItemTracker(snapshot: () => CurrentSnapshot);
         _items.Start();
 
         // (2026-10-19, user decision) M08 Recall Timer is no longer started: its only output was a
@@ -629,7 +645,7 @@ public sealed class AppComposition : IDisposable
         // (loop 125) Same-lane enemy return predictor — default ON again (2026-10-20, user decision: other products ship
         // it; it had been gated pending Riot). Needs the static map-distance presets;
         // if that bundled file is missing/corrupt the feature simply stays off (never crashes startup).
-        if (GetBool("overlay.items.laneReturn.enabled", true) && !_flags.IsForcedOff("laneReturn"))
+        if (GetBool("overlay.items.laneReturn.enabled", true) && !IsFeatureOff("laneReturn"))
         {
             try
             {
@@ -644,28 +660,41 @@ public sealed class AppComposition : IDisposable
 
         // M30 Enemy Jungler Spotted Alert — default OFF (1.0 gated tier, pending Riot; real API field diffs, honest: no
         // coordinate/direction claim). Silently does nothing outside ranked/draft, where the
-        // Live Client never populates `position` (see EnemyJunglerLocator).
-        if (GetBool("overlay.items.enemyJunglerSpotted.enabled", false) && !_flags.IsForcedOff("enemyJunglerSpotted"))
+        // Live Client never populates `position` (see EnemyJunglerLocator). In a beta build it runs
+        // whatever the saved toggle says unless beta_kill lists it (lolF05, FeatureGate.ShouldRun).
+        if (FeatureGate.ShouldRun("enemyJunglerSpotted", GetBool("overlay.items.enemyJunglerSpotted.enabled", false),
+                BuildFlavor.IsBeta, IsFeatureOff("enemyJunglerSpotted")))
         {
             // (2026-10-19) Quiet while minimap vision is capturing: the presence tracker announces the
             // same sighting with a location, and one event used to raise two cards.
-            _enemyJunglerSpotted = new EnemyJunglerSpottedDetector(() => _latestSnapshot,
+            _enemyJunglerSpotted = new EnemyJunglerSpottedDetector(() => CurrentSnapshot,
                 suppressWhen: () => _minimapCapture?.IsCapturing == true);
             _enemyJunglerSpotted.Start();
         }
 
         // Enemy legendary-item-completed alert — default OFF (1.0 gated tier, pending Riot). Enemy item-list diffs imply the enemy
         // was just visible (the API only refreshes an enemy row while in sight), so no minimap-image
-        // coupling is needed; ally completions stay with ItemTracker above.
-        if (GetBool("overlay.items.enemyItemAlert.enabled", false) && !_flags.IsForcedOff("enemyItemAlert"))
+        // coupling is needed; ally completions stay with ItemTracker above. Beta: as enemyJunglerSpotted.
+        if (FeatureGate.ShouldRun("enemyItemAlert", GetBool("overlay.items.enemyItemAlert.enabled", false),
+                BuildFlavor.IsBeta, IsFeatureOff("enemyItemAlert")))
         {
-            _enemyItemAlert = new EnemyItemAlertDetector(() => _latestSnapshot);
+            _enemyItemAlert = new EnemyItemAlertDetector(() => CurrentSnapshot);
             _enemyItemAlert.Start();
         }
 
         // A refresh that landed between the gates above and these assignments raised Changed
         // while the fields were still null; re-apply so it cannot be missed.
         ApplyRemoteFlags();
+
+        // lolF05: one line saying what the beta did with the held-back alerts. In a beta build the
+        // saved toggle cannot keep them off, so "killed" means beta_kill lists them.
+        if (BuildFlavor.IsBeta)
+        {
+            string State(string f) => IsFeatureOff(f) ? "killed" : "started";
+            var killed = _flags.BetaKillNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase);
+            Log($"beta build: enemyJunglerSpotted {State("enemyJunglerSpotted")}, enemyItemAlert {State("enemyItemAlert")}; "
+                + $"beta_kill [{string.Join(", ", killed)}]");
+        }
 
         // M04 Combo Editor (kept live for the session; a future dashboard UI drives it).
         // Share one stateless ComboEngine — and one RuneEngine (see _runeEngine's doc comment) —
@@ -706,7 +735,7 @@ public sealed class AppComposition : IDisposable
         // every combo trigger), which is what lets a same-combo sequence like Garen Q->E->W->R
         // correctly read R's missing-HP term off the running remaining-HP DamageEngine.Simulate
         // already threads through the node loop (Q/E/W's damage reduces it before R reads it).
-        _comboRunner = new ComboRunner(comboEngine, _config, () => _latestSnapshot,
+        _comboRunner = new ComboRunner(comboEngine, _config, () => CurrentSnapshot,
             runeEngine: _runeEngine,
             // (2026-10-19) a combo hotkey pressed in the overlay preview computes on its sample game
             previewSnapshot: () => PreviewSnapshot);
@@ -715,7 +744,7 @@ public sealed class AppComposition : IDisposable
         // (M40) Enemy kill threat: recomputed off the UI thread only when an enemy's level/items/
         // keystone/spells or my max HP/armor/MR change (EnemyThreatMonitor); skipped while the card
         // is toggled off. Remote flag "enemyThreat" stops it (ApplyRemoteFlags).
-        if (!_flags.IsForcedOff("enemyThreat"))
+        if (!IsFeatureOff("enemyThreat"))
         {
             var runner = _comboRunner;
             // OverlaySnapshot: the live game, or the preview's sample game while the preview is on.
@@ -723,12 +752,12 @@ public sealed class AppComposition : IDisposable
         }
         // One 1s timer: threat estimates (when on), then the post-game review sample, which reads
         // them. The review runs even with the threat line off (it then has no danger windows).
-        _threatTimer = new System.Threading.Timer(_ =>
+        _threatTimer = new System.Threading.Timer(_ => _threatTickGate.TryRun(() =>
         {
             try
             {
                 if (GetBool("overlay.items.threatCard.enabled", true)) _threat?.Tick();
-                if (_review.Sample(_latestSnapshot, _threat?.Latest ?? Array.Empty<EnemyThreat>()) is { } finished)
+                if (_review.Sample(CurrentSnapshot, _threat?.Latest ?? Array.Empty<EnemyThreat>()) is { } finished)
                     _reviewStore.Save(finished);
                 UpdateNextItems(runner: _comboRunner);
             }
@@ -738,7 +767,7 @@ public sealed class AppComposition : IDisposable
                 if (ex.Message != _lastTickError) Log("threat/review tick failed: " + ex.Message);
                 _lastTickError = ex.Message;
             }
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
+        }), null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(1));
         // A combo hotkey result is a "combo check" for the review: target + share of its max HP.
         _reviewComboSub = Overlay.Core.EventBus.EventBus.Subscribe("UI.COMBO_RESULT", evt =>
         {
@@ -758,7 +787,7 @@ public sealed class AppComposition : IDisposable
     {
         try
         {
-            _hotkeyHook = new LowLevelHotkeyHook { Log = Log };
+            _hotkeyHook = new LowLevelHotkeyHook(_hotkeyGate) { Log = Log };
             _hotkeys = new HotkeyRegistry(_hotkeyHook);
             _hotkeyHook.HotkeyPressed += id => _hotkeys.FireByOsId(id);
 
@@ -907,7 +936,7 @@ public sealed class AppComposition : IDisposable
     /// on this user's client. Null when there's no live snapshot or no matching scoreboard row.</summary>
     private string? ResolveActiveChampionId()
     {
-        var snap = _latestSnapshot;
+        var snap = CurrentSnapshot;
         if (snap is null) return null;
 
         for (int i = 0; i < snap.PlayerCount; i++)
@@ -989,9 +1018,9 @@ public sealed class AppComposition : IDisposable
 
         // (2026-10-20, user request) The global gold panel's own key; TAB (the default) follows the scoreboard instead.
         string goldKey = GlobalGoldHotkey;
-        if (!GoldFollowsScoreboard(goldKey))
+        if (!HotkeyGate.GoldFollowsScoreboard(goldKey))
         {
-            try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(goldKey, () => _globalGoldToggled = !_globalGoldToggled, "gold")); }
+            try { _overlayCardHotkeyRegIds.Add(_hotkeys.Register(goldKey, _hotkeyGate.ToggleGlobalGold, "gold")); }
             catch (Exception ex) { Log($"Global-gold hotkey '{goldKey}' skipped: {ex.Message}"); }
         }
 
@@ -1044,7 +1073,7 @@ public sealed class AppComposition : IDisposable
             // the champion the detector tripped over is visible without opening the log.
             string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
             string dir = Path.Combine(
-                AppContext.BaseDirectory, "logs", "minimap-debug",
+                AppPaths.LogDir, "minimap-debug",
                 reason is null ? stamp : $"{stamp}_{reason}");
             int n = _minimapVision.DumpDebugFrames(dir);
             Log(n > 0
@@ -1059,7 +1088,7 @@ public sealed class AppComposition : IDisposable
     /// Skipped while the card is off or the remote flag <c>nextItem</c> forces it off.</summary>
     private void UpdateNextItems(ComboRunner? runner)
     {
-        var snap = _latestSnapshot;
+        var snap = CurrentSnapshot;
         // (2026-10-19) Preview: rank once for the sample game (nobody is dead there), so the card
         // can be seen and placed before a real game.
         if (snap is not { HasData: true } && PreviewSnapshot is { } preview)
@@ -1084,11 +1113,11 @@ public sealed class AppComposition : IDisposable
                     me = snap.Players[i];
         if (me is null) { _nextItems = null; _nextItemsKey = null; return; }
         if (!me.IsDead && !_nextItemsShown) return;
-        if (runner is null || !GetBool("overlay.items.nextItemCard.enabled", true) || _flags.IsForcedOff("nextItem")) return;
+        if (runner is null || !GetBool("overlay.items.nextItemCard.enabled", true) || IsFeatureOff("nextItem")) return;
 
         var owned = me.ItemIds.Take(me.ItemCount).ToArray();
         bool tank = string.Equals(_config.Get("overlay.nextItemMode") as string, "tank", StringComparison.OrdinalIgnoreCase);
-        string key = string.Join(",", owned) + "|" + me.Level + "|" + tank + "|" + (_config.Get("targeting.manualTarget") as string);
+        string key = Overlay.Core.Items.NextItemCacheKey.For(snap!, me, tank, _config.Get("targeting.manualTarget") as string);
         if (key == _nextItemsKey) return; // already ranked for this build
         _nextItemsKey = key;
 
@@ -1104,15 +1133,54 @@ public sealed class AppComposition : IDisposable
     }
 
     /// <summary>Flips a boolean config flag (its enable toggle); the overlay reacts on its next frame.</summary>
-    /// <summary>Stops any gated subsystem the remote flags now force off. Needed because the first
-    /// launch after an update has no cached flags, so the subsystems start before the fetch lands.
-    /// Un-forcing does not restart anything; that takes effect on the next launch.</summary>
+    /// <summary>Stops any gated subsystem the remote flags now force off — forceOff in a non-beta
+    /// build, beta_kill in a beta build, which also stops the screen capturers (lolF05). Needed because
+    /// the first launch after an update has no cached flags, so the subsystems start before the fetch
+    /// lands. Un-forcing does not restart anything; that takes effect on the next launch.</summary>
     private void ApplyRemoteFlags()
     {
-        if (_flags.IsForcedOff("laneReturn")) Interlocked.Exchange(ref _laneReturn, null)?.Dispose();
-        if (_flags.IsForcedOff("enemyJunglerSpotted")) Interlocked.Exchange(ref _enemyJunglerSpotted, null)?.Dispose();
-        if (_flags.IsForcedOff("enemyItemAlert")) Interlocked.Exchange(ref _enemyItemAlert, null)?.Dispose();
-        if (_flags.IsForcedOff("enemyThreat")) _threat = null; // the timer keeps sampling the review
+        if (IsFeatureOff("laneReturn")) DisposeStopped("laneReturn", Interlocked.Exchange(ref _laneReturn, null));
+        if (IsFeatureOff("enemyJunglerSpotted")) DisposeStopped("enemyJunglerSpotted", Interlocked.Exchange(ref _enemyJunglerSpotted, null));
+        if (IsFeatureOff("enemyItemAlert")) DisposeStopped("enemyItemAlert", Interlocked.Exchange(ref _enemyItemAlert, null));
+        if (IsFeatureOff("enemyThreat")) _threat = null; // the timer keeps sampling the review
+        StopCaptureKilledByBeta();
+    }
+
+    /// <summary>Disposes a detector <see cref="ApplyRemoteFlags"/> took out of its field; a beta
+    /// build logs the stop (non-beta builds stay as quiet as before lolF05).</summary>
+    private static void DisposeStopped(string name, IDisposable? stopped)
+    {
+        if (stopped is null) return;
+        stopped.Dispose();
+        if (BuildFlavor.IsBeta) Log($"beta_kill lists {name}: stopped");
+    }
+
+    /// <summary>lolF05: a beta_kill of minimapVision / buffStackVision tears that capturer down
+    /// mid-session. The gates only call back when running and killed (never in a non-beta build), run
+    /// the callback under the same lock as the start, and log the stop themselves.</summary>
+    private void StopCaptureKilledByBeta()
+    {
+        _minimapGate.StopIfKilled(() =>
+        {
+            foreach (var id in _minimapCaptureSubs)
+            {
+                try { Overlay.Core.EventBus.EventBus.Unsubscribe(id); } catch { /* already gone */ }
+            }
+            _minimapCaptureSubs.Clear();
+            var source = Interlocked.Exchange(ref _minimapCapture, null);
+            var pipeline = Interlocked.Exchange(ref _minimapVision, null);
+            // AI-NOTE: source first — once it is disposed no frame can reach the pipeline, so the
+            // pipeline is never fed after its own Dispose.
+            source?.Dispose();
+            pipeline?.Dispose();
+        });
+        _buffStackGate.StopIfKilled(() =>
+        {
+#if !LIGHT
+            if (_comboRunner is not null) _comboRunner.LiveStackProvider = null;
+            Interlocked.Exchange(ref _buffStackVision, null)?.Dispose();
+#endif
+        });
     }
 
     private void ToggleConfigFlag(string key, bool fallback)
@@ -1138,9 +1206,9 @@ public sealed class AppComposition : IDisposable
     /// init and failed ticks used to exist only in Debug.WriteLine — invisible in a normal run and
     /// absent from the bug-report zip, which collects <c>logs/*.log</c>. Never throws.</summary>
     private static readonly string AppLogPath =
-        Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
+        Path.Combine(AppPaths.LogDir, "app.log");
 
-    private static void Log(string message)
+    internal static void Log(string message)
     {
         Debug.WriteLine($"[AppComposition] {message}");
         try
@@ -1160,11 +1228,11 @@ public sealed class AppComposition : IDisposable
     private static bool _appLogStamped;
     private string? _lastTickError;
 
-    /// <summary>(loop 525) Ad-slot diagnostics to <c>logs/ads.log</c> next to the exe — Debug.WriteLine
+    /// <summary>(loop 525) Ad-slot diagnostics to <c>logs/ads.log</c> (<see cref="AppPaths.LogDir"/>) — Debug.WriteLine
     /// is invisible in a normal run, so this is how we can actually see whether the slot configured,
     /// fetched, decoded and showed. Never throws.</summary>
     private static readonly string AdLogPath =
-        Path.Combine(AppContext.BaseDirectory, "logs", "ads.log");
+        Path.Combine(AppPaths.LogDir, "ads.log");
 
     internal static void AdLog(string message)
     {
@@ -1177,12 +1245,12 @@ public sealed class AppComposition : IDisposable
     }
 
     /// <summary>M31 diagnostic sink for the minimap-vision pipeline. Writes to
-    /// <c>logs/minimap-vision.log</c> (next to the exe) AS WELL AS Debug — because the capture/detect
+    /// <c>logs/minimap-vision.log</c> (<see cref="AppPaths.LogDir"/>) AS WELL AS Debug — because the capture/detect
     /// path is UNVERIFIED and Debug.WriteLine is invisible in a normal run, this file is how the user
     /// sees whether capture started, frames arrive, templates built, and sightings fire (mirrors the
     /// M30 enemy-jungler-debug.log approach). Never throws.</summary>
     private static readonly string MinimapLogPath =
-        Path.Combine(AppContext.BaseDirectory, "logs", "minimap-vision.log");
+        Path.Combine(AppPaths.LogDir, "minimap-vision.log");
 
     private static void MinimapLog(string message)
     {
@@ -1257,50 +1325,59 @@ public sealed class AppComposition : IDisposable
         object? rawVision = _config.Get("minimap.vision");
         MinimapLog($"WireMinimapCapture: minimap.vision={rawVision?.ToString() ?? "(null)"}, alreadyWired={_minimapCapture is not null}, log={MinimapLogPath}");
 
-        if (_minimapCapture is not null) return;        // already wired
-        if (!GetBool("minimap.vision", true))
+        // lolF05: the wiring runs inside the beta_kill gate, so a mid-session kill waits for it and
+        // then tears down whatever it wired (StopCaptureKilledByBeta).
+        _minimapGate.TryStart(() =>
         {
-            MinimapLog("minimap.vision is OFF → capture NOT started. Set \"vision\": true under \"minimap\" in user_config.json (or delete that file) and restart.");
-            return;
-        }
-
-        int fps = (int)GetDouble("minimap.captureFps", 30);
-        try
-        {
-            _minimapCapture = new MinimapCaptureSource(
-                getGameWindow, fps, log: MinimapLog,
-                // Same manual-calibration box the overlay renders structures on → detection and the
-                // inhibitor/Nexus chips stay on ONE map basis (OverlayHost.ResolveMinimapRect mirror).
-                manualRoiFraction: ResolveManualMinimapRoi);
-            MinimapLog($"wiring minimap capture (fps={fps}) — logging to {MinimapLogPath}");
-
-            // §38-H orchestration loop: FrameCaptured → MinimapDetector.Detect → JunglePresenceTracker
-            // .OnSighting/.Tick (self-publishes UI.NOTIFICATION/VOICE.SPEAK). Subscribe it to the source
-            // BEFORE the source starts so no early frame is missed.
-            // §43 debug ring — off unless the user turned it on (costs ~19MB while enabled).
-            _minimapVision = new MinimapVisionPipeline(
-                _minimapCapture, () => _latestSnapshot, DataDragonVersion, MinimapLog,
-                lostDebounceMs: () => GetDouble("minimap.lostDebounceMs", 2500))
+            if (_minimapCapture is not null) return false; // already wired
+            if (!GetBool("minimap.vision", true))
             {
-                DebugCaptureEnabled = GetBool("minimap.debugCapture", false),
-            };
-            // §43-AR: the pipeline asks for a dump when it catches a physically impossible sighting,
-            // because the hotkey cannot be pressed fast enough to catch one (see OnImplausibleSighting).
-            _minimapVision.AutoDumpRequested += reason => DumpMinimapDebugFrames(reason);
-            _minimapVision.Start();
+                MinimapLog("minimap.vision is OFF → capture NOT started. Set \"vision\": true under \"minimap\" in user_config.json (or delete that file) and restart.");
+                return false;
+            }
 
-            // Start/stop with the game. Bus handlers arrive on the EventBus thread; Start/Stop are
-            // internally locked + idempotent. Try an immediate start too, in case a game is already up.
-            _minimapCaptureSubs.Add(
-                Overlay.Core.EventBus.EventBus.Subscribe("GAME.CONNECTED", _ => _minimapCapture?.Start()));
-            _minimapCaptureSubs.Add(
-                Overlay.Core.EventBus.EventBus.Subscribe("GAME.DISCONNECTED", _ => _minimapCapture?.Stop()));
-            _minimapCapture.Start();
-        }
-        catch (Exception ex)
-        {
-            MinimapLog($"minimap capture wiring failed: {ex.GetType().Name}: {ex.Message}");
-        }
+            int fps = (int)GetDouble("minimap.captureFps", 30);
+            try
+            {
+                _minimapCapture = new MinimapCaptureSource(
+                    getGameWindow, fps, log: MinimapLog,
+                    // Same manual-calibration box the overlay renders structures on → detection and the
+                    // inhibitor/Nexus chips stay on ONE map basis (OverlayHost.ResolveMinimapRect mirror).
+                    manualRoiFraction: ResolveManualMinimapRoi);
+                MinimapLog($"wiring minimap capture (fps={fps}) — logging to {MinimapLogPath}");
+
+                // §38-H orchestration loop: FrameCaptured → MinimapDetector.Detect → JunglePresenceTracker
+                // .OnSighting/.Tick (self-publishes UI.NOTIFICATION/VOICE.SPEAK). Subscribe it to the source
+                // BEFORE the source starts so no early frame is missed.
+                // §43 debug ring — off unless the user turned it on (costs ~19MB while enabled).
+                _minimapVision = new MinimapVisionPipeline(
+                    _minimapCapture, () => CurrentSnapshot, DataDragonVersion, MinimapLog,
+                    lostDebounceMs: () => GetDouble("minimap.lostDebounceMs", 2500))
+                {
+                    DebugCaptureEnabled = GetBool("minimap.debugCapture", false),
+                };
+                // §43-AR: the pipeline asks for a dump when it catches a physically impossible sighting,
+                // because the hotkey cannot be pressed fast enough to catch one (see OnImplausibleSighting).
+                _minimapVision.AutoDumpRequested += reason => DumpMinimapDebugFrames(reason);
+                _minimapVision.Start();
+
+                // Start/stop with the game. Bus handlers arrive on the EventBus thread; Start/Stop are
+                // internally locked + idempotent. Try an immediate start too, in case a game is already up.
+                _minimapCaptureSubs.Add(
+                    Overlay.Core.EventBus.EventBus.Subscribe("GAME.CONNECTED", _ => _minimapCapture?.Start()));
+                _minimapCaptureSubs.Add(
+                    Overlay.Core.EventBus.EventBus.Subscribe("GAME.DISCONNECTED", _ => _minimapCapture?.Stop()));
+                _minimapCapture.Start();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MinimapLog($"minimap capture wiring failed: {ex.GetType().Name}: {ex.Message}");
+                // AI-NOTE: a partial wiring still holds the source (and maybe its subscriptions); count it
+                // as running so a beta_kill can still tear it down. Same "already wired" test as above.
+                return _minimapCapture is not null;
+            }
+        });
 #endif
     }
 
@@ -1320,25 +1397,31 @@ public sealed class AppComposition : IDisposable
 #if LIGHT
         MinimapLog("LIGHT build — buff-stack vision is compiled out; the editor's stack knob remains the source.");
 #else
-        if (_buffStackVision is not null) return;
-        if (!GetBool("vision.buffStacks", true))
+        // lolF05: inside the beta_kill gate, as in WireMinimapCapture.
+        _buffStackGate.TryStart(() =>
         {
-            MinimapLog("vision.buffStacks is OFF → buff-stack reading not started.");
-            return;
-        }
-        try
-        {
-            _buffStackVision = new BuffStackVision(getGameWindow, () => _latestSnapshot,
-                DataDragonVersion, MinimapLog);
-            if (_comboRunner is not null)
-                _comboRunner.LiveStackProvider = (champ, slot) => _buffStackVision?.CurrentStacks(champ, slot);
-            _buffStackVision.Start();
-            MinimapLog("buff-stack vision wired (1s ticks, Nasus Q).");
-        }
-        catch (Exception ex)
-        {
-            MinimapLog($"buff-stack vision wiring failed: {ex.GetType().Name}: {ex.Message}");
-        }
+            if (_buffStackVision is not null) return false;
+            if (!GetBool("vision.buffStacks", true))
+            {
+                MinimapLog("vision.buffStacks is OFF → buff-stack reading not started.");
+                return false;
+            }
+            try
+            {
+                _buffStackVision = new BuffStackVision(getGameWindow, () => CurrentSnapshot,
+                    DataDragonVersion, MinimapLog);
+                if (_comboRunner is not null)
+                    _comboRunner.LiveStackProvider = (champ, slot) => _buffStackVision?.CurrentStacks(champ, slot);
+                _buffStackVision.Start();
+                MinimapLog("buff-stack vision wired (1s ticks, Nasus Q).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MinimapLog($"buff-stack vision wiring failed: {ex.GetType().Name}: {ex.Message}");
+                return _buffStackVision is not null; // partial wiring: see WireMinimapCapture
+            }
+        });
 #endif
     }
 

@@ -46,6 +46,13 @@ public sealed class EnemyAfterimageTracker : IDisposable
     // is seen again (which also clears the flag).
     private readonly ConcurrentDictionary<string, bool> _dead = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Names <see cref="NormalizeId"/> already reported as unresolved (logged once each).</summary>
+    private readonly ConcurrentDictionary<string, byte> _unresolvedLogged = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Optional diagnostic sink (wired to <c>logs/minimap-vision.log</c> in production).
+    /// Receives one line per distinct champion name that could not be resolved to an id.</summary>
+    public Action<string>? Diagnostics { get; init; }
+
     private readonly IClock _clock;
     private readonly Func<double> _graceMs;
     private string? _sightingSub, _diedSub, _respawnedSub, _connectedSub, _retractedSub, _disconnectedSub;
@@ -117,8 +124,19 @@ public sealed class EnemyAfterimageTracker : IDisposable
             _dead.TryRemove(NormalizeId(r.ChampionName), out _);
     }
 
-    private static string NormalizeId(string name)
-        => string.IsNullOrEmpty(name) ? name : ChampionSummary.ResolveKoreanName(name) ?? name;
+    internal string NormalizeId(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return name;
+        // AI-NOTE: same fallback as before (an English id passes through); a name that is neither a
+        // known Korean name nor a known id is logged once so the failure is not silent (TODO:452).
+        // AI-NOTE: whitespace-only names are not logged; the return path below is unchanged for them.
+        if (!string.IsNullOrWhiteSpace(name)
+            && !ChampionSummary.IsKnownChampionName(name) && _unresolvedLogged.TryAdd(name, 0))
+            Diagnostics?.Invoke(
+                $"afterimage: champion name '{name}' not resolved to an id — kept as-is " +
+                $"(locRepoInit={ChampionLocalizationRepository.IsInitialized})");
+        return ChampionSummary.ResolveKoreanName(name) ?? name;
+    }
 
     /// <summary>Current markers: every discovered enemy not seen within the grace and not dead, at its
     /// last-seen point. Snapshot — safe to enumerate while sightings keep arriving.</summary>

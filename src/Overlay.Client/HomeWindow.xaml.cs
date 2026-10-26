@@ -255,6 +255,9 @@ public partial class HomeWindow : Window
             if (_composition.Config.Get("general.trayNoticeShown") is not true)
             {
                 _tray.Notify(Localization.L("tray.hiddenTitle"), Localization.L("tray.hiddenBody"));
+                // AI-NOTE: SettingsTests.TrayNoticeOnce counts this line; Windows may suppress the toast
+                // itself (Focus Assist), so the call is the only thing a test can observe.
+                AppComposition.Log("tray notice shown");
                 _composition.Config.Set("general.trayNoticeShown", true);
             }
         };

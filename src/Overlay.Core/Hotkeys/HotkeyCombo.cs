@@ -149,15 +149,40 @@ public sealed record HotkeyCombo(HotkeyModifiers Modifiers, string Key)
     public static HotkeyCombo FromKeys(HotkeyModifiers modifiers, IEnumerable<string> keys)
         => new(modifiers, string.Join("+", keys.Distinct(StringComparer.Ordinal).OrderBy(k => k, StringComparer.Ordinal)));
 
-    /// <summary>(M46) What a key-down can mean, best first: every non-modifier key held (<paramref name="held"/>, the one
-    /// just pressed included) with the modifiers, then the modifiers with only the key just pressed - so a key held for
-    /// something else (Space for the camera) never blocks a plain binding.</summary>
+    /// <summary>(M46, lolF01) What a key-down can mean, best first, each with the same modifiers and no combo twice:
+    /// 1) every non-modifier key held (<paramref name="held"/>) plus the key just pressed; 2) every proper subset of
+    /// those keys that contains the key just pressed and has 2..<see cref="MaxKeys"/> keys, largest first, ties in
+    /// ordinal order of <see cref="Canonical"/>; 3) the key just pressed alone. So a key held for something else
+    /// (Space for the camera) or a stale token whose key-up was missed never blocks a chord or a plain binding.</summary>
     public static IEnumerable<HotkeyCombo> Candidates(HotkeyModifiers modifiers, IReadOnlyCollection<string> held, string pressed)
     {
-        var exact = FromKeys(modifiers, held.Append(pressed));
+        var keys = held.Append(pressed).Distinct(StringComparer.Ordinal).ToList();
+        var exact = FromKeys(modifiers, keys);
         yield return exact;
+
+        var others = keys.Where(k => !string.Equals(k, pressed, StringComparison.Ordinal)).ToList();
+        for (int size = Math.Min(MaxKeys, keys.Count - 1); size >= 2; size--)
+        {
+            var ofSize = Subsets(others, size - 1).Select(rest => FromKeys(modifiers, rest.Append(pressed)));
+            foreach (var combo in ofSize.OrderBy(c => c.Canonical, StringComparer.Ordinal))
+                yield return combo;
+        }
+
         var single = new HotkeyCombo(modifiers, pressed);
         if (single != exact) yield return single;
+    }
+
+    /// <summary>Every <paramref name="count"/>-element subset of <paramref name="items"/> (distinct items).</summary>
+    private static IEnumerable<IEnumerable<string>> Subsets(IReadOnlyList<string> items, int count, int start = 0)
+    {
+        if (count == 0)
+        {
+            yield return Enumerable.Empty<string>();
+            yield break;
+        }
+        for (int i = start; i <= items.Count - count; i++)
+            foreach (var rest in Subsets(items, count - 1, i + 1))
+                yield return rest.Prepend(items[i]);
     }
 
     private string Build()

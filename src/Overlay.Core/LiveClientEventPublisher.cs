@@ -260,7 +260,7 @@ public sealed class LiveClientEventPublisher : IDisposable
         try
         {
             string path = StructureLogPathOverride
-                ?? System.IO.Path.Combine(AppContext.BaseDirectory, "logs", "structure_ids.log");
+                ?? System.IO.Path.Combine(Logging.LogDirectory.Current, "structure_ids.log");
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
             lock (StructureLogGate)
                 System.IO.File.AppendAllText(path, DateTime.Now.ToString("HH:mm:ss") + " " + line + Environment.NewLine);

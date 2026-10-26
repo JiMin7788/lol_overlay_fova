@@ -30,12 +30,34 @@ namespace Overlay.Core.Vision;
 /// Nearly every candidate passes, and since the winner is simply the argmax, the detector always
 /// names SOMEBODY. The margin is what lets it answer "I don't know": if two templates are within
 /// this distance of each other, no identity is emitted.</para></param>
+/// <param name="Gates">lolF04: the size band and fixed-structure rule (<see cref="MinimapCandidateGate"/>),
+/// applied to every matched candidate before <c>KeepBestPerChampion</c>. Null (the default) = no gate,
+/// the detector behaves exactly as before.</param>
+/// <param name="PairRejection">lolF04 (TODO:411): risky-pair mutual rejection (<see cref="PairRejectionSettings"/>),
+/// applied in stage 2 after the margin rule. Null (the default) = off, the detector behaves exactly as before.</param>
+/// <param name="Assignment">lolF04 (TODO:425): how champions are given to the frame's candidates
+/// (<see cref="AssignmentMode"/>). PerCandidate (the default) = the detector behaves exactly as before; Global =
+/// <see cref="MinimapGlobalAssignment"/>, then the margin rule, pair rejection and the gates.</param>
+/// <param name="Luminance">lolF04 (TODO:346): the crop-vs-template luminance excess rule (<see cref="LuminanceSettings"/>),
+/// applied in stage 2 after the identity rules and before the gates. Null (the default) = off, the detector behaves
+/// exactly as before.</param>
+/// <param name="StrictRing">lolF04 (TODO:442): the strict-ring stage-1 rule (<see cref="StrictRingSettings"/>), passed to
+/// <see cref="MinimapRingFinder.Find"/>. Null (the default) = off, the detector behaves exactly as before.</param>
+/// <param name="Subpixel">lolF04 (R19, TODO:595/590): the sub-pixel stage-2 crop (<see cref="SubpixelSettings"/>):
+/// fractional origin + bilinear downscale, optionally the best score per template over crop offsets. Null (the
+/// default) = off, the detector behaves exactly as before.</param>
 public readonly record struct DetectionOptions(
     int RedDominanceMargin,
     double ExpectedIconRadiusPx,
     double ToleranceRadiusPx,
     double ConfidenceThreshold,
-    double MinMatchMargin = 0.03)   // = DefaultMinMatchMargin; a primary-ctor default cannot reference it
+    double MinMatchMargin = 0.03,   // = DefaultMinMatchMargin; a primary-ctor default cannot reference it
+    CandidateGateSettings? Gates = null,
+    PairRejectionSettings? PairRejection = null,
+    AssignmentMode Assignment = AssignmentMode.PerCandidate,
+    LuminanceSettings? Luminance = null,
+    StrictRingSettings? StrictRing = null,
+    SubpixelSettings? Subpixel = null)
 {
     /// <summary>MEASURED 2026-07-20 by replaying 120 real captured frames at several margins.
     ///
@@ -71,14 +93,11 @@ public readonly record struct DetectionOptions(
 /// state between calls — <see cref="Detect"/> is a pure function of its three arguments, safe to
 /// call repeatedly on the same instance with unrelated frames (there is nothing to reset).
 ///
-/// <para><b>Stage 1 — red-ring prefilter (every frame, cheap):</b> scan every pixel of
-/// <see cref="MinimapFrame.Bgra"/> for "red-dominant" (see <see cref="DetectionOptions"/>), then
-/// group hits into candidate blobs via 4-connectivity flood fill (connected-component labeling).
-/// For each blob: centroid = mean (x, y) of its member pixels; effective radius =
-/// <c>sqrt(area / π)</c> (the radius of a circle with the same pixel area — robust to
-/// jagged/anti-aliased blob edges, unlike a bounding-box radius). Blobs whose radius falls
-/// outside <c>ExpectedIconRadiusPx ± ToleranceRadiusPx</c> are dropped. Zero surviving blobs is
-/// the common case and returns immediately — no stage 2 work at all.</para>
+/// <para><b>Stage 1 — ring finder (every frame):</b> <see cref="MinimapRingFinder.Find"/> locates
+/// icons by their team-coloured ring around <c>ExpectedIconRadiusPx</c>, with
+/// <c>RedDominanceMargin</c> as the red test. Ally (blue-ringed) icons are dropped; each enemy icon
+/// becomes a candidate centred on its ring. No enemy icon is the common case and returns
+/// immediately — no stage 2 work at all.</para>
 ///
 /// <para><b>Stage 2 — identity match (candidates only, ≤5 templates):</b> each surviving
 /// candidate's source region (a square of side <c>2 × ExpectedIconRadiusPx</c> centered on its
@@ -128,24 +147,88 @@ public sealed class MinimapDetector
 
         // §43-AI: icons are located by their RING, which also settles which team they belong to.
         // Ally-ringed icons are dropped here, so ally decoy templates are no longer needed.
-        var icons = MinimapRingFinder.Find(frame, options.ExpectedIconRadiusPx, options.RedDominanceMargin);
+        var icons = MinimapRingFinder.Find(frame, options.ExpectedIconRadiusPx, options.RedDominanceMargin, options.StrictRing);
         if (icons.Count == 0)
             return Array.Empty<MinimapSighting>();
+
+        if (options.Assignment == AssignmentMode.Global)
+            return DetectGlobal(frame, icons, templates, options);
 
         var sightings = new List<MinimapSighting>(icons.Count);
         foreach (var icon in icons)
         {
             if (!icon.IsEnemy) continue;   // an ally's ring is blue — nothing to identify
             var candidate = new Candidate(icon.CentreX, icon.CentreY, options.ExpectedIconRadiusPx);
-            var (championId, confidence) = MatchBestTemplate(frame, candidate, options, templates);
+            var (championId, confidence, margin) = MatchBestTemplate(frame, candidate, options, templates);
             if (championId is null)
                 continue; // below confidence threshold on every template — drop, no guessing
+
+            // AI-NOTE: gated BEFORE KeepBestPerChampion, so a champion whose strongest claim is a
+            // rejected look-alike keeps its next valid claim instead of losing the frame.
+            if (options.Gates is { } gates
+                && MinimapCandidateGate.Evaluate(gates, icon.RadiusPx, frame.Width,
+                       candidate.CentroidX / frame.Width, candidate.CentroidY / frame.Height, frame.Flipped,
+                       confidence, margin, MinimapStructurePositions.All) != GateResult.Pass)
+                continue;
 
             var mapPos = new MapPosition01(candidate.CentroidX / frame.Width, candidate.CentroidY / frame.Height);
             sightings.Add(new MinimapSighting(championId, mapPos, confidence, frame.TimestampMs));
         }
 
         return KeepBestPerChampion(sightings);
+    }
+
+    /// <summary>lolF04 (R16, TODO:425) stage 2 with <see cref="AssignmentMode.Global"/>: every enemy-ring candidate
+    /// is scored against every enemy template, <see cref="MinimapGlobalAssignment.Assign"/> gives each champion to
+    /// at most one candidate, then the margin rule (over champions no other candidate holds), pair rejection, the
+    /// luminance rule and the gates apply to each assigned candidate.</summary>
+    private static IReadOnlyList<MinimapSighting> DetectGlobal(
+        MinimapFrame frame, IReadOnlyList<MinimapRingFinder.Icon> icons, IReadOnlyList<EnemyTemplate> templates,
+        DetectionOptions options)
+    {
+        // Ally templates take no part in matching, as in MatchBestTemplate.
+        var enemies = templates.Where(t => t.IsEnemy).ToList();
+        if (enemies.Count == 0)
+            return Array.Empty<MinimapSighting>();
+
+        var candidates = new List<(MinimapRingFinder.Icon Icon, Candidate Candidate, byte[][] Crops)>();
+        var scores = new List<double[]>();
+        foreach (var icon in icons)
+        {
+            if (!icon.IsEnemy) continue;
+            var candidate = new Candidate(icon.CentreX, icon.CentreY, options.ExpectedIconRadiusPx);
+            var scored = ScoreCandidate(frame, icon.CentreX, icon.CentreY, options, enemies);
+            candidates.Add((icon, candidate, scored.Select(s => s.Crop).ToArray()));
+            scores.Add(scored.Select(s => s.Score).ToArray());
+        }
+
+        var (champion, margin, runnerUp) = MinimapGlobalAssignment.Assign(scores, options.ConfidenceThreshold);
+        var sightings = new List<MinimapSighting>(candidates.Count);
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            if (champion[i] < 0) continue;   // nothing left for it at or above the threshold
+            if (!double.IsNaN(margin[i]) && margin[i] < options.MinMatchMargin) continue;
+            if (options.PairRejection is { } pairRejection && runnerUp[i] >= 0
+                && pairRejection.Rejects(enemies[champion[i]], enemies[runnerUp[i]], margin[i]))
+                continue;
+
+            var (icon, candidate, crops) = candidates[i];
+            if (options.Luminance is { } luminance
+                && luminance.Rejects(LuminanceSettings.Excess(crops[champion[i]], enemies[champion[i]])))
+                continue;
+            double confidence = scores[i][champion[i]];
+            if (options.Gates is { } gates
+                && MinimapCandidateGate.Evaluate(gates, icon.RadiusPx, frame.Width,
+                       candidate.CentroidX / frame.Width, candidate.CentroidY / frame.Height, frame.Flipped,
+                       confidence, margin[i], MinimapStructurePositions.All) != GateResult.Pass)
+                continue;
+
+            var mapPos = new MapPosition01(candidate.CentroidX / frame.Width, candidate.CentroidY / frame.Height);
+            sightings.Add(new MinimapSighting(enemies[champion[i]].ChampionId, mapPos, confidence, frame.TimestampMs));
+        }
+
+        // AI-NOTE: no KeepBestPerChampion — the assignment is one-to-one, so no champion is claimed twice.
+        return sightings;
     }
 
     /// <summary>Enforces the obvious physical constraint: one champion occupies one place. Where the
@@ -174,222 +257,19 @@ public sealed class MinimapDetector
 
     private readonly record struct Candidate(double CentroidX, double CentroidY, double Radius);
 
-    private static readonly int[] NeighborDx = { 1, -1, 0, 0 };
-    private static readonly int[] NeighborDy = { 0, 0, 1, -1 };
-
-    /// <summary>Stage 1: red-dominant pixel mask → connected components → radius-filtered
-    /// candidate list.</summary>
-    private static List<Candidate> FindRedRingCandidates(MinimapFrame frame, DetectionOptions options)
-    {
-        int w = frame.Width, h = frame.Height, stride = frame.Stride;
-        var isRed = new bool[w * h];
-
-        for (int y = 0; y < h; y++)
-        {
-            int rowOffset = y * stride;
-            for (int x = 0; x < w; x++)
-            {
-                int px = rowOffset + x * 4;
-                byte b = frame.Bgra[px];
-                byte g = frame.Bgra[px + 1];
-                byte r = frame.Bgra[px + 2];
-                isRed[y * w + x] = r - g >= options.RedDominanceMargin && r - b >= options.RedDominanceMargin;
-            }
-        }
-
-        var visited = new bool[w * h];
-        var candidates = new List<Candidate>();
-        var stack = new Stack<(int x, int y)>();
-
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                int idx = y * w + x;
-                if (!isRed[idx] || visited[idx]) continue;
-
-                // Flood fill (4-connectivity) this blob. Member pixels are kept because an
-                // oversized blob has to be SPLIT rather than dropped (see below), and that needs
-                // the pixels, not just their centroid.
-                long sumX = 0, sumY = 0;
-                var blob = new List<(int X, int Y)>();
-                stack.Push((x, y));
-                visited[idx] = true;
-
-                while (stack.Count > 0)
-                {
-                    var (cx, cy) = stack.Pop();
-                    sumX += cx;
-                    sumY += cy;
-                    blob.Add((cx, cy));
-
-                    for (int n = 0; n < 4; n++)
-                    {
-                        int nx = cx + NeighborDx[n], ny = cy + NeighborDy[n];
-                        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
-                        int nIdx = ny * w + nx;
-                        if (!isRed[nIdx] || visited[nIdx]) continue;
-                        visited[nIdx] = true;
-                        stack.Push((nx, ny));
-                    }
-                }
-
-                int area = blob.Count;
-                double radius = Math.Sqrt(area / Math.PI);
-                double minR = options.ExpectedIconRadiusPx - options.ToleranceRadiusPx;
-                double maxR = options.ExpectedIconRadiusPx + options.ToleranceRadiusPx;
-
-                // (2026-07-20, live feedback) Overlap is decided on AREA, not radius. Two champions
-                // standing on each other merge into one red component, and because radius grows only
-                // as sqrt(area) the merged blob usually still passes the radius window — with the
-                // production tolerance (40% of the radius) a clean pair lands around 7.8px against an
-                // 8.4px ceiling. So it was not being dropped; it was being read as ONE icon, and the
-                // second champion silently went missing, which the presence machine then reported as
-                // a disappearance. Area is linear in icon count and says plainly what happened.
-                double expectedArea = Math.PI * options.ExpectedIconRadiusPx * options.ExpectedIconRadiusPx;
-                double areaRatio = area / Math.Max(1.0, expectedArea);
-
-                if (areaRatio >= OverlapAreaRatio)
-                {
-                    int k = Math.Clamp((int)Math.Round(areaRatio), 2, MaxOverlapSplit);
-                    foreach (var c in SplitBlob(blob, k, options))
-                        candidates.Add(c);
-                }
-                else if (areaRatio >= MinIconAreaRatio && radius >= minR && radius <= maxR)
-                {
-                    candidates.Add(new Candidate(sumX / (double)area, sumY / (double)area, radius));
-                }
-            }
-        }
-
-        return candidates;
-    }
-
-    /// <summary>How many icons' worth of area a component must cover before it is treated as a
-    /// merged pile rather than one icon.
-    ///
-    /// <para>Rescaled with <see cref="MinIconAreaRatio"/> when the calibrated radius corrected: at
-    /// the true radius a single icon's blob tops out near 1.10 in the same captures, so 1.35 sits
-    /// just above the observed single-icon ceiling. PROVISIONAL — the sample contained no blob above
-    /// 1.10, so the lower edge of the genuine two-icon population has not been observed directly and
-    /// this should be re-measured once frames with the corrected radius exist.</para></summary>
-    private const double OverlapAreaRatio = 1.35;
-
-    /// <summary>Smallest blob, as a fraction of one icon's area, that may be treated as a champion.
-    ///
-    /// <para>Stage 1 keeps RED-dominant pixels. An enemy icon is ringed red, so its ring joins the
-    /// blob and the blob comes out icon-sized. An ALLY is ringed BLUE, so the ring never qualifies
-    /// and only the reddish part of their portrait survives, giving a much smaller blob. Blob size
-    /// is therefore a team signal owing nothing to portrait similarity — which matters because
-    /// portrait similarity is exactly what fails when an enemy ties an ally to within 0.001.</para>
-    ///
-    /// <para><b>THIS NUMBER IS TIED TO THE ICON RADIUS.</b> Area ratio divides by the radius SQUARED,
-    /// so any change in the radius rescales it. It was first measured at the old 14.5px assumption
-    /// and shipped as 0.72; when the calibrator corrected the radius to 18.2px, every ratio fell by
-    /// about a third and 0.72 began rejecting real icons — detection collapsed and one champion
-    /// stopped being seen entirely. Re-derive this whenever the radius definition changes.</para>
-    ///
-    /// <para>Re-measured at the calibrated radius over 552 ally-corner and 405 enemy blobs: ally
-    /// blobs sit at a median 0.04 (p90 0.12) and enemy blobs at a median 0.67 (p10 0.31), a far wider
-    /// gap than before. 0.30 rejects 100% of ally blobs while keeping 97% of enemy ones.</para></summary>
-    private const double MinIconAreaRatio = 0.30;
-
-
-    /// <summary>Upper bound on how many icons one merged red component is allowed to represent.
-    /// Five is the whole enemy team — beyond that the blob is some other red shape, not a pile of
-    /// champions, and inventing more sub-candidates would only manufacture false positives.</summary>
-    private const int MaxOverlapSplit = 5;
-
-    /// <summary>Splits a merged red component into <paramref name="k"/> sub-candidates by Lloyd's
-    /// algorithm (k-means) over the member pixel coordinates.
-    ///
-    /// <para>Seeds are spread along the blob's longer axis rather than chosen at random, so the
-    /// result is DETERMINISTIC — this runs every frame and a detector that returns different
-    /// answers for identical pixels would make the presence state machine flicker, which is the
-    /// very symptom being fixed. Sub-candidates whose own pixel count is nowhere near an icon are
-    /// discarded: a split that produces a sliver means the blob was not really two icons.</para></summary>
-    private static List<Candidate> SplitBlob(
-        List<(int X, int Y)> blob, int k, DetectionOptions options)
-    {
-        int minX = int.MaxValue, maxX = int.MinValue, minY = int.MaxValue, maxY = int.MinValue;
-        foreach (var (px, py) in blob)
-        {
-            if (px < minX) minX = px;
-            if (px > maxX) maxX = px;
-            if (py < minY) minY = py;
-            if (py > maxY) maxY = py;
-        }
-
-        bool horizontal = (maxX - minX) >= (maxY - minY);
-        var cx = new double[k];
-        var cy = new double[k];
-        for (int i = 0; i < k; i++)
-        {
-            double t = (i + 0.5) / k;
-            cx[i] = horizontal ? minX + t * (maxX - minX) : (minX + maxX) / 2.0;
-            cy[i] = horizontal ? (minY + maxY) / 2.0 : minY + t * (maxY - minY);
-        }
-
-        var assign = new int[blob.Count];
-        for (int iter = 0; iter < 8; iter++)
-        {
-            for (int p = 0; p < blob.Count; p++)
-            {
-                double best = double.MaxValue;
-                int bestI = 0;
-                for (int i = 0; i < k; i++)
-                {
-                    double dx = blob[p].X - cx[i], dy = blob[p].Y - cy[i];
-                    double d = dx * dx + dy * dy;
-                    if (d < best) { best = d; bestI = i; }
-                }
-                assign[p] = bestI;
-            }
-
-            var sx = new double[k];
-            var sy = new double[k];
-            var n = new int[k];
-            for (int p = 0; p < blob.Count; p++)
-            {
-                sx[assign[p]] += blob[p].X;
-                sy[assign[p]] += blob[p].Y;
-                n[assign[p]]++;
-            }
-            for (int i = 0; i < k; i++)
-                if (n[i] > 0) { cx[i] = sx[i] / n[i]; cy[i] = sy[i] / n[i]; }
-        }
-
-        var counts = new int[k];
-        foreach (var a in assign) counts[a]++;
-
-        double expectedArea = Math.PI * options.ExpectedIconRadiusPx * options.ExpectedIconRadiusPx;
-        var result = new List<Candidate>(k);
-        for (int i = 0; i < k; i++)
-        {
-            if (counts[i] < expectedArea * 0.55) continue;  // sliver — not a real icon
-            result.Add(new Candidate(cx[i], cy[i], Math.Sqrt(counts[i] / Math.PI)));
-        }
-        return result;
-    }
-
     /// <summary>Stage 2: crop+downscale the candidate region, compare against every template,
-    /// return the best match if it clears the confidence threshold (else a null championId).</summary>
-    private static (string? ChampionId, double Confidence) MatchBestTemplate(
+    /// return the best match if it clears the confidence threshold (else a null championId), with
+    /// its margin over the runner-up (NaN when there is no runner-up).</summary>
+    private static (string? ChampionId, double Confidence, double Margin) MatchBestTemplate(
         MinimapFrame frame, Candidate candidate, DetectionOptions options, IReadOnlyList<EnemyTemplate> templates)
     {
-        // Region side = 2x the expected icon radius (the icon's approximate diameter), clamped
-        // so a tiny test-fixture ROI never asks for a crop larger than the frame itself.
-        int regionSize = Math.Max(1, (int)Math.Round(options.ExpectedIconRadiusPx * 2));
-        regionSize = Math.Min(regionSize, Math.Min(frame.Width, frame.Height));
-        int srcX = Clamp((int)Math.Round(candidate.CentroidX - regionSize / 2.0), 0, frame.Width - regionSize);
-        int srcY = Clamp((int)Math.Round(candidate.CentroidY - regionSize / 2.0), 0, frame.Height - regionSize);
-
-        byte[] downscaled = MinimapPixelSampling.NearestNeighborDownscale(
-            frame.Bgra, frame.Stride, srcX, srcY, regionSize, EnemyTemplate.Size);
+        byte[][] crops = CandidateCrops(frame, candidate, options);
 
         string? bestId = null;
         bool bestIsEnemy = false;
         double bestSimilarity = -1, secondSimilarity = -1;
+        EnemyTemplate? bestTemplate = null, secondTemplate = null;
+        byte[]? bestCrop = null;
 
         foreach (var template in templates)
         {
@@ -403,30 +283,114 @@ public sealed class MinimapDetector
             // as runner-up. Skipping them also halves the comparisons.
             if (!template.IsEnemy) continue;
 
-            double similarity = ColorSimilarity(downscaled, template);
+            // lolF04 (R19): with the offset search each template keeps its own best crop, so the margin below is
+            // between per-template bests; with one crop this is ColorSimilarity on it.
+            var (similarity, crop) = BestOver(crops, template);
             if (similarity > bestSimilarity)
             {
                 secondSimilarity = bestSimilarity;
+                secondTemplate = bestTemplate;
                 bestSimilarity = similarity;
                 bestId = template.ChampionId;
                 bestIsEnemy = template.IsEnemy;
+                bestTemplate = template;
+                bestCrop = crop;
             }
             else if (similarity > secondSimilarity)
             {
                 secondSimilarity = similarity;
+                secondTemplate = template;
             }
         }
 
+        double margin = secondSimilarity >= 0 ? bestSimilarity - secondSimilarity : double.NaN;
         if (bestSimilarity < options.ConfidenceThreshold)
-            return (null, bestSimilarity);
+            return (null, bestSimilarity, margin);
 
         // Ambiguous: the runner-up is too close to call. Emitting the argmax here is what produced
         // confident-sounding wrong identities in the live pass, so say nothing instead.
         //
         if (secondSimilarity >= 0 && bestSimilarity - secondSimilarity < options.MinMatchMargin)
-            return (null, bestSimilarity);
+            return (null, bestSimilarity, margin);
 
-        return (bestId, bestSimilarity);
+        // lolF04 (TODO:411): a risky pair (templates close by the MaxAchievableMargin bound) needs a
+        // wider margin than the rule above; computed from this call's templates only, so Detect stays pure.
+        if (options.PairRejection is { } pairRejection && secondTemplate is not null
+            && pairRejection.Rejects(bestTemplate!, secondTemplate, margin))
+            return (null, bestSimilarity, margin);
+
+        // lolF04 (TODO:346): a crop much brighter than the template it matched sits on a bright background.
+        if (options.Luminance is { } luminance && luminance.Rejects(LuminanceSettings.Excess(bestCrop!, bestTemplate!)))
+            return (null, bestSimilarity, margin);
+
+        return (bestId, bestSimilarity, margin);
+    }
+
+    /// <summary>lolF04 (R19): every enemy template's stage-2 score at a candidate centre and the crop it was scored on
+    /// (its best crop under the offset search), in <paramref name="enemies"/> order. Internal so the replay scores
+    /// through the same code.</summary>
+    internal static (double Score, byte[] Crop)[] ScoreCandidate(
+        MinimapFrame frame, double centreX, double centreY, DetectionOptions options, IReadOnlyList<EnemyTemplate> enemies)
+    {
+        byte[][] crops = CandidateCrops(frame, new Candidate(centreX, centreY, options.ExpectedIconRadiusPx), options);
+        var scored = new (double Score, byte[] Crop)[enemies.Count];
+        for (int i = 0; i < enemies.Count; i++) scored[i] = BestOver(crops, enemies[i]);
+        return scored;
+    }
+
+    /// <summary>The highest <see cref="ColorSimilarity"/> of <paramref name="template"/> over <paramref name="crops"/>,
+    /// with that crop; the first one on a tie.</summary>
+    private static (double Score, byte[] Crop) BestOver(byte[][] crops, EnemyTemplate template)
+    {
+        double best = ColorSimilarity(crops[0], template);
+        byte[] bestCrop = crops[0];
+        for (int i = 1; i < crops.Length; i++)
+        {
+            double s = ColorSimilarity(crops[i], template);
+            if (s > best) { best = s; bestCrop = crops[i]; }
+        }
+        return (best, bestCrop);
+    }
+
+    /// <summary>The crops stage 2 scores a candidate on: today's one crop, or with <see cref="SubpixelSettings.Bilinear"/>
+    /// the bilinear crop at the fractional origin, shifted by every (dx, dy) of <see cref="SubpixelSettings.Offsets"/>
+    /// (dy outer, dx inner, both ascending).</summary>
+    private static byte[][] CandidateCrops(MinimapFrame frame, Candidate candidate, DetectionOptions options)
+    {
+        if (options.Subpixel is not { Bilinear: true } subpixel)
+            return new[] { CropCandidate(frame, candidate, options) };
+
+        // Same region side and origin formula as CropCandidate, minus the Math.Round of the origin.
+        // AI-NOTE: the origin keeps today's centre - side/2 (not + 0.5), so the crop sits where today's crop sits on
+        // average and only the rounding is removed — measure 1b (TODO:595) isolates exactly that contribution.
+        int regionSize = Math.Max(1, (int)Math.Round(options.ExpectedIconRadiusPx * 2));
+        regionSize = Math.Min(regionSize, Math.Min(frame.Width, frame.Height));
+        double[] offsets = subpixel.Offsets();
+        var crops = new byte[offsets.Length * offsets.Length][];
+        int k = 0;
+        foreach (double dy in offsets)
+            foreach (double dx in offsets)
+            {
+                double srcX = Math.Clamp(candidate.CentroidX + dx - regionSize / 2.0, 0, frame.Width - regionSize);
+                double srcY = Math.Clamp(candidate.CentroidY + dy - regionSize / 2.0, 0, frame.Height - regionSize);
+                crops[k++] = MinimapPixelSampling.BilinearDownscale(
+                    frame.Bgra, frame.Stride, frame.Width, frame.Height, srcX, srcY, regionSize, EnemyTemplate.Size);
+            }
+        return crops;
+    }
+
+    /// <summary>The candidate's source region downscaled to <see cref="EnemyTemplate.Size"/>.</summary>
+    private static byte[] CropCandidate(MinimapFrame frame, Candidate candidate, DetectionOptions options)
+    {
+        // Region side = 2x the expected icon radius (the icon's approximate diameter), clamped
+        // so a tiny test-fixture ROI never asks for a crop larger than the frame itself.
+        int regionSize = Math.Max(1, (int)Math.Round(options.ExpectedIconRadiusPx * 2));
+        regionSize = Math.Min(regionSize, Math.Min(frame.Width, frame.Height));
+        int srcX = Clamp((int)Math.Round(candidate.CentroidX - regionSize / 2.0), 0, frame.Width - regionSize);
+        int srcY = Clamp((int)Math.Round(candidate.CentroidY - regionSize / 2.0), 0, frame.Height - regionSize);
+
+        return MinimapPixelSampling.NearestNeighborDownscale(
+            frame.Bgra, frame.Stride, srcX, srcY, regionSize, EnemyTemplate.Size);
     }
 
     /// <summary>Scores one template against another with the SAME metric the matcher uses, so the

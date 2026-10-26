@@ -29,8 +29,7 @@ internal static class BugReport
                 .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                 .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
                 .FirstOrDefault()?.InformationalVersion ?? "unknown";
-            var release = AppUpdater.CurrentVersion;
-            return release is null ? informational : $"{release} ({informational})";
+            return Overlay.Core.VersionText.Compose(AppUpdater.CurrentVersion, informational);
         }
     }
 
@@ -56,7 +55,7 @@ internal static class BugReport
 
         var cutoff = DateTime.Now - LogAge;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var logDir in new[] { Path.Combine(AppContext.BaseDirectory, "logs"), Path.Combine(AppPaths.UserDataDir, "logs") })
+        foreach (var logDir in new[] { AppPaths.LogDir, Path.Combine(AppPaths.UserDataDir, "logs") })
         {
             if (!Directory.Exists(logDir)) continue;
             foreach (var file in Directory.EnumerateFiles(logDir, "*.log"))

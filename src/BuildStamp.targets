@@ -34,7 +34,10 @@
       <_GitHash Condition="'$(_GitHash)' == ''">nogit</_GitHash>
       <!-- A dirty tree is worth surfacing: a log from uncommitted code cannot be reproduced later. -->
       <_DirtySuffix Condition="'$(_GitDirty)' != ''">+dirty</_DirtySuffix>
-      <BuildStamp>$(_GitHash)$(_DirtySuffix) $([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss"))</BuildStamp>
+      <!-- Release builds lead with the version (packaging/build-release.ps1 passes it), so the
+           telemetry pings and bug reports of shipped installs are told apart from dev builds. -->
+      <_ReleasePrefix Condition="'$(FovaReleaseVersion)' != ''">$(FovaReleaseVersion) </_ReleasePrefix>
+      <BuildStamp>$(_ReleasePrefix)$(_GitHash)$(_DirtySuffix) $([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss"))</BuildStamp>
       <InformationalVersion>$(BuildStamp)</InformationalVersion>
     </PropertyGroup>
   </Target>

@@ -62,7 +62,7 @@ public sealed class LcuConnector : IDisposable
     {
         try
         {
-            string path = Path.Combine(AppContext.BaseDirectory, "logs", "lcu.log");
+            string path = Path.Combine(Logging.LogDirectory.Current, "lcu.log");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.AppendAllText(path, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
         }

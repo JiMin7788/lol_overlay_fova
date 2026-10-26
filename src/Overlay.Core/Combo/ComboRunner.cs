@@ -740,7 +740,10 @@ public sealed class ComboRunner : IDisposable
 
     /// <summary>(M46, user request) The tank side of the next-item card: each defensive candidate ranked by how much of
     /// the enemies' combined full combos (the M40 estimate: preset, common max order, all skills ready) my max HP takes
-    /// with it bought - its HP, armor and MR added to my live stats. Every enemy counts, dead or alive (they come back).
+    /// with it bought - its HP, armor and MR added to my live stats. Every enemy counts (at most 5), dead or alive (they come back).
+    /// (lolF01) The basis is my MAX HP, not my current HP, on an <see cref="DefenderStat.Uncapped"/> defender: each enemy's
+    /// whole combo counts even past my max HP, so the result is the same at any current HP and whether I am dead or alive,
+    /// and a lethal enemy still separates the items (<see cref="NextItemRow.SurviveGainPercent"/>).
     /// Rows come back best (lowest share) first, <see cref="NextItemRow.Tank"/> set; Before / After are the shares (1 = the
     /// enemies' combos add up to exactly my max HP). Shields, healing and passives are not modelled. Never throws.</summary>
     public IReadOnlyList<NextItemRow> RankTankItems(GameSnapshot live, IReadOnlyList<string> candidateIds)
@@ -750,7 +753,9 @@ public sealed class ComboRunner : IDisposable
         {
             if (live is not { HasData: true } || ResolveActive(live) is not { } me) return rows;
             var enemies = new List<ScoreboardEntry>();
-            for (int i = 0; i < live.PlayerCount; i++)
+            // AI-NOTE: (lolf01-g1, QA S4) at most 5 enemies count - a team's size; a malformed snapshot with more
+            // would otherwise inflate the share past what any real game can reach.
+            for (int i = 0; i < live.PlayerCount && enemies.Count < MaxTankEnemies; i++)
                 if (live.Players[i] is { ChampionName.Length: > 0 } p && !string.Equals(p.Team, me.Team, StringComparison.Ordinal))
                     enemies.Add(p);
             if (enemies.Count == 0) return rows;
@@ -763,7 +768,9 @@ public sealed class ComboRunner : IDisposable
                 return d.MaxHP > 0 ? sum / d.MaxHP : 0;
             }
 
-            var mine = MeFrom(live);
+            double max = live.Stats.MaxHealth;
+            var mine = new DefenderStat(CurrentHP: max, MaxHP: max, Armor: live.Stats.Armor, Mr: live.Stats.MagicResist,
+                Shield: 0, Uncapped: true);
             double before = Share(mine);
             if (before <= 0) return rows;
             foreach (var id in candidateIds)
@@ -771,7 +778,7 @@ public sealed class ComboRunner : IDisposable
                 if (ItemRepository.Get(id) is not { } item) continue;
                 var bought = mine with
                 {
-                    CurrentHP = mine.CurrentHP + item.Stats.Hp, MaxHP = mine.MaxHP + item.Stats.Hp,
+                    CurrentHP = max + item.Stats.Hp, MaxHP = max + item.Stats.Hp,
                     Armor = mine.Armor + item.Stats.Armor, Mr = mine.Mr + item.Stats.Mr,
                 };
                 rows.Add(new NextItemRow(id, item.GoldTotal, before, Share(bought), 0, string.Empty, Tank: true));
@@ -783,6 +790,8 @@ public sealed class ComboRunner : IDisposable
         }
         return rows.OrderBy(r => r.After).ToList();
     }
+
+    private const int MaxTankEnemies = 5;
 
     /// <summary>My first saved combo for <paramref name="championId"/> (by config key order), else
     /// its all-in preset as an unsaved combo; null when neither exists.</summary>
@@ -909,7 +918,7 @@ public sealed class ComboRunner : IDisposable
         try
         {
             const long MaxBytes = 1_000_000;
-            string dir = Path.Combine(AppContext.BaseDirectory, "logs");
+            string dir = Logging.LogDirectory.Current;
             Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, "calc_trace.log");
             if (File.Exists(path) && new FileInfo(path).Length > MaxBytes)
@@ -2480,6 +2489,17 @@ public sealed class ComboRunner : IDisposable
            && SkillDamage.ComputeFlatDataValue(champion, stackSlot, hit.MaxStacksDataValue!, stats, level, rankSlot: calcSlot) is double capRaw
             ? (int)Math.Round(capRaw)
             : hit.MaxStacks ?? int.MaxValue;
+
+    /// <summary>(lolF02 t5) The cap the combo editor's "몇 스택" picker offers for <paramref name="hit"/>, curated on
+    /// <paramref name="slot"/>: the same BIN DataValue / literal <see cref="StackCap"/> clamps the knob to, at max rank
+    /// (no live ability data, as the editor's reference). Null when the hit states no cap (an ordinary BuffCounter stack).</summary>
+    public static int? StackKnobCap(ChampionData champion, string slot, SkillHit hit)
+    {
+        if (string.IsNullOrEmpty(hit.MaxStacksDataValue) && hit.MaxStacks is null) return null;
+        string stackSlot = string.IsNullOrEmpty(hit.BinSpell) ? slot : hit.BinSpell!;
+        int cap = StackCap(hit, champion, stackSlot, new ActivePlayerStats(), ReferenceLevel, slot);
+        return cap is > 0 and < int.MaxValue ? cap : null;
+    }
 
     /// <summary>A BIN DataValue read as a fraction: &gt;= 1 is a percentage (15 = 15%), the sign dropped.
     /// Null when the name is unset or does not resolve.</summary>
@@ -4585,6 +4605,13 @@ public sealed record NextItemRow(string ItemId, int Gold, double Before, double 
 
     /// <summary>(M46) The same, per 1,000 gold.</summary>
     public double ShareCutPer1000Gold => Gold > 0 ? ShareCutPoints / Gold * 1000 : 0;
+
+    /// <summary>(lolF01) A tank row: how many percent more of the enemies' full combos I survive with the item - the
+    /// shares' ratio, Before / After - 1 (1.5 → 1.2 = 25%).</summary>
+    public double SurviveGainPercent => After > 0 ? (Before / After - 1) * 100 : 0;
+
+    /// <summary>(lolF01) The same, per 1,000 gold.</summary>
+    public double SurviveGainPer1000Gold => Gold > 0 ? SurviveGainPercent / Gold * 1000 : 0;
 
     public double GainPercent => Before > 0 ? (After - Before) / Before * 100 : 0;
 

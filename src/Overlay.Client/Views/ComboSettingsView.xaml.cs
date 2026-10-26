@@ -180,6 +180,7 @@ public partial class ComboSettingsView : UserControl
     // Hotkey capture
     private bool _capturing;
     private string _capturedHotkey = string.Empty;
+    private readonly Overlay.Core.Hotkeys.ChordCapture _chordCapture = new();
 
     // Second (optional) hotkey capture — M13 "Pending User-Reported Changes" (loop 38): a combo
     // may bind up to 2 independent chords, both triggering the same combo. The persisted mapping
@@ -188,6 +189,7 @@ public partial class ComboSettingsView : UserControl
     // capture control plus reverse-map/display/cleanup updates below to manage a second entry.
     private bool _capturing2;
     private string _capturedHotkey2 = string.Empty;
+    private readonly Overlay.Core.Hotkeys.ChordCapture _chordCapture2 = new();
 
     public ComboSettingsView()
     {
@@ -1747,8 +1749,17 @@ public partial class ComboSettingsView : UserControl
         // picker pattern as the attack-count/distance knobs.
         // (M45 loop 42) A per-stack hit (Varus W's Blight) caps at its own stack count and reads that cap unset.
         if (championId is not null && SkillDamageDb.GetStackScaledHit(championId, chip.Slot) is { } stackHit)
-            subRow.Children.Add(BuildStackCountBadge(chip, stackHit.PerStack ? stackHit.MaxStacks ?? 0 : stackHit.MaxStackTier,
-                unsetAtCap: stackHit.PerStack));
+        {
+            int maxStacks = stackHit.PerStack ? stackHit.MaxStacks ?? 0 : stackHit.MaxStackTier;
+            // AI-NOTE: (lolF02 t5, HC:108) a per-stack term with a BIN cap (Yasuo E's MaxStacks 4) got the
+            // uncapped 0-600 slider, which snaps to fives, so 1-3 stacks could not be picked. Offer the cap the
+            // engine clamps to. Only for a hit on the node's own slot: that slot is then the engine's calc slot.
+            if (maxStacks == 0 && SkillDamageDb.GetHits(championId, chip.Slot)?.Contains(stackHit) == true
+                && ChampionRepository.Get(championId) is { } champion
+                && ComboRunner.StackKnobCap(champion, chip.Slot, stackHit) is int cap)
+                maxStacks = cap;
+            subRow.Children.Add(BuildStackCountBadge(chip, maxStacks, unsetAtCap: stackHit.PerStack));
+        }
 
         // (loop 549) Rider-only slot hint: a curated slot whose CAST deals nothing because every
         // number rides the next basic attack (Camille Q/Q2, Draven Q — the RECURRING_TRAPS 1.7
@@ -2049,7 +2060,8 @@ public partial class ComboSettingsView : UserControl
         void UpdateLabel(double pct) => label.Text =
             $"거리 {pct.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}% (0=근접 ~ 100=최대)";
         UpdateLabel(slider.Value);
-        slider.ValueChanged += (_, e) => UpdateLabel(e.NewValue);
+        bool moved = false;
+        slider.ValueChanged += (_, e) => { moved = true; UpdateLabel(e.NewValue); };
 
         var panel = new StackPanel { Margin = new Thickness(6) };
         panel.Children.Add(label);
@@ -2072,7 +2084,11 @@ public partial class ComboSettingsView : UserControl
         popup.Closed += (_, _) =>
         {
             double committed = Math.Round(slider.Value / 100.0, 2);
-            if (Math.Abs(committed - initial) > 0.001)
+            // AI-NOTE: (lolF02 t6a, HC:129) an unset node's slider starts at 100%, but unset reads the
+            // resolved anchor (the near/minimum end for most skills), so a 100% picked after moving the
+            // slider was dropped as "unchanged" and the badge stayed '자동'. A moved slider on an unset
+            // node always commits.
+            if (Math.Abs(committed - initial) > 0.001 || (moved && chip.Node.UserDistanceFraction is null))
                 ReplaceChip(chip, chip with { Node = chip.Node with { UserDistanceFraction = committed } });
         };
         popup.IsOpen = true;
@@ -2364,7 +2380,8 @@ public partial class ComboSettingsView : UserControl
     /// <see cref="ReplaceChip"/>. Unset/0 → the un-stacked floor (honest default; the in-game stack
     /// count isn't observable, so it stays a user knob).</summary>
     /// <param name="maxTier">(loop 484) The cap a TIERED hit states through its own tier list (Locke
-    /// has three nails, so 3). 0 for an ordinary BuffCounter stack, which has no natural cap and keeps
+    /// has three nails, so 3), or (lolF02 t5) a per-stack term's BIN cap (Yasuo E, 4). 0 for an ordinary
+    /// BuffCounter stack, which has no natural cap and keeps
     /// the old 600 — dragging a 600-wide slider to pick 1 of 3 nails would be unusable.</param>
     /// <param name="unsetAtCap">(M45 loop 42) 0 reads the cap (a per-stack hit), and the label says so.</param>
     private void OpenStackCountPicker(Border anchor, Chip chip, int maxTier, bool unsetAtCap = false)
@@ -2630,18 +2647,25 @@ public partial class ComboSettingsView : UserControl
     private void HotkeyButton_Click(object sender, RoutedEventArgs e)
     {
         _capturing = true;
+        _chordCapture.Reset();
         HotkeyButton.Content = Localization.L("combo.pressKey");
         Keyboard.Focus(HotkeyButton);
     }
 
     private void HotkeyButton_PreviewKeyDown(object sender, KeyEventArgs e)
-        => CaptureHotkey(e, ref _capturing, ref _capturedHotkey, HotkeyButton, Localization.L("combo.setHotkey"));
+        => CaptureHotkey(e, ref _capturing, ref _capturedHotkey, HotkeyButton, Localization.L("combo.setHotkey"), _chordCapture);
 
-    /// <summary>Chord capture shared by both hotkey buttons. (design pass) Esc cancels and keeps the
+    private void HotkeyButton_PreviewKeyUp(object sender, KeyEventArgs e)
+        => FinishHotkey(e, ref _capturing, ref _capturedHotkey, HotkeyButton, _chordCapture);
+
+    /// <summary>Chord capture shared by both hotkey buttons: any modifiers plus up to
+    /// <see cref="Overlay.Core.Hotkeys.HotkeyCombo.MaxKeys"/> keys (ALT+Q+W, Q+W+E), taken when one of them is
+    /// released or the last allowed key goes down (lolf01-t7). (design pass) Esc cancels and keeps the
     /// previous chord, Backspace/Delete clears it — both used to be bound as "ESCAPE"/"BACKSPACE" —
     /// an OS-reserved chord is refused in place instead of failing silently at registration, and a
     /// chord another combo of this champion already uses is pointed out before Save takes it.</summary>
-    private void CaptureHotkey(KeyEventArgs e, ref bool capturing, ref string captured, Button button, string emptyLabel)
+    private void CaptureHotkey(KeyEventArgs e, ref bool capturing, ref string captured, Button button, string emptyLabel,
+                               Overlay.Core.Hotkeys.ChordCapture capture)
     {
         if (!capturing) return;
         e.Handled = true;
@@ -2651,14 +2675,16 @@ public partial class ComboSettingsView : UserControl
         // Ignore lone modifier presses — wait for the first non-modifier key.
         if (IsModifierKey(key)) return;
 
+        // AI-NOTE: with a modifier held or a key already pending, Esc/Backspace/Delete join the chord instead.
         var mods = Keyboard.Modifiers;
-        if (mods == ModifierKeys.None && key is Key.Escape)
+        bool plain = mods == ModifierKeys.None && !capture.HasPendingKeys;
+        if (plain && key is Key.Escape)
         {
             capturing = false;
             button.Content = captured.Length > 0 ? captured : emptyLabel;
             return;
         }
-        if (mods == ModifierKeys.None && key is Key.Back or Key.Delete)
+        if (plain && key is Key.Back or Key.Delete)
         {
             capturing = false;
             captured = string.Empty;
@@ -2669,14 +2695,25 @@ public partial class ComboSettingsView : UserControl
         var token = KeyToToken(key);
         if (token is null) return; // unmappable; keep waiting
 
-        var parts = new List<string>(5);
-        if (mods.HasFlag(ModifierKeys.Control)) parts.Add("CTRL");
-        if (mods.HasFlag(ModifierKeys.Alt)) parts.Add("ALT");
-        if (mods.HasFlag(ModifierKeys.Shift)) parts.Add("SHIFT");
-        if (mods.HasFlag(ModifierKeys.Windows)) parts.Add("WIN");
-        parts.Add(token);
-        var chord = string.Join("+", parts);
+        if (capture.OnKeyDown(ToHotkeyModifiers(mods), token) is { } chord)
+            CommitHotkey(chord, ref capturing, ref captured, button);
+    }
 
+    /// <summary>The key-up half: releasing one of the pending keys completes the chord ("ALT+Q+W", "Q+W").</summary>
+    private void FinishHotkey(KeyEventArgs e, ref bool capturing, ref string captured, Button button,
+                              Overlay.Core.Hotkeys.ChordCapture capture)
+    {
+        if (!capturing) return;
+        e.Handled = true;
+
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (IsModifierKey(key) || KeyToToken(key) is not { } token) return;
+        if (capture.OnKeyUp(token) is { } chord)
+            CommitHotkey(chord, ref capturing, ref captured, button);
+    }
+
+    private void CommitHotkey(string chord, ref bool capturing, ref string captured, Button button)
+    {
         if (Overlay.Core.Hotkeys.HotkeyRegistry.ReservedCombos.Contains(Overlay.Core.Hotkeys.HotkeyCombo.Parse(chord).Canonical))
         {
             ShowMessage(Localization.F("combo.hotkeyReserved", chord), isError: true);
@@ -2715,18 +2752,32 @@ public partial class ComboSettingsView : UserControl
     private void HotkeyButton2_Click(object sender, RoutedEventArgs e)
     {
         _capturing2 = true;
+        _chordCapture2.Reset();
         HotkeyButton2.Content = Localization.L("combo.pressKey");
         Keyboard.Focus(HotkeyButton2);
     }
 
     private void HotkeyButton2_PreviewKeyDown(object sender, KeyEventArgs e)
-        => CaptureHotkey(e, ref _capturing2, ref _capturedHotkey2, HotkeyButton2, "＋");
+        => CaptureHotkey(e, ref _capturing2, ref _capturedHotkey2, HotkeyButton2, "＋", _chordCapture2);
+
+    private void HotkeyButton2_PreviewKeyUp(object sender, KeyEventArgs e)
+        => FinishHotkey(e, ref _capturing2, ref _capturedHotkey2, HotkeyButton2, _chordCapture2);
 
     private void HotkeyButton2_LostFocus(object sender, RoutedEventArgs e)
     {
         if (!_capturing2) return;
         _capturing2 = false;
         HotkeyButton2.Content = _capturedHotkey2.Length > 0 ? _capturedHotkey2 : "＋";
+    }
+
+    private static Overlay.Core.Hotkeys.HotkeyModifiers ToHotkeyModifiers(ModifierKeys mods)
+    {
+        var result = Overlay.Core.Hotkeys.HotkeyModifiers.None;
+        if (mods.HasFlag(ModifierKeys.Control)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Control;
+        if (mods.HasFlag(ModifierKeys.Alt)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Alt;
+        if (mods.HasFlag(ModifierKeys.Shift)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Shift;
+        if (mods.HasFlag(ModifierKeys.Windows)) result |= Overlay.Core.Hotkeys.HotkeyModifiers.Win;
+        return result;
     }
 
     private static bool IsModifierKey(Key key) => key is Key.LeftCtrl or Key.RightCtrl

@@ -19,6 +19,7 @@ public sealed class EnemyThreatMonitor
     private readonly Func<long> _nowMs;
     private readonly Dictionary<string, (string Signature, ThreatEstimate? Estimate, long TriedAt)> _cache = new();
     private volatile IReadOnlyList<EnemyThreat> _latest = Array.Empty<EnemyThreat>();
+    private readonly object _tickLock = new();
 
     public EnemyThreatMonitor(Func<GameSnapshot?> snapshot, Func<GameSnapshot, ScoreboardEntry, ThreatEstimate?> compute,
         Func<long>? nowMs = null)
@@ -35,29 +36,34 @@ public sealed class EnemyThreatMonitor
     /// ago). Returns true when anything was recomputed.</summary>
     public bool Tick()
     {
-        var snap = _snapshot();
-        if (snap is not { HasData: true }) return false;
-        var enemies = Enemies(snap);
-        if (enemies.Count == 0) return false;
-
-        string mine = MySignature(snap);
-        long now = _nowMs();
-        bool computed = false;
-        var result = new List<EnemyThreat>(enemies.Count);
-        foreach (var e in enemies)
+        // AI-NOTE: _cache is a plain Dictionary and its check-then-compute must not interleave, so
+        // concurrent Ticks run one after another; Latest stays a lock-free volatile read for the HUD.
+        lock (_tickLock)
         {
-            string signature = mine + EnemySignature(e);
-            if (!_cache.TryGetValue(e.ChampionName, out var cached) || cached.Signature != signature
-                || (cached.Estimate is null && now - cached.TriedAt >= RetryMs))
+            var snap = _snapshot();
+            if (snap is not { HasData: true }) return false;
+            var enemies = Enemies(snap);
+            if (enemies.Count == 0) return false;
+
+            string mine = MySignature(snap);
+            long now = _nowMs();
+            bool computed = false;
+            var result = new List<EnemyThreat>(enemies.Count);
+            foreach (var e in enemies)
             {
-                cached = (signature, _compute(snap, e), now);
-                _cache[e.ChampionName] = cached;
-                computed = true;
+                string signature = mine + EnemySignature(e);
+                if (!_cache.TryGetValue(e.ChampionName, out var cached) || cached.Signature != signature
+                    || (cached.Estimate is null && now - cached.TriedAt >= RetryMs))
+                {
+                    cached = (signature, _compute(snap, e), now);
+                    _cache[e.ChampionName] = cached;
+                    computed = true;
+                }
+                if (cached.Estimate is { } estimate) result.Add(new EnemyThreat(e.ChampionName, estimate));
             }
-            if (cached.Estimate is { } estimate) result.Add(new EnemyThreat(e.ChampionName, estimate));
+            if (computed) _latest = result;
+            return computed;
         }
-        if (computed) _latest = result;
-        return computed;
     }
 
     private static List<ScoreboardEntry> Enemies(GameSnapshot snap)
@@ -80,10 +86,10 @@ public sealed class EnemyThreatMonitor
 
     /// <summary>My stats, bucketed (25 HP, 2 armor/MR) so a regen tick or a fractional stat never
     /// triggers a recompute.</summary>
-    private static string MySignature(GameSnapshot snap)
+    internal static string MySignature(GameSnapshot snap)
         => $"{(int)Math.Round(snap.Stats.MaxHealth / 25)}/{(int)Math.Round(snap.Stats.Armor / 2)}/{(int)Math.Round(snap.Stats.MagicResist / 2)}";
 
-    private static string EnemySignature(ScoreboardEntry e)
+    internal static string EnemySignature(ScoreboardEntry e)
     {
         var sb = new StringBuilder();
         sb.Append('|').Append(e.Level).Append(':').Append(e.KeystoneId)

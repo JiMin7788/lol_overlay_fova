@@ -1,3 +1,4 @@
 {
-  "forceOff": ["recallTimer", "enemyJunglerSpotted", "enemyItemAlert"]
+  "forceOff": ["recallTimer", "enemyJunglerSpotted", "enemyItemAlert"],
+  "beta_kill": []
 }

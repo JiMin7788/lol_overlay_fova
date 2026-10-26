@@ -308,6 +308,8 @@ public partial class MainWindow : Window
                 // (2026-10-20) or toggled by its own key when one is set.
                 () => _composition.GlobalGoldView,
                 () => _composition.GlobalGoldShown);
+            // (lolF05) beta builds show the held-back alerts whatever their saved toggle says.
+            _overlayHost.EnabledOverride = _composition.HudEnabledOverride;
 
             // M02/M04/M13 combo-hotkey toggle-off wiring: give ComboRunner the coordinator so it
             // can tell whether its own combo card is still on screen (OverlayCoordinator.IsActive)
@@ -323,7 +325,7 @@ public partial class MainWindow : Window
             // after a clean build, OnLoaded never reached here (or the running exe is a stale build).
             try
             {
-                string mvLog = System.IO.Path.Combine(AppContext.BaseDirectory, "logs", "minimap-vision.log");
+                string mvLog = System.IO.Path.Combine(AppPaths.LogDir, "minimap-vision.log");
                 System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(mvLog)!);
                 System.IO.File.AppendAllText(mvLog,
                     $"{DateTime.Now:HH:mm:ss.fff} MainWindow.OnLoaded → WireMinimapCapture(leagueHwnd={FindLeagueWindow()}){Environment.NewLine}");
@@ -422,7 +424,7 @@ public partial class MainWindow : Window
         if (_frameMeter is null) return;
         try
         {
-            string path = System.IO.Path.Combine(AppContext.BaseDirectory, "logs", "framedrop.log");
+            string path = System.IO.Path.Combine(AppPaths.LogDir, "framedrop.log");
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
             // RenderCapability.Tier's high word: 0 = software rendering (would explain everything),
             // 2 = full hardware. Gap histogram tells stall size: mild 25-50ms / moderate 50-100 /

@@ -298,6 +298,11 @@ public sealed class JunglePresenceTracker : IDisposable
     private readonly object _gate = new();
     private readonly Dictionary<string, ChampionState> _states = new(StringComparer.Ordinal);
 
+    /// <summary>Names <see cref="NormalizeId"/> already reported as unresolved, so each is logged once
+    /// per tracker rather than on every sighting/death event (TODO:452).</summary>
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _unresolvedLogged =
+        new(StringComparer.OrdinalIgnoreCase);
+
     private string? _diedSubId;
     private string? _respawnedSubId;
     private string? _connectedSubId;
@@ -780,10 +785,22 @@ public sealed class JunglePresenceTracker : IDisposable
     private static double Distance01(double ax, double ay, double bx, double by)
         => Math.Sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by));
 
-    private static string NormalizeId(string championName)
-        => string.IsNullOrEmpty(championName)
-            ? championName
-            : ChampionDb.ChampionSummary.ResolveKoreanName(championName) ?? championName;
+    internal string NormalizeId(string championName)
+    {
+        if (string.IsNullOrEmpty(championName)) return championName;
+        // AI-NOTE: the "?? championName" fallback is kept (an English id must pass through), but a
+        // name that is neither a known Korean name nor a known id used to vanish silently into a
+        // second identity space — log it once so a live log shows the failure (TODO:452).
+        // AI-NOTE: whitespace-only names are not champion names, so they are not logged; the return
+        // path below is left as it was so the value they map to does not change.
+        if (!string.IsNullOrWhiteSpace(championName)
+            && !ChampionDb.ChampionSummary.IsKnownChampionName(championName)
+            && _unresolvedLogged.TryAdd(championName, 0))
+            Diagnostics?.Invoke(
+                $"presence: champion name '{championName}' not resolved to an id — kept as-is " +
+                $"(locRepoInit={ChampionLocalizationRepository.IsInitialized})");
+        return ChampionDb.ChampionSummary.ResolveKoreanName(championName) ?? championName;
+    }
 
     private ChampionState GetOrCreate(string championName)
     {

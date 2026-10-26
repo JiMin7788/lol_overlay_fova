@@ -56,9 +56,9 @@ public sealed class Logger : IDisposable
     private readonly AutoResetEvent _signal = new(false);
     private volatile bool _disposed;
 
-    /// <summary>Default on-disk location: <c>logs/</c> under the app base directory
-    /// (spec Internal Logic #2).</summary>
-    public static string DefaultLogDirectory => Path.Combine(AppContext.BaseDirectory, "logs");
+    /// <summary>Default on-disk location: <see cref="LogDirectory.Current"/>, <c>logs/</c> under the
+    /// app base directory unless test mode moved it (spec Internal Logic #2).</summary>
+    public static string DefaultLogDirectory => LogDirectory.Current;
 
     /// <param name="logDirectory">Directory for daily log files (defaults to
     /// <see cref="DefaultLogDirectory"/>; tests inject a temp dir).</param>

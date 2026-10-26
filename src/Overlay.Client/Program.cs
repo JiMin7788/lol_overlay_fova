@@ -19,11 +19,23 @@ internal static class Program
             .OnBeforeUninstallFastCallback(_ => Autostart.Remove())
             .Run();
 
+        // Before anything logs: Core's file logs follow the app's log dir (moved in test mode).
+        Overlay.Core.Logging.LogDirectory.Current = AppPaths.LogDir;
+        if (AppPaths.TestDataDir is { } testDir)
+        {
+            // AI-NOTE: a test dir that cannot be created must not fall back to the user's real
+            // state; exit code 2 tells the UI test harness why.
+            try { System.IO.Directory.CreateDirectory(testDir); }
+            catch { Environment.Exit(2); }
+        }
+
         if (!SingleInstance.TryAcquire())
         {
             SingleInstance.SignalFirstInstance();
             return;
         }
+        // First app.log message after the build-stamp header, so a log shows it came from a test run.
+        if (AppPaths.TestDataDir is { } dir) AppComposition.Log($"test mode: user data dir = {dir}");
         StartInBackground = args.Contains(Autostart.BackgroundArg);
 
         AppUpdater.Initialize();

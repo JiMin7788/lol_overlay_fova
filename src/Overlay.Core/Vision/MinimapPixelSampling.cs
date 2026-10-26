@@ -50,6 +50,51 @@ internal static class MinimapPixelSampling
     }
 
     /// <summary>
+    /// lolF04 (R19): bilinear counterpart of <see cref="NearestNeighborDownscale"/> with a FRACTIONAL origin, for
+    /// <see cref="SubpixelSettings.Bilinear"/>. Output pixel (tx, ty) samples the source at
+    /// (srcX + (tx + 0.5) × ratio − 0.5, srcY + (ty + 0.5) × ratio − 0.5) in pixel-index coordinates, ratio =
+    /// srcSize / targetSize, interpolating the four neighbours; neighbours outside the frame are clamped to its edge.
+    /// Each channel (alpha included) is rounded to the nearest byte (midpoints to even, <see cref="Math.Round(double)"/>).
+    /// </summary>
+    /// <param name="width">Frame width in pixels (for the edge clamp).</param>
+    /// <param name="height">Frame height in pixels (for the edge clamp).</param>
+    /// <returns>Tightly packed BGRA8 buffer, <paramref name="targetSize"/> x <paramref name="targetSize"/> x 4 bytes.</returns>
+    public static byte[] BilinearDownscale(
+        byte[] src, int stride, int width, int height, double srcX, double srcY, int srcSize, int targetSize)
+    {
+        var outPixels = new byte[targetSize * targetSize * 4];
+        double ratio = (double)srcSize / targetSize;
+
+        for (int ty = 0; ty < targetSize; ty++)
+        {
+            double sy = srcY + (ty + 0.5) * ratio - 0.5;
+            int y0 = (int)Math.Floor(sy);
+            double ay = sy - y0;
+            int row0 = Math.Clamp(y0, 0, height - 1) * stride, row1 = Math.Clamp(y0 + 1, 0, height - 1) * stride;
+
+            for (int tx = 0; tx < targetSize; tx++)
+            {
+                double sx = srcX + (tx + 0.5) * ratio - 0.5;
+                int x0 = (int)Math.Floor(sx);
+                double ax = sx - x0;
+                int col0 = Math.Clamp(x0, 0, width - 1) * 4, col1 = Math.Clamp(x0 + 1, 0, width - 1) * 4;
+                int dst = (ty * targetSize + tx) * 4;
+
+                for (int c = 0; c < 4; c++)
+                {
+                    double v = src[row0 + col0 + c] * (1 - ax) * (1 - ay)
+                             + src[row0 + col1 + c] * ax * (1 - ay)
+                             + src[row1 + col0 + c] * (1 - ax) * ay
+                             + src[row1 + col1 + c] * ax * ay;
+                    outPixels[dst + c] = (byte)Math.Round(v);
+                }
+            }
+        }
+
+        return outPixels;
+    }
+
+    /// <summary>
     /// Builds a row-major inclusion mask for the circle inscribed in a <paramref name="size"/>×
     /// <paramref name="size"/> square (center at the square's center, radius = size/2). Used to
     /// exclude a square icon's corner pixels from color matching — see

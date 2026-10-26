@@ -6,8 +6,7 @@ namespace Overlay.Core.Config;
 /// M14 Data Model: the persisted user configuration, exactly matching the spec's
 /// Data Model section (overlay/hotkeys/voice/general) plus a <see cref="SchemaVersion"/>
 /// field (spec Internal Logic #3: "스키마 버전 필드를 두어, 향후 스키마 변경 시 마이그레이션
-/// 함수 실행"). There is only one schema version today, so
-/// <see cref="ConfigMigrator"/> is a no-op hook, not a real migration chain.
+/// 함수 실행"). <see cref="ConfigMigrator"/> upgrades older files step by step on load.
 ///
 /// Unknown top-level or nested JSON properties are silently ignored by
 /// System.Text.Json's default deserialization (it does not throw on unmapped
@@ -18,7 +17,7 @@ public sealed class ConfigSchema
 {
     /// <summary>Current schema version this class corresponds to. Bump when the shape
     /// of <see cref="ConfigSchema"/> changes and add a step in <see cref="ConfigMigrator"/>.</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     [JsonPropertyName("schemaVersion")]
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;

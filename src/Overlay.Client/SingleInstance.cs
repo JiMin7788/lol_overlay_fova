@@ -9,8 +9,12 @@ namespace Overlay.Client;
 /// </summary>
 internal static class SingleInstance
 {
-    private const string MutexName = @"Local\Fova.SingleInstance";
-    private const string ShowEventName = @"Local\Fova.Show";
+    // AI-NOTE: test mode gets its own names (per data dir) so a UI-test copy runs next to the
+    // user's Fova instead of waking it and exiting.
+    private static readonly string InstanceSuffix = AppPaths.TestDataDir is { } dir
+        ? Overlay.Core.TestDataDir.InstanceSuffix(dir) : "";
+    private static readonly string MutexName = @"Local\Fova.SingleInstance" + InstanceSuffix;
+    private static readonly string ShowEventName = @"Local\Fova.Show" + InstanceSuffix;
 
     private static Mutex? _mutex;
     private static EventWaitHandle? _showEvent;

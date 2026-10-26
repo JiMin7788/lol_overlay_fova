@@ -35,8 +35,11 @@ internal static class AppUpdater
         try
         {
             var source = Environment.GetEnvironmentVariable("FOVA_UPDATE_SOURCE");
+            // AI-NOTE: beta builds also read GitHub prereleases (where the beta is published). The
+            // Velopack channel comes from the installed package, not from here, so light installs
+            // stay on releases.win.json and never pick up a beta.
             _manager = string.IsNullOrWhiteSpace(source)
-                ? new UpdateManager(new GithubSource(RepoUrl, null, false))
+                ? new UpdateManager(new GithubSource(RepoUrl, null, BuildFlavor.IsBeta))
                 : new UpdateManager(source);
             IsInstalled = _manager.IsInstalled;
         }

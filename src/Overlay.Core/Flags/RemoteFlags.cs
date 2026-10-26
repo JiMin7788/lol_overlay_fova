@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Overlay.Core.Ads;
 
 namespace Overlay.Core.Flags;
@@ -7,11 +8,17 @@ namespace Overlay.Core.Flags;
 /// Remote kill switch for gated features (1.0 plan, "Gated" tier). Reads a tiny JSON document from
 /// the public repo, the same way the ad manifest is read:
 ///
-/// <code>{ "forceOff": ["enemyItemAlert", "enemyJunglerSpotted", "laneReturn", "recallTimer"] }</code>
+/// <code>{ "forceOff": ["recallTimer", "enemyJunglerSpotted", "enemyItemAlert"], "beta_kill": [] }</code>
 ///
 /// <para><b>Force-OFF only.</b> The document has no way to say "on": a listed feature is off
 /// whatever the local config says, an unlisted one follows the local config. Removing a name
 /// from the list is how a feature comes back — no app release needed.</para>
+///
+/// <para><b>Two lists, one per build (lolF05).</b> Non-beta builds read only <c>forceOff</c>
+/// (required); beta builds read only <c>beta_kill</c> (optional, absent/null = empty) — see
+/// <see cref="IsOff"/>. Both come from the same document and are swapped together, so a reader
+/// never sees one list from the old document and the other from the new. Released 0.4.0 ignores
+/// <c>beta_kill</c> (unknown members are skipped).</para>
 ///
 /// <para><b>Failure posture.</b> The last good document is cached on disk and loaded in the
 /// constructor, so an offline launch keeps honouring it. A failed, oversized, or malformed fetch
@@ -29,13 +36,15 @@ public sealed class RemoteFlags : IDisposable
     private readonly HttpClient _http;
     private readonly bool _ownsHttp;
 
-    private volatile HashSet<string> _forcedOff = new(StringComparer.OrdinalIgnoreCase);
+    // AI-NOTE: one reference for both lists — two volatile fields could be read across a refresh
+    // and mix the old forceOff with the new beta_kill.
+    private volatile FlagSets _sets = FlagSets.Empty;
 
     /// <summary>Default cache: <c>%LocalAppData%/Fova/flags.json</c>.</summary>
     public static string DefaultCachePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Fova", "flags.json");
 
-    /// <summary>Raised (on the fetching thread) after a refresh replaced the forced-off set.</summary>
+    /// <summary>Raised (on the fetching thread) after a refresh replaced the forceOff and beta_kill sets.</summary>
     public event Action? Changed;
 
     /// <param name="endpoint">HTTPS URL of the flags document; invalid/empty = cache only.</param>
@@ -54,14 +63,23 @@ public sealed class RemoteFlags : IDisposable
         try
         {
             if (File.Exists(_cachePath) && Parse(File.ReadAllBytes(_cachePath)) is { } cached)
-                _forcedOff = cached;
+                _sets = cached;
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>True when the remote document forces <paramref name="feature"/> off.</summary>
-    public bool IsForcedOff(string feature) => _forcedOff.Contains(feature);
+    public bool IsForcedOff(string feature) => _sets.ForceOff.Contains(feature);
+
+    /// <summary>True when the remote document's <c>beta_kill</c> list names <paramref name="feature"/>.</summary>
+    public bool IsBetaKilled(string feature) => _sets.BetaKill.Contains(feature);
+
+    /// <summary>The kill rule of the running build: beta reads only <c>beta_kill</c>, non-beta only <c>forceOff</c>.</summary>
+    public bool IsOff(string feature, bool isBeta) => isBeta ? IsBetaKilled(feature) : IsForcedOff(feature);
+
+    /// <summary>The current <c>beta_kill</c> names.</summary>
+    public IReadOnlyCollection<string> BetaKillNames => _sets.BetaKill;
 
     /// <summary>Fetches the document once. On success replaces the set, rewrites the cache and
     /// raises <see cref="Changed"/>; on any failure keeps the current set. Never throws.</summary>
@@ -84,9 +102,9 @@ public sealed class RemoteFlags : IDisposable
             if (total > MaxBytes) return;
 
             var bytes = buffer.AsSpan(0, total).ToArray();
-            if (Parse(bytes) is not { } set) return;
+            if (Parse(bytes) is not { } sets) return;
 
-            _forcedOff = set;
+            _sets = sets;
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(_cachePath)!);
@@ -103,16 +121,15 @@ public sealed class RemoteFlags : IDisposable
         }
     }
 
-    /// <summary>The forced-off names, or null when the bytes are not a valid flags document.</summary>
-    internal static HashSet<string>? Parse(byte[] bytes)
+    /// <summary>The forceOff and beta_kill names, or null when the bytes are not a valid flags
+    /// document (no forceOff list, or either list not an array of strings).</summary>
+    internal static FlagSets? Parse(byte[] bytes)
     {
         try
         {
             var doc = JsonSerializer.Deserialize<FlagsDocument>(bytes, Options);
             if (doc?.ForceOff is null) return null;
-            return new HashSet<string>(
-                doc.ForceOff.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()),
-                StringComparer.OrdinalIgnoreCase);
+            return new FlagSets(ToSet(doc.ForceOff), ToSet(doc.BetaKill ?? []));
         }
         catch (JsonException)
         {
@@ -120,13 +137,28 @@ public sealed class RemoteFlags : IDisposable
         }
     }
 
+    private static HashSet<string> ToSet(IEnumerable<string> names) => new(
+        names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()),
+        StringComparer.OrdinalIgnoreCase);
+
     public void Dispose()
     {
         if (_ownsHttp) _http.Dispose();
     }
 
+    /// <summary>Both lists of one document; replaced as a whole, never mutated.</summary>
+    internal sealed record FlagSets(HashSet<string> ForceOff, HashSet<string> BetaKill)
+    {
+        public static readonly FlagSets Empty = new(
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+    }
+
     private sealed class FlagsDocument
     {
         public List<string>? ForceOff { get; set; }
+
+        [JsonPropertyName("beta_kill")]
+        public List<string>? BetaKill { get; set; }
     }
 }

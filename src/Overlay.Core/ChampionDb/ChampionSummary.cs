@@ -159,6 +159,19 @@ public static class ChampionSummary
         return KoreanNameToId.TryGetValue(name, out var id) ? id : null;
     }
 
+    /// <summary>True when <paramref name="name"/> is a champion this app can identify: a Korean
+    /// display name <see cref="ResolveKoreanName"/> maps to an id, or (once the localization
+    /// repository is initialized) an English id it knows. False for null/empty. Exists because
+    /// <see cref="ResolveKoreanName"/> returns null both for unknown names and for English ids, so
+    /// its null alone cannot tell a resolve failure apart (TODO:452).</summary>
+    public static bool IsKnownChampionName(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        if (ResolveKoreanName(name) is not null) return true;
+        return ChampionLocalizationRepository.IsInitialized
+               && ChampionLocalizationRepository.Get(name) is not null;
+    }
+
     /// <summary>M33: resolves a numeric Data Dragon champion key (the id champ select reports,
     /// e.g. 266) to the English id + display name, or null when unknown / summary unavailable.
     /// Never throws.</summary>

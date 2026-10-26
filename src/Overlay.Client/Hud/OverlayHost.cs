@@ -233,6 +233,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         _surface.MouseLeftButtonDown += OnSurfaceMouseDown;
         _surface.MouseMove += OnSurfaceMouseMove;
         _surface.MouseLeftButtonUp += OnSurfaceMouseUp;
+        _surface.LostMouseCapture += OnSurfaceLostMouseCapture; // Alt+Tab mid-drag: end the drag without a mouse-up
         _surface.MouseWheel += OnSurfaceMouseWheel; // one-time minimap calibration resize (movable mode)
         _surface.MouseRightButtonUp += OnSurfaceRightClick; // (2026-10-19) preview size bar: reset to 1.0
 
@@ -466,9 +467,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     {
         if (_sizeDragKey is not null)
         {
-            _config.Set("overlay.elementScale." + _sizeDragKey, _sizeDragValue);
-            _sizeDragKey = null;
-            _surface.ReleaseMouseCapture();
+            EndSizeDrag();
             e.Handled = true;
             return;
         }
@@ -476,18 +475,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
         if (_draggingKey == "minimapCal")
         {
-            // Commit the moved calibration box as an ABSOLUTE rect in window fractions (survives resolution
-            // changes reasonably). Size is unchanged by a move (wheel handles size).
-            double w = _surface.ActualWidth, h = _surface.ActualHeight;
-            if (w > 0 && h > 0)
-            {
-                _config.Set("overlay.minimapCalibration.enabled", true);
-                _config.Set("overlay.minimapCalibration.x", (_minimapCalBaseX + _dragLiveDx) / w);
-                _config.Set("overlay.minimapCalibration.y", (_minimapCalBaseY + _dragLiveDy) / h);
-                _config.Set("overlay.minimapCalibration.size", _minimapCalBaseSize / h);
-            }
-            _surface.ReleaseMouseCapture();
-            _draggingKey = null;
+            EndMinimapCalDrag();
             e.Handled = true;
             return;
         }
@@ -503,24 +491,72 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             {
                 _config.Set("targeting.mode", "Manual");
                 _config.Set("targeting.manualTarget", tapChamp);
-                _surface.ReleaseMouseCapture();
                 _draggingKey = null;
                 _pendingTapChampion = null;
+                _surface.ReleaseMouseCapture();
                 e.Handled = true;
                 return;
             }
         }
         _pendingTapChampion = null;
 
-        // Commit where the element is actually drawn — the live offset clamped on screen by
-        // KeepOnScreen — not where the pointer went past the edge.
-        var (commitDx, commitDy) = _offsetsThisFrame.TryGetValue(_draggingKey, out var drawn)
-            ? drawn : (_dragLiveDx, _dragLiveDy);
-        _config.Set("overlay.positions." + _draggingKey + ".x", commitDx);
-        _config.Set("overlay.positions." + _draggingKey + ".y", commitDy);
-        _surface.ReleaseMouseCapture();
-        _draggingKey = null;
+        EndElementDrag();
         e.Handled = true;
+    }
+
+    /// <summary>Window switch (Alt+Tab) or any other capture loss mid-drag: no mouse-up will come, so
+    /// commit the drag where it was last drawn, as if released there. Never a portrait tap.</summary>
+    private void OnSurfaceLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        // AI-NOTE: every End* helper nulls the drag field before ReleaseMouseCapture, which raises this
+        // event synchronously — so a normal mouse-up lands here with both null and commits only once.
+        if (_sizeDragKey is null && _draggingKey is null) return;
+
+        if (_sizeDragKey is not null)
+        {
+            EndSizeDrag();
+            return;
+        }
+        _pendingTapChampion = null;
+        if (_draggingKey == "minimapCal") EndMinimapCalDrag();
+        else EndElementDrag();
+    }
+
+    /// <summary>Commits the dragged size bar value to <c>overlay.elementScale.{key}</c>.</summary>
+    private void EndSizeDrag()
+    {
+        _config.Set("overlay.elementScale." + _sizeDragKey, _sizeDragValue);
+        _sizeDragKey = null;
+        _surface.ReleaseMouseCapture();
+    }
+
+    /// <summary>Commits the moved calibration box as an ABSOLUTE rect in window fractions (survives
+    /// resolution changes reasonably). Size is unchanged by a move (wheel handles size).</summary>
+    private void EndMinimapCalDrag()
+    {
+        double w = _surface.ActualWidth, h = _surface.ActualHeight;
+        if (w > 0 && h > 0)
+        {
+            _config.Set("overlay.minimapCalibration.enabled", true);
+            _config.Set("overlay.minimapCalibration.x", (_minimapCalBaseX + _dragLiveDx) / w);
+            _config.Set("overlay.minimapCalibration.y", (_minimapCalBaseY + _dragLiveDy) / h);
+            _config.Set("overlay.minimapCalibration.size", _minimapCalBaseSize / h);
+        }
+        _draggingKey = null;
+        _surface.ReleaseMouseCapture();
+    }
+
+    /// <summary>Commits where the element is actually drawn — the live offset clamped on screen by
+    /// KeepOnScreen — not where the pointer went past the edge.</summary>
+    private void EndElementDrag()
+    {
+        string key = _draggingKey!;
+        var (commitDx, commitDy) = _offsetsThisFrame.TryGetValue(key, out var drawn)
+            ? drawn : (_dragLiveDx, _dragLiveDy);
+        _config.Set("overlay.positions." + key + ".x", commitDx);
+        _config.Set("overlay.positions." + key + ".y", commitDy);
+        _draggingKey = null;
+        _surface.ReleaseMouseCapture();
     }
 
     /// <summary>M02 pending-change #1: the persisted (or, while actively being dragged,
@@ -569,7 +605,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
     /// bool for every key covered here, so this fallback only matters for a key this class
     /// might query that isn't in the schema, which should not happen in practice.</summary>
     private bool IsEnabled(string key)
-        => _config.Get("overlay.items." + key + ".enabled") is bool b ? b : true;
+        => EnabledOverride?.Invoke(key) ?? (_config.Get("overlay.items." + key + ".enabled") is bool b ? b : true);
 
     /// <summary>(M31 §C) Afterimage master switch — default ON, same convention as the other
     /// minimap widgets.</summary>
@@ -1423,9 +1459,9 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             double tx = x0 + padH + icon + 8 * scale;
             into.Add(Text(name, tx, y + 1 * scale, TextPrimary, f));
             string gain = r.Tank
-                ? $"적 콤보 합 {r.Before * 100:0}% → {r.After * 100:0}% (내 체력 대비)  ·  -{r.ShareCutPer1000Gold:0.0}%p / 1000골드"
+                ? $"적 풀콤 {r.SurviveGainPercent:0}% 더 버팀  ·  1000골드당 {r.SurviveGainPer1000Gold:0.0}%"
                 : $"+{r.GainPercent:0}%  ·  +{r.GainPer1000Gold:0} / 1000골드";
-            bool better = r.Tank ? r.ShareCutPoints > 0 : r.GainPercent > 0;
+            bool better = r.Tank ? r.SurviveGainPercent > 0 : r.GainPercent > 0;
             into.Add(Text(gain, tx, y + f * 1.25, better ? ThreatHpGreen : NameDim, capF + 1 * scale));
             if (!r.Tank && r.MakesOneShot)
                 into.Add(Text("원콤", x0 + panelW - padH - 26 * scale, y + 4 * scale, ThreatRed, f));
@@ -1597,12 +1633,17 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // when there is actually something to say, so every other combo's card is unchanged.
         string? killAngleLine = BuildKillAngleLine(cr);
         double killF = 11 * scale, killH = killAngleLine is null ? 0 : killF * 1.35 + 7 * scale;
+        // AI-NOTE: (lolF02 t6b, HC:142) the execute kill-line (loop 99, commit 65b873c) was lost when commit
+        // 8a9e543 rewrote this card: ExecuteThresholdHP/ExecuteRuleLabel kept being computed and nothing drew
+        // them, so Mel's "멜 P(압도)" line never showed. Restored as its own line under the kill-angle line.
+        string? executeLine = BuildExecuteLine(cr);
+        double execH = executeLine is null ? 0 : killF * 1.35 + 7 * scale;
         // (1.0 plan, "item freshness") The gauge's max HP comes from the enemy's items, and the game
         // only reports an enemy's items as of when they were last seen — so it can lag. Said once,
         // under the gauge. A fixed note rather than a time: the Live Client API does not say when an
         // enemy was last visible, and "items last changed N ago" would read as if it did.
         double freshF = 9 * scale, freshH = hud.TargetMaxHp > 0 ? freshF * 1.35 + 3 * scale : 0;
-        double cardH = padY + headerH + m1 + hpBarH + freshH + m2 + boxH + killH + m3 + chipSize + padY;
+        double cardH = padY + headerH + m1 + hpBarH + freshH + m2 + boxH + killH + execH + m3 + chipSize + padY;
 
         var (dx, dy) = GetOffset("comboResult");
         double x = centerX - cardW / 2 + dx, yy = y + dy;
@@ -1658,7 +1699,7 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             {
                 into.Add(Rect(innerX + hpBarW * System.Math.Clamp(expected / maxHp, 0, 1) - 1 * scale, cy, 2 * scale, hpBarH, HpExpectedLine));
                 string cap = "치명 기대 " + expected.ToString("0", CultureInfo.InvariantCulture);
-                into.Add(Text(cap, innerX + hpBarW - cap.Length * freshF * 0.62, cy + hpBarH + 3 * scale, HpExpectedLine, freshF));
+                into.Add(Text(cap, innerX + hpBarW - ApproxTextWidth(cap, freshF), cy + hpBarH + 3 * scale, HpExpectedLine, freshF));
             }
             // The bright cut line marks the guaranteed-kill HP (rMin): at or below it, the kill is sure.
             double cutX = innerX + hpBarW * killMin;
@@ -1711,6 +1752,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
             into.Add(Text(killAngleLine, innerX, cy + 7 * scale, NameDim, killF));
             cy += killH;
         }
+        if (executeLine is not null)
+        {
+            into.Add(Text(executeLine, innerX, cy + 7 * scale, LethalGreen, killF));
+            cy += execH;
+        }
         cy += m3;
 
         var seq = SequenceOf(hud);
@@ -1736,12 +1782,12 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
         // (issue: combo name field) The saved combo's name, right-aligned at the card's bottom-right
         // (the chip row is the lowest content row). Clamped so it never overlaps the chips; skipped
-        // when there is no name. Width is estimated from the string length (same approach the header
-        // tag uses) since the render layer measures text itself.
+        // when there is no name. Width is the renderer's own measure (lolf02-t4: the old 0.95 em per
+        // character guess put a 12-syllable Hangul name 9 px past the inner edge at scale 1.5).
         if (!string.IsNullOrEmpty(hud.ComboName))
         {
             double nameF = 12 * scale;
-            double estW = hud.ComboName.Length * nameF * 0.95; // generous (Korean glyphs are wide)
+            double estW = DrawCommandRenderer.MeasureTextWidth(hud.ComboName, nameF); // Hangul falls back to a ~1 em face
             double nameX = innerR - estW;
             double minX = chipX + 6 * scale; // keep clear of the last chip
             if (nameX < minX) nameX = minX;
@@ -1862,6 +1908,16 @@ public sealed class OverlayHost : IOverlayView, IDisposable
 
         if (ceiling is null) return suffix;
         return suffix is null ? ceiling : ceiling + "  ·  " + suffix;
+    }
+
+    /// <summary>(M24 P6) The execute kill-line, "≤ N HP 확정킬 (rule)", when an execute rule is armed for this
+    /// attacker (a threshold or a stored-damage execute such as Mel's Overwhelm), else null. Independent of
+    /// the combo's damage. Display only — P4 assistive.</summary>
+    private static string? BuildExecuteLine(ComboResult cr)
+    {
+        if (cr.ExecuteThresholdHP <= 0) return null;
+        string label = string.IsNullOrEmpty(cr.ExecuteRuleLabel) ? "" : " (" + cr.ExecuteRuleLabel + ")";
+        return "≤ " + cr.ExecuteThresholdHP.ToString("0", CultureInfo.InvariantCulture) + " HP 확정킬" + label;
     }
 
     /// <summary>Per-skill (P/Q/W/E/R/A) damage overlay: same header as the combo card, then six slot
@@ -2778,4 +2834,11 @@ public sealed class OverlayHost : IOverlayView, IDisposable
         // The ConfigManager is owned by AppComposition (shared instance) and disposed there,
         // not here — this host only borrows it.
     }
+
+    /// <summary>(lolF05) Consulted by IsEnabled before the saved <c>overlay.items.{key}.enabled</c>
+    /// toggle: a non-null answer wins (the beta shows its held-back alerts unless beta_kill lists
+    /// them), null falls through to the toggle. Set by MainWindow right after <see cref="Start"/>.</summary>
+    // AI-NOTE: declared here at the end of the class, not beside IsEnabled, so no line above moves —
+    // UiTests HarnessTests cite OverlayHost.cs line numbers (wiki overlay-screen-checks).
+    public Func<string, bool?>? EnabledOverride { get; set; }
 }

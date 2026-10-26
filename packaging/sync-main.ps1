@@ -9,7 +9,8 @@
 
     This script does that reproducibly:
       1. checks out master's tree onto main
-      2. removes everything listed in packaging/main-exclude.txt
+      2. removes everything listed in packaging/main-exclude.txt, and the LolOverlay.sln entries of
+         projects that removal deleted
       3. verifies the result still builds and still contains the data files
       4. commits (and pushes with -Push)
 
@@ -74,6 +75,20 @@ function Test-RuleMatch([string[]] $rules, [string] $path) {
 
 $startBranch = (git rev-parse --abbrev-ref HEAD)
 
+# Every abort after the branch switch goes through here. A plain `git checkout $startBranch` refused
+# ("Your local changes ... would be overwritten") because the stripped tree is staged, and left the
+# repo on $Branch. -f is safe only because the dirty-tree check above guarantees nothing of the
+# user's is in the tree; never call this before the switch.
+function Abort([string] $m) {
+    git checkout -q -f $startBranch
+    throw $m
+}
+
+# The .csproj paths LolOverlay.sln lists, as written there (backslashes).
+function Get-SlnProjects([string[]] $sln) {
+    foreach ($l in $sln) { if ($l -match '^Project\(.*\) = ".*", "(.*\.csproj)"') { $Matches[1] } }
+}
+
 if ($DryRun) {
     Step "Dry run - what would be removed from $Branch"
     $tracked = git ls-tree -r --name-only $From
@@ -86,6 +101,10 @@ if ($DryRun) {
         Sort-Object Count -Descending |
         ForEach-Object { "{0,6} files  {1}" -f $_.Count, $_.Name }
     Write-Host ("`n{0} files, {1:N2} MB would be removed" -f $doomed.Count, ($bytes / 1MB))
+    $doomedSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($doomed), [System.StringComparer]::Ordinal)
+    foreach ($p in Get-SlnProjects @(git show "${From}:LolOverlay.sln")) {
+        if ($doomedSet.Contains($p.Replace('\', '/'))) { Write-Host "would drop from LolOverlay.sln: $p" }
+    }
     return
 }
 
@@ -108,7 +127,7 @@ if ($hasRemote) {
 
 Step "Taking $From's tree"
 git checkout $From -- .
-if ($LASTEXITCODE -ne 0) { git checkout -q $startBranch; throw "failed to take $From's tree" }
+if ($LASTEXITCODE -ne 0) { Abort "failed to take $From's tree" }
 
 # ── propagate deletions ─────────────────────────────────────────────────────────────────────────
 # `git checkout $From -- .` only ADDS and OVERWRITES; it never deletes. Without this step a file
@@ -166,7 +185,7 @@ foreach ($path in $keep) {
 # DOWNLOADING it. Without this the sync would silently overwrite the user-facing README with the
 # developer one every time, which is exactly the kind of quiet regression a scripted sync invites.
 if ($ReleaseZip) {
-    if (-not (Test-Path $ReleaseZip)) { git checkout -q $startBranch; throw "no zip at $ReleaseZip" }
+    if (-not (Test-Path $ReleaseZip)) { Abort "no zip at $ReleaseZip" }
 
     # Existence used to be the ONLY check, so a -full debug package, a zip carrying a populated
     # user_config.json, or the ~197MB self-contained zip (which GitHub's 100MB push limit then
@@ -175,16 +194,15 @@ if ($ReleaseZip) {
     $za = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $ReleaseZip))
     try { $entries = @($za.Entries | ForEach-Object { $_.FullName }) } finally { $za.Dispose() }
     if ($entries -notcontains 'fova.exe') {
-        git checkout -q $startBranch; throw "zip has no fova.exe at its root - not a release payload"
+        Abort "zip has no fova.exe at its root - not a release payload"
     }
     $bad = $entries | Where-Object { $_ -match '(?i)vortice|sharpgen|Overlay\.Capture|user_config\.json|riot\.key|\.secrets' }
     if ($bad) {
-        git checkout -q $startBranch; throw "zip contains disallowed entries: $($bad -join ', ')"
+        Abort "zip contains disallowed entries: $($bad -join ', ')"
     }
     $zipMb = (Get-Item $ReleaseZip).Length / 1MB
     if ($zipMb -gt 95) {
-        git checkout -q $startBranch
-        throw ("zip is {0:N0} MB - GitHub rejects pushes over 100 MB; publish it as a Release asset instead" -f $zipMb)
+        Abort ("zip is {0:N0} MB - GitHub rejects pushes over 100 MB; publish it as a Release asset instead" -f $zipMb)
     }
 
     New-Item -ItemType Directory -Force -Path 'release' | Out-Null
@@ -210,18 +228,27 @@ if (Test-Path $distReadme) {
     Write-Host "  README  no packaging/README.dist.md - keeping $From's developer README" -ForegroundColor Yellow
 }
 
+# ── drop solution entries whose project the strip removed ──────────────────────────────────────
+# LolOverlay.sln lists tools\MinimapReplay.Tests (lolF04), but tools/ is excluded, so the stripped
+# build failed with MSB3202 (project file not found). master's .sln is left alone; only main's copy
+# loses the entries.
+foreach ($p in Get-SlnProjects @(Get-Content 'LolOverlay.sln')) {
+    if (Test-Path -LiteralPath $p) { continue }
+    dotnet sln LolOverlay.sln remove $p | Out-Null
+    if ($LASTEXITCODE -ne 0) { Abort "dotnet sln remove $p failed" }
+    Write-Host "  dropped $p from LolOverlay.sln (project file removed)"
+}
+
 # ── verify before committing, not after ─────────────────────────────────────────────────────────
 Step "Verifying"
 $dataCount = @(Get-ChildItem 'src/Overlay.Core/Data' -Recurse -File -ErrorAction SilentlyContinue).Count
 if ($dataCount -lt 300) {
-    git checkout -q $startBranch
-    throw "Data/ has only $dataCount files - the strip went too far, aborting before commit"
+    Abort "Data/ has only $dataCount files - the strip went too far, aborting before commit"
 }
 Write-Host "Data/ intact ($dataCount files)"
 
 if ((Test-Path 'README.md') -and -not (Select-String -Path 'README.md' -Pattern '내려받기|다운로드' -Quiet)) {
-    git checkout -q $startBranch
-    throw "README.md on $Branch is not the distribution one - the swap did not happen"
+    Abort "README.md on $Branch is not the distribution one - the swap did not happen"
 }
 
 # A download button pointing at a file that is not there is worse than no button: the reader
@@ -230,8 +257,7 @@ foreach ($m in Select-String -Path 'README.md' -Pattern '\]\((release/[^)]+)\)' 
     foreach ($g in $m.Matches) {
         $target = $g.Groups[1].Value
         if (-not (Test-Path $target)) {
-            git checkout -q $startBranch
-            throw "README links to $target but it is not in the tree - pass -ReleaseZip"
+            Abort "README links to $target but it is not in the tree - pass -ReleaseZip"
         }
         Write-Host "download link OK -> $target"
     }
@@ -240,8 +266,7 @@ foreach ($m in Select-String -Path 'README.md' -Pattern '\]\((release/[^)]+)\)' 
 if (-not $SkipBuild) {
     dotnet build LolOverlay.sln -c Release -p:LightMode=true --nologo 2>&1 | Select-Object -Last 3
     if ($LASTEXITCODE -ne 0) {
-        git checkout -q $startBranch
-        throw "the stripped tree does not build - aborting before commit"
+        Abort "the stripped tree does not build - aborting before commit"
     }
     Write-Host "light build OK"
 }
@@ -255,8 +280,7 @@ git add -A
 $secretLike = @(git -c core.quotepath=false ls-files --cached) |
     Where-Object { $_ -match '(?i)^\.secrets/|riot\.key|\.sqlite' }
 if ($secretLike) {
-    git checkout -q $startBranch
-    throw "SECRET-LIKE paths staged for the public branch, refusing to commit: $($secretLike -join ', ')"
+    Abort "SECRET-LIKE paths staged for the public branch, refusing to commit: $($secretLike -join ', ')"
 }
 Write-Host "no secret-like paths staged"
 
